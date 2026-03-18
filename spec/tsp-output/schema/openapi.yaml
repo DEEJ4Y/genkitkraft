@@ -1,0 +1,69 @@
+openapi: 3.0.0
+info:
+  title: Hexagonal Arch Template API
+  version: 0.0.0
+tags:
+  - name: Health
+paths:
+  /live:
+    get:
+      operationId: Health_liveness
+      summary: Liveness check
+      description: Liveness probe. Returns 200 if the server process is running.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.HealthCheckResponse'
+      tags:
+        - Health
+  /ready:
+    get:
+      operationId: Health_readiness
+      summary: Readiness check
+      description: Readiness probe. Returns 200 if the server is ready to accept traffic.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.HealthCheckResponse'
+        '503':
+          description: Service unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.HealthCheckResponse'
+      tags:
+        - Health
+components:
+  schemas:
+    Models.HealthCheckResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          allOf:
+            - $ref: '#/components/schemas/Models.HealthStatus'
+          description: Current status of the probe.
+        message:
+          type: string
+          description: Human-readable description of the check result.
+      description: Response body for health check endpoints.
+    Models.HealthStatus:
+      type: string
+      enum:
+        - up
+        - down
+      description: Status of a health check probe.
+servers:
+  - url: http://localhost:8080
+    description: Local development
+    variables: {}

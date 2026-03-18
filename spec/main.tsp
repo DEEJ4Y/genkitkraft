@@ -1,0 +1,8 @@
+import "@typespec/http";
+import "./routes/health.tsp";
+
+using TypeSpec.Http;
+
+@service(#{ title: "Hexagonal Arch Template API" })
+@server("http://localhost:8080", "Local development")
+namespace Api;

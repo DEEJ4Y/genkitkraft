@@ -1,0 +1,20 @@
+{
+  "name": "api-spec",
+  "version": "1.0.0",
+  "description": "API spec written in typespec, compiled to openapi.",
+  "type": "module",
+  "scripts": {
+    "build": "tsp compile .",
+    "dev": "tsp compile . --watch"
+  },
+  "dependencies": {
+    "@typespec/compiler": "latest",
+    "@typespec/http": "latest",
+    "@typespec/rest": "latest",
+    "@typespec/openapi": "latest",
+    "@typespec/openapi3": "latest",
+    "@typespec/versioning": "latest"
+  },
+  "author": "DEEJ4Y",
+  "license": "ISC"
+}
