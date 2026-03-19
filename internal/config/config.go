@@ -6,8 +6,13 @@ import (
 )
 
 type Config struct {
-	Server      ServerConfig
-	Auth        AuthConfig
+	Server   ServerConfig
+	Auth     AuthConfig
+	Database DatabaseConfig
+}
+
+type DatabaseConfig struct {
+	Path string
 }
 
 type ServerConfig struct {
@@ -29,6 +34,9 @@ func Load() Config {
 			Port: getEnv("PORT", "8080"),
 		},
 		Auth: loadAuthConfig(),
+		Database: DatabaseConfig{
+			Path: getEnv("DATABASE_PATH", "/data/app.db"),
+		},
 	}
 }
 

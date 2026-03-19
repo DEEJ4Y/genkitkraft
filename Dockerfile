@@ -14,6 +14,8 @@ RUN npm run generate:api && npm run build
 # Stage 2: Build the Go server
 FROM golang:1.26-alpine AS server-builder
 
+RUN apk add --no-cache gcc musl-dev
+
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
@@ -22,15 +24,19 @@ COPY cmd/ cmd/
 COPY internal/ internal/
 COPY tools.go ./
 
-RUN CGO_ENABLED=0 go build -o /app/server ./cmd/server/...
+RUN CGO_ENABLED=1 go build -o /app/server ./cmd/server/...
 
 # Stage 3: Minimal runtime
-FROM gcr.io/distroless/static-debian12
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates
+RUN mkdir -p /data
 
 WORKDIR /app
 COPY --from=server-builder /app/server ./server
 COPY --from=ui-builder /app/ui/dist/ ./ui/dist/
 
+VOLUME ["/data"]
 EXPOSE 8080
 
 ENTRYPOINT ["/app/server"]

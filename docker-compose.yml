@@ -5,5 +5,11 @@ services:
       - "8080:8080"
     environment:
       - PORT=8080
+      - DATABASE_PATH=/data/app.db
       # Uncomment and set credentials to enable authentication
       # - AUTH_CREDENTIALS=admin:changeme
+    volumes:
+      - genkitkraft-data:/data
+
+volumes:
+  genkitkraft-data:
