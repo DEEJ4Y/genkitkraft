@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	aesgcmencryptor "github.com/DEEJ4Y/genkitkraft/internal/adapters/aesgcm_encryptor"
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
@@ -40,6 +41,16 @@ type Server struct {
 
 // NewServer wires all dependencies and returns a ready-to-start Server.
 func NewServer(cfg config.Config) (*Server, error) {
+	if cfg.Encryption.Key == "" {
+		return nil, fmt.Errorf("ENCRYPTION_KEY environment variable is required")
+	}
+
+	enc, err := aesgcmencryptor.NewAESGCMEncryptor(cfg.Encryption.Key)
+	if err != nil {
+		return nil, fmt.Errorf("creating encryptor: %w", err)
+	}
+	cfg.Encryption.Key = ""
+
 	// Create adapters
 	passwordHasher := bcrypthasher.NewBcryptHasher()
 	sessionStore := memorysession.NewMemoryStore()
@@ -94,14 +105,14 @@ func NewServer(cfg config.Config) (*Server, error) {
 	providerTester := httpprovidertester.NewTester()
 
 	// Create provider commands
-	createProviderCmd := commands.NewCreateProviderCommand(providerRepo)
-	updateProviderCmd := commands.NewUpdateProviderCommand(providerRepo)
+	createProviderCmd := commands.NewCreateProviderCommand(providerRepo, enc)
+	updateProviderCmd := commands.NewUpdateProviderCommand(providerRepo, enc)
 	deleteProviderCmd := commands.NewDeleteProviderCommand(providerRepo)
-	testProviderCmd := commands.NewTestProviderCommand(providerRepo, providerTester)
+	testProviderCmd := commands.NewTestProviderCommand(providerRepo, providerTester, enc)
 
 	// Create provider queries
-	listProvidersQuery := queries.NewListProvidersQuery(providerRepo)
-	getProviderQuery := queries.NewGetProviderQuery(providerRepo)
+	listProvidersQuery := queries.NewListProvidersQuery(providerRepo, enc)
+	getProviderQuery := queries.NewGetProviderQuery(providerRepo, enc)
 
 	// Build provider application
 	providerApp := &app.ProviderApp{
