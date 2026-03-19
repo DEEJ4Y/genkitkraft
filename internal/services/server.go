@@ -1,6 +1,7 @@
 package services
 
 import (
+	"database/sql"
 	"fmt"
 	"io/fs"
 	"log"
@@ -10,7 +11,10 @@ import (
 	"strings"
 
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
+	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
+	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
+	sqliteprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_provider"
 	"github.com/DEEJ4Y/genkitkraft/internal/api/gen"
 	"github.com/DEEJ4Y/genkitkraft/internal/app"
 	"github.com/DEEJ4Y/genkitkraft/internal/app/commands"
@@ -28,7 +32,9 @@ import (
 type Server struct {
 	cfg          config.Config
 	authApp      *app.AuthApp
+	providerApp  *app.ProviderApp
 	sessionStore session.Store
+	db           *sql.DB
 	done         chan struct{}
 }
 
@@ -76,10 +82,47 @@ func NewServer(cfg config.Config) (*Server, error) {
 		log.Printf("Authentication disabled (AUTH_CREDENTIALS not set)")
 	}
 
+	// Open database and run migrations
+	db, err := sqlitedb.Open(cfg.Database.Path)
+	if err != nil {
+		return nil, fmt.Errorf("opening database: %w", err)
+	}
+	log.Printf("Database opened at %s", cfg.Database.Path)
+
+	// Create provider adapters
+	providerRepo := sqliteprovider.NewProviderRepository(db)
+	providerTester := httpprovidertester.NewTester()
+
+	// Create provider commands
+	createProviderCmd := commands.NewCreateProviderCommand(providerRepo)
+	updateProviderCmd := commands.NewUpdateProviderCommand(providerRepo)
+	deleteProviderCmd := commands.NewDeleteProviderCommand(providerRepo)
+	testProviderCmd := commands.NewTestProviderCommand(providerRepo, providerTester)
+
+	// Create provider queries
+	listProvidersQuery := queries.NewListProvidersQuery(providerRepo)
+	getProviderQuery := queries.NewGetProviderQuery(providerRepo)
+
+	// Build provider application
+	providerApp := &app.ProviderApp{
+		Commands: app.ProviderCommands{
+			CreateProvider: createProviderCmd,
+			UpdateProvider: updateProviderCmd,
+			DeleteProvider: deleteProviderCmd,
+			TestProvider:   testProviderCmd,
+		},
+		Queries: app.ProviderQueries{
+			ListProviders: listProvidersQuery,
+			GetProvider:   getProviderQuery,
+		},
+	}
+
 	return &Server{
 		cfg:          cfg,
 		authApp:      authApp,
+		providerApp:  providerApp,
 		sessionStore: sessionStore,
+		db:           db,
 		done:         make(chan struct{}),
 	}, nil
 }
@@ -91,7 +134,7 @@ func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
 	// Register all API routes via generated handler
-	apiHandler := httphandler.NewHandler(s.authApp)
+	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp)
 	gen.HandlerFromMux(apiHandler, mux)
 
 	// SPA fallback: serve embedded UI or fallback to index.html
@@ -105,9 +148,12 @@ func (s *Server) Start() error {
 	return http.ListenAndServe(addr, handler)
 }
 
-// Stop signals background goroutines to stop.
+// Stop signals background goroutines to stop and releases resources.
 func (s *Server) Stop() {
 	close(s.done)
+	if s.db != nil {
+		s.db.Close()
+	}
 }
 
 // hashCredentials takes config credentials and returns a user map for the login command.
@@ -141,6 +187,16 @@ func spaHandler() http.HandlerFunc {
 
 	staticFS := os.DirFS(distPath)
 
+	serveFile := func(w http.ResponseWriter, fsys fs.FS, name string) {
+		data, err := fs.ReadFile(fsys, name)
+		if err != nil {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(data)
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/")
 		if path == "" {
@@ -152,11 +208,21 @@ func spaHandler() http.HandlerFunc {
 			return
 		}
 
+		// Next.js static export generates {page}.html files for each route.
+		// Try serving the .html version before falling back to index.html.
+		if filepath.Ext(path) == "" {
+			htmlPath := path + ".html"
+			if _, err := fs.Stat(staticFS, htmlPath); err == nil {
+				serveFile(w, staticFS, htmlPath)
+				return
+			}
+		}
+
 		if filepath.Ext(path) != "" {
 			http.NotFound(w, r)
 			return
 		}
 
-		http.ServeFileFS(w, r, staticFS, "index.html")
+		serveFile(w, staticFS, "index.html")
 	}
 }

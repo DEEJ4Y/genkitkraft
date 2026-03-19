@@ -84,6 +84,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List providers
+         * @description List all configured providers.
+         */
+        get: operations["listProviders"];
+        put?: never;
+        /**
+         * Create provider
+         * @description Create a new provider configuration.
+         */
+        post: operations["createProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/providers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get provider
+         * @description Get a single provider by ID.
+         */
+        get: operations["getProvider"];
+        /**
+         * Update provider
+         * @description Update an existing provider configuration.
+         */
+        put: operations["updateProvider"];
+        post?: never;
+        /**
+         * Delete provider
+         * @description Delete a provider configuration.
+         */
+        delete: operations["deleteProvider"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/providers/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test provider connectivity
+         * @description Test provider connectivity by making a lightweight API call.
+         */
+        post: operations["testProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/livez": {
         parameters: {
             query?: never;
@@ -133,6 +205,17 @@ export interface components {
             /** @description True if AUTH_CREDENTIALS is configured and non-empty. */
             required: boolean;
         };
+        /** @description Request to create a new provider configuration. */
+        "Models.CreateProviderRequest": {
+            /** @description Display name for this provider. */
+            name: string;
+            /** @description The provider type. */
+            providerType: components["schemas"]["Models.ProviderType"];
+            /** @description Full API key (stored securely, returned masked). */
+            apiKey: string;
+            /** @description Optional base URL override. */
+            baseUrl?: string;
+        };
         /** @description Standard error response. */
         "Models.ErrorResponse": {
             /** @description Human-readable error description. */
@@ -170,6 +253,59 @@ export interface components {
         "Models.MeResponse": {
             /** @description Username of the currently authenticated user. */
             username: string;
+        };
+        /** @description List of configured providers. */
+        "Models.ProviderListResponse": {
+            /** @description Array of provider configurations. */
+            providers: components["schemas"]["Models.ProviderResponse"][];
+        };
+        /** @description A configured LLM provider with masked API key. */
+        "Models.ProviderResponse": {
+            /** @description Unique provider ID. */
+            id: string;
+            /** @description Display name for this provider configuration. */
+            name: string;
+            /** @description The provider type. */
+            providerType: components["schemas"]["Models.ProviderType"];
+            /** @description Masked API key (last 4 characters visible). */
+            apiKey: string;
+            /** @description Optional base URL override (e.g. for OpenAI-compatible proxies). */
+            baseUrl?: string;
+            /** @description Whether this provider is enabled. */
+            enabled: boolean;
+            /**
+             * Format: date-time
+             * @description When this provider was created.
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description When this provider was last updated.
+             */
+            updatedAt: string;
+        };
+        /**
+         * @description Supported LLM provider types.
+         * @enum {string}
+         */
+        "Models.ProviderType": "anthropic" | "openai" | "googleai";
+        /** @description Result of testing provider connectivity. */
+        "Models.TestProviderResponse": {
+            /** @description Whether the connection test succeeded. */
+            success: boolean;
+            /** @description Human-readable result message. */
+            message: string;
+        };
+        /** @description Request to update an existing provider configuration. */
+        "Models.UpdateProviderRequest": {
+            /** @description Updated display name. */
+            name?: string;
+            /** @description New API key (leave blank to keep existing). */
+            apiKey?: string;
+            /** @description Updated base URL. */
+            baseUrl?: string;
+            /** @description Enable or disable this provider. */
+            enabled?: boolean;
         };
     };
     responses: never;
@@ -296,6 +432,194 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Models.AuthStatusResponse"];
+                };
+            };
+        };
+    };
+    listProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ProviderListResponse"];
+                };
+            };
+        };
+    };
+    createProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.CreateProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded and a new resource has been created as a result. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ProviderResponse"];
+                };
+            };
+            /** @description The request conflicts with the current state of the server. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ProviderResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.UpdateProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ProviderResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description The request conflicts with the current state of the server. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    testProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.TestProviderResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
                 };
             };
         };

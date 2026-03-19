@@ -9,6 +9,7 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/app/commands"
 	"github.com/DEEJ4Y/genkitkraft/internal/app/queries"
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
+	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
 )
 
 func toLoginParams(req gen.ModelsLoginRequest, clientIP string) commands.LoginParams {
@@ -59,4 +60,50 @@ func extractIP(r *http.Request) string {
 
 func isSecure(r *http.Request) bool {
 	return r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+}
+
+func toProviderResponse(p *provider.Provider) gen.ModelsProviderResponse {
+	resp := gen.ModelsProviderResponse{
+		Id:           p.ID,
+		Name:         p.Name,
+		ProviderType: gen.ModelsProviderType(p.ProviderType),
+		ApiKey:       p.MaskedAPIKey(),
+		Enabled:      p.Enabled,
+		CreatedAt:    p.CreatedAt,
+		UpdatedAt:    p.UpdatedAt,
+	}
+	if p.BaseURL != "" {
+		resp.BaseUrl = &p.BaseURL
+	}
+	return resp
+}
+
+func toProviderListResponse(result queries.ListProvidersResult) gen.ModelsProviderListResponse {
+	providers := make([]gen.ModelsProviderResponse, len(result.Providers))
+	for i, p := range result.Providers {
+		providers[i] = toProviderResponse(p)
+	}
+	return gen.ModelsProviderListResponse{Providers: providers}
+}
+
+func toCreateProviderParams(req gen.ModelsCreateProviderRequest) commands.CreateProviderParams {
+	params := commands.CreateProviderParams{
+		Name:         req.Name,
+		ProviderType: provider.ProviderType(req.ProviderType),
+		APIKey:       req.ApiKey,
+	}
+	if req.BaseUrl != nil {
+		params.BaseURL = *req.BaseUrl
+	}
+	return params
+}
+
+func toUpdateProviderParams(id string, req gen.ModelsUpdateProviderRequest) commands.UpdateProviderParams {
+	return commands.UpdateProviderParams{
+		ID:      id,
+		Name:    req.Name,
+		APIKey:  req.ApiKey,
+		BaseURL: req.BaseUrl,
+		Enabled: req.Enabled,
+	}
 }

@@ -8,6 +8,8 @@ package gen
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/oapi-codegen/runtime"
 )
 
 // ServerInterface represents all server handlers.
@@ -24,6 +26,24 @@ type ServerInterface interface {
 	// Auth status
 	// (GET /api/auth/status)
 	GetAuthStatus(w http.ResponseWriter, r *http.Request)
+	// List providers
+	// (GET /api/v1/settings/providers)
+	ListProviders(w http.ResponseWriter, r *http.Request)
+	// Create provider
+	// (POST /api/v1/settings/providers)
+	CreateProvider(w http.ResponseWriter, r *http.Request)
+	// Delete provider
+	// (DELETE /api/v1/settings/providers/{id})
+	DeleteProvider(w http.ResponseWriter, r *http.Request, id string)
+	// Get provider
+	// (GET /api/v1/settings/providers/{id})
+	GetProvider(w http.ResponseWriter, r *http.Request, id string)
+	// Update provider
+	// (PUT /api/v1/settings/providers/{id})
+	UpdateProvider(w http.ResponseWriter, r *http.Request, id string)
+	// Test provider connectivity
+	// (POST /api/v1/settings/providers/{id}/test)
+	TestProvider(w http.ResponseWriter, r *http.Request, id string)
 	// Liveness check
 	// (GET /livez)
 	HealthLiveness(w http.ResponseWriter, r *http.Request)
@@ -88,6 +108,134 @@ func (siw *ServerInterfaceWrapper) GetAuthStatus(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAuthStatus(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListProviders operation middleware
+func (siw *ServerInterfaceWrapper) ListProviders(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListProviders(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateProvider operation middleware
+func (siw *ServerInterfaceWrapper) CreateProvider(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateProvider(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteProvider operation middleware
+func (siw *ServerInterfaceWrapper) DeleteProvider(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteProvider(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetProvider operation middleware
+func (siw *ServerInterfaceWrapper) GetProvider(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetProvider(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateProvider operation middleware
+func (siw *ServerInterfaceWrapper) UpdateProvider(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateProvider(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// TestProvider operation middleware
+func (siw *ServerInterfaceWrapper) TestProvider(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TestProvider(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -249,6 +397,12 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("POST "+options.BaseURL+"/api/auth/logout", wrapper.Logout)
 	m.HandleFunc("GET "+options.BaseURL+"/api/auth/me", wrapper.GetMe)
 	m.HandleFunc("GET "+options.BaseURL+"/api/auth/status", wrapper.GetAuthStatus)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/settings/providers", wrapper.ListProviders)
+	m.HandleFunc("POST "+options.BaseURL+"/api/v1/settings/providers", wrapper.CreateProvider)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/settings/providers/{id}", wrapper.DeleteProvider)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/settings/providers/{id}", wrapper.GetProvider)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/v1/settings/providers/{id}", wrapper.UpdateProvider)
+	m.HandleFunc("POST "+options.BaseURL+"/api/v1/settings/providers/{id}/test", wrapper.TestProvider)
 	m.HandleFunc("GET "+options.BaseURL+"/livez", wrapper.HealthLiveness)
 	m.HandleFunc("GET "+options.BaseURL+"/readyz", wrapper.HealthReadiness)
 

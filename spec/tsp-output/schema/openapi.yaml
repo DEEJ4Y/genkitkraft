@@ -5,6 +5,7 @@ info:
 tags:
   - name: Health
   - name: Auth
+  - name: Settings
 paths:
   /api/auth/login:
     post:
@@ -96,6 +97,157 @@ paths:
                 $ref: '#/components/schemas/Models.AuthStatusResponse'
       tags:
         - Auth
+  /api/v1/settings/providers:
+    get:
+      operationId: listProviders
+      summary: List providers
+      description: List all configured providers.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ProviderListResponse'
+      tags:
+        - Settings
+    post:
+      operationId: createProvider
+      summary: Create provider
+      description: Create a new provider configuration.
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ProviderResponse'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.CreateProviderRequest'
+  /api/v1/settings/providers/{id}:
+    get:
+      operationId: getProvider
+      summary: Get provider
+      description: Get a single provider by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ProviderResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Settings
+    put:
+      operationId: updateProvider
+      summary: Update provider
+      description: Update an existing provider configuration.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ProviderResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.UpdateProviderRequest'
+    delete:
+      operationId: deleteProvider
+      summary: Delete provider
+      description: Delete a provider configuration.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Settings
+  /api/v1/settings/providers/{id}/test:
+    post:
+      operationId: testProvider
+      summary: Test provider connectivity
+      description: Test provider connectivity by making a lightweight API call.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.TestProviderResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Settings
   /livez:
     get:
       operationId: Health_liveness
@@ -143,6 +295,27 @@ components:
           type: boolean
           description: True if AUTH_CREDENTIALS is configured and non-empty.
       description: Response indicating whether authentication is required.
+    Models.CreateProviderRequest:
+      type: object
+      required:
+        - name
+        - providerType
+        - apiKey
+      properties:
+        name:
+          type: string
+          description: Display name for this provider.
+        providerType:
+          allOf:
+            - $ref: '#/components/schemas/Models.ProviderType'
+          description: The provider type.
+        apiKey:
+          type: string
+          description: Full API key (stored securely, returned masked).
+        baseUrl:
+          type: string
+          description: Optional base URL override.
+      description: Request to create a new provider configuration.
     Models.ErrorResponse:
       type: object
       required:
@@ -211,6 +384,92 @@ components:
           type: string
           description: Username of the currently authenticated user.
       description: Current authenticated user info.
+    Models.ProviderListResponse:
+      type: object
+      required:
+        - providers
+      properties:
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.ProviderResponse'
+          description: Array of provider configurations.
+      description: List of configured providers.
+    Models.ProviderResponse:
+      type: object
+      required:
+        - id
+        - name
+        - providerType
+        - apiKey
+        - enabled
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Unique provider ID.
+        name:
+          type: string
+          description: Display name for this provider configuration.
+        providerType:
+          allOf:
+            - $ref: '#/components/schemas/Models.ProviderType'
+          description: The provider type.
+        apiKey:
+          type: string
+          description: Masked API key (last 4 characters visible).
+        baseUrl:
+          type: string
+          description: Optional base URL override (e.g. for OpenAI-compatible proxies).
+        enabled:
+          type: boolean
+          description: Whether this provider is enabled.
+        createdAt:
+          type: string
+          format: date-time
+          description: When this provider was created.
+        updatedAt:
+          type: string
+          format: date-time
+          description: When this provider was last updated.
+      description: A configured LLM provider with masked API key.
+    Models.ProviderType:
+      type: string
+      enum:
+        - anthropic
+        - openai
+        - googleai
+      description: Supported LLM provider types.
+    Models.TestProviderResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          description: Whether the connection test succeeded.
+        message:
+          type: string
+          description: Human-readable result message.
+      description: Result of testing provider connectivity.
+    Models.UpdateProviderRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Updated display name.
+        apiKey:
+          type: string
+          description: New API key (leave blank to keep existing).
+        baseUrl:
+          type: string
+          description: Updated base URL.
+        enabled:
+          type: boolean
+          description: Enable or disable this provider.
+      description: Request to update an existing provider configuration.
 servers:
   - url: http://localhost:8080
     description: Local development
