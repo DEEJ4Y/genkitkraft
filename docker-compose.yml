@@ -6,6 +6,7 @@ services:
     environment:
       - PORT=8080
       - DATABASE_PATH=/data/app.db
+      - ENCRYPTION_KEY=your-encryption-key
       # Uncomment and set credentials to enable authentication
       # - AUTH_CREDENTIALS=admin:changeme
     volumes:

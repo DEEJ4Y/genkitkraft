@@ -10,6 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/rs/zerolog"
+
+	aesgcmencryptor "github.com/DEEJ4Y/genkitkraft/internal/adapters/aesgcm_encryptor"
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
@@ -40,6 +43,16 @@ type Server struct {
 
 // NewServer wires all dependencies and returns a ready-to-start Server.
 func NewServer(cfg config.Config) (*Server, error) {
+	if cfg.Encryption.Key == "" {
+		return nil, fmt.Errorf("ENCRYPTION_KEY environment variable is required")
+	}
+
+	enc, err := aesgcmencryptor.NewAESGCMEncryptor(cfg.Encryption.Key)
+	if err != nil {
+		return nil, fmt.Errorf("creating encryptor: %w", err)
+	}
+	cfg.Encryption.Key = ""
+
 	// Create adapters
 	passwordHasher := bcrypthasher.NewBcryptHasher()
 	sessionStore := memorysession.NewMemoryStore()
@@ -53,12 +66,14 @@ func NewServer(cfg config.Config) (*Server, error) {
 
 	authRequired := len(users) > 0
 
+	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
+
 	// Create commands
 	loginCmd := commands.NewLoginCommand(users, sessionStore, passwordHasher)
 	logoutCmd := commands.NewLogoutCommand(sessionStore)
 
 	// Apply decorators
-	decoratedLogin := decorators.NewRateLimitingLoginDecorator(loginCmd)
+	rateLimitedLogin := decorators.NewRateLimitingLoginDecorator(loginCmd)
 
 	// Create queries
 	getMeQuery := queries.NewGetMeQuery(sessionStore)
@@ -67,12 +82,12 @@ func NewServer(cfg config.Config) (*Server, error) {
 	// Build application
 	authApp := &app.AuthApp{
 		Commands: app.AuthCommands{
-			Login:  decoratedLogin,
-			Logout: logoutCmd,
+			Login:  decorators.ApplyLogging(rateLimitedLogin, "Login", logger),
+			Logout: decorators.ApplyLoggingExecutor(logoutCmd, "Logout", logger),
 		},
 		Queries: app.AuthQueries{
-			GetMe:         getMeQuery,
-			GetAuthStatus: getAuthStatusQuery,
+			GetMe:         decorators.ApplyLogging(getMeQuery, "GetMe", logger),
+			GetAuthStatus: decorators.ApplyLogging(getAuthStatusQuery, "GetAuthStatus", logger),
 		},
 	}
 
@@ -94,26 +109,26 @@ func NewServer(cfg config.Config) (*Server, error) {
 	providerTester := httpprovidertester.NewTester()
 
 	// Create provider commands
-	createProviderCmd := commands.NewCreateProviderCommand(providerRepo)
-	updateProviderCmd := commands.NewUpdateProviderCommand(providerRepo)
+	createProviderCmd := commands.NewCreateProviderCommand(providerRepo, enc)
+	updateProviderCmd := commands.NewUpdateProviderCommand(providerRepo, enc)
 	deleteProviderCmd := commands.NewDeleteProviderCommand(providerRepo)
-	testProviderCmd := commands.NewTestProviderCommand(providerRepo, providerTester)
+	testProviderCmd := commands.NewTestProviderCommand(providerRepo, providerTester, enc)
 
 	// Create provider queries
-	listProvidersQuery := queries.NewListProvidersQuery(providerRepo)
-	getProviderQuery := queries.NewGetProviderQuery(providerRepo)
+	listProvidersQuery := queries.NewListProvidersQuery(providerRepo, enc)
+	getProviderQuery := queries.NewGetProviderQuery(providerRepo, enc)
 
 	// Build provider application
 	providerApp := &app.ProviderApp{
 		Commands: app.ProviderCommands{
-			CreateProvider: createProviderCmd,
-			UpdateProvider: updateProviderCmd,
-			DeleteProvider: deleteProviderCmd,
-			TestProvider:   testProviderCmd,
+			CreateProvider: decorators.ApplyLogging(createProviderCmd, "CreateProvider", logger),
+			UpdateProvider: decorators.ApplyLogging(updateProviderCmd, "UpdateProvider", logger),
+			DeleteProvider: decorators.ApplyLoggingExecutor(deleteProviderCmd, "DeleteProvider", logger),
+			TestProvider:   decorators.ApplyLogging(testProviderCmd, "TestProvider", logger),
 		},
 		Queries: app.ProviderQueries{
-			ListProviders: listProvidersQuery,
-			GetProvider:   getProviderQuery,
+			ListProviders: decorators.ApplyLogging(listProvidersQuery, "ListProviders", logger),
+			GetProvider:   decorators.ApplyLogging(getProviderQuery, "GetProvider", logger),
 		},
 	}
 

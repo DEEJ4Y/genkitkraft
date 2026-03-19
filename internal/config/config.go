@@ -6,13 +6,18 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	Auth     AuthConfig
-	Database DatabaseConfig
+	Server     ServerConfig
+	Auth       AuthConfig
+	Database   DatabaseConfig
+	Encryption EncryptionConfig
 }
 
 type DatabaseConfig struct {
 	Path string
+}
+
+type EncryptionConfig struct {
+	Key string
 }
 
 type ServerConfig struct {
@@ -36,6 +41,9 @@ func Load() Config {
 		Auth: loadAuthConfig(),
 		Database: DatabaseConfig{
 			Path: getEnv("DATABASE_PATH", "/data/app.db"),
+		},
+		Encryption: EncryptionConfig{
+			Key: os.Getenv("ENCRYPTION_KEY"),
 		},
 	}
 }
