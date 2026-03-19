@@ -1,4 +1,5 @@
 import { useState, FormEvent } from 'react'
+import { Modal, TextInput, PasswordInput, Button, Group, Alert, Stack } from '@mantine/core'
 import { fetchClient } from '../lib/api/client'
 import type { components } from '../lib/api/schema'
 
@@ -19,7 +20,6 @@ export function ProviderForm({ provider, providerType, providerLabel, onSaved, o
   const [name, setName] = useState(provider?.name ?? `${providerLabel}`)
   const [apiKey, setApiKey] = useState('')
   const [baseUrl, setBaseUrl] = useState(provider?.baseUrl ?? '')
-  const [showKey, setShowKey] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -77,180 +77,69 @@ export function ProviderForm({ provider, providerType, providerLabel, onSaved, o
   }
 
   return (
-    <div style={styles.overlay}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>{isEdit ? 'Edit' : 'Configure'} {providerLabel}</h2>
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <label style={styles.label}>
-            Name
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              style={styles.input}
-            />
-          </label>
+    <Modal
+      opened
+      onClose={onCancel}
+      title={`${isEdit ? 'Edit' : 'Configure'} ${providerLabel}`}
+      size="md"
+    >
+      <form onSubmit={handleSubmit}>
+        <Stack gap="md">
+          <TextInput
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.currentTarget.value)}
+            required
+          />
 
-          <label style={styles.label}>
-            API Key
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder={isEdit ? 'Leave blank to keep existing' : 'Enter API key'}
-                required={!isEdit}
-                style={styles.input}
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                style={styles.toggleKey}
-              >
-                {showKey ? 'Hide' : 'Show'}
-              </button>
-            </div>
-          </label>
+          <PasswordInput
+            label="API Key"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.currentTarget.value)}
+            placeholder={isEdit ? 'Leave blank to keep existing' : 'Enter API key'}
+            required={!isEdit}
+          />
 
           {providerType === 'openai' && (
-            <label style={styles.label}>
-              Base URL (optional)
-              <input
-                type="text"
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="https://api.openai.com"
-                style={styles.input}
-              />
-            </label>
+            <TextInput
+              label="Base URL (optional)"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.currentTarget.value)}
+              placeholder="https://api.openai.com"
+            />
           )}
 
-          {error && <p style={styles.error}>{error}</p>}
+          {error && (
+            <Alert color="red" variant="light">
+              {error}
+            </Alert>
+          )}
 
           {testResult && (
-            <p style={{ ...styles.testResult, color: testResult.success ? '#2e7d32' : '#d32f2f' }}>
+            <Alert color={testResult.success ? 'green' : 'red'} variant="light">
               {testResult.message}
-            </p>
+            </Alert>
           )}
 
-          <div style={styles.actions}>
-            {isEdit && (
-              <button type="button" onClick={handleTest} disabled={testing} style={styles.testButton}>
-                {testing ? 'Testing...' : 'Test Connection'}
-              </button>
-            )}
-            <div style={{ flex: 1 }} />
-            <button type="button" onClick={onCancel} style={styles.cancelButton}>
-              Cancel
-            </button>
-            <button type="submit" disabled={saving} style={styles.saveButton}>
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+          <Group justify="space-between">
+            <div>
+              {isEdit && (
+                <Button variant="default" onClick={handleTest} loading={testing}>
+                  Test Connection
+                </Button>
+              )}
+            </div>
+            <Group gap="xs">
+              <Button variant="default" onClick={onCancel}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={saving} color="dark">
+                Save
+              </Button>
+            </Group>
+          </Group>
+        </Stack>
+      </form>
+    </Modal>
   )
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  overlay: {
-    position: 'fixed',
-    inset: 0,
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    zIndex: 1000,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: '8px',
-    padding: '32px',
-    width: '100%',
-    maxWidth: '440px',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
-  },
-  title: {
-    margin: '0 0 20px 0',
-    fontSize: '18px',
-    fontWeight: 600,
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '16px',
-  },
-  label: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '4px',
-    fontSize: '13px',
-    fontWeight: 500,
-    color: '#333',
-  },
-  input: {
-    padding: '10px 12px',
-    fontSize: '14px',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box' as const,
-  },
-  toggleKey: {
-    position: 'absolute' as const,
-    right: '8px',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    padding: '4px 8px',
-    fontSize: '12px',
-    backgroundColor: 'transparent',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    color: '#666',
-  },
-  error: {
-    margin: 0,
-    fontSize: '13px',
-    color: '#d32f2f',
-  },
-  testResult: {
-    margin: 0,
-    fontSize: '13px',
-  },
-  actions: {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-    marginTop: '4px',
-  },
-  testButton: {
-    padding: '8px 16px',
-    fontSize: '13px',
-    backgroundColor: 'transparent',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
-  cancelButton: {
-    padding: '8px 16px',
-    fontSize: '13px',
-    backgroundColor: 'transparent',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
-  saveButton: {
-    padding: '8px 16px',
-    fontSize: '13px',
-    fontWeight: 600,
-    backgroundColor: '#111',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
 }

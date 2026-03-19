@@ -1,6 +1,7 @@
 import { createContext, useContext, useCallback, ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { $api, fetchClient } from './api/client'
+import { Center, Loader } from '@mantine/core'
+import { fetchClient } from './api/client'
 import { LoginDialog } from '../components/LoginDialog'
 
 interface AuthContextType {
@@ -76,9 +77,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <p>Loading...</p>
-      </div>
+      <Center h="100vh">
+        <Loader />
+      </Center>
     )
   }
 

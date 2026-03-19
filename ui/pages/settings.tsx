@@ -1,7 +1,7 @@
 import { useState } from 'react'
+import { Title, Text, Stack, Loader, Alert, Center } from '@mantine/core'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchClient } from '../lib/api/client'
-import { useAuth } from '../lib/auth'
 import { ProviderCard } from '../components/ProviderCard'
 import { ProviderForm } from '../components/ProviderForm'
 import type { components } from '../lib/api/schema'
@@ -16,7 +16,6 @@ const PROVIDER_TYPES: { type: ProviderType; label: string }[] = [
 ]
 
 export default function SettingsPage() {
-  const { user, logout, isAuthRequired } = useAuth()
   const queryClient = useQueryClient()
 
   const providersQuery = useQuery({
@@ -51,45 +50,40 @@ export default function SettingsPage() {
   const editingLabel = editingType ? PROVIDER_TYPES.find((p) => p.type === editingType)?.label ?? '' : ''
 
   return (
-    <div style={styles.page}>
-      <header style={styles.header}>
-        <div style={styles.headerLeft}>
-          <a href="/" style={styles.backLink}>&larr; Back</a>
-          <h1 style={styles.heading}>Settings</h1>
-        </div>
-        {isAuthRequired && user && (
-          <div style={styles.userSection}>
-            <span style={styles.username}>{user}</span>
-            <button onClick={logout} style={styles.signOutButton}>Sign out</button>
-          </div>
-        )}
-      </header>
+    <>
+      <Title order={2} mb={4}>
+        LLM Providers
+      </Title>
+      <Text size="sm" c="dimmed" mb="lg">
+        Configure API keys for the LLM providers you want to use.
+      </Text>
 
-      <main>
-        <h2 style={styles.sectionTitle}>LLM Providers</h2>
-        <p style={styles.sectionDesc}>
-          Configure API keys for the LLM providers you want to use.
-        </p>
+      {providersQuery.isPending && (
+        <Center py="xl">
+          <Loader />
+        </Center>
+      )}
 
-        {providersQuery.isPending && <p style={styles.loading}>Loading...</p>}
-        {providersQuery.error && <p style={styles.errorText}>Failed to load providers.</p>}
+      {providersQuery.error && (
+        <Alert color="red" variant="light" mb="md">
+          Failed to load providers.
+        </Alert>
+      )}
 
-        <div style={styles.cardGrid}>
-          {PROVIDER_TYPES.map(({ type, label }) => (
-            <ProviderCard
-              key={type}
-              providerType={type}
-              label={label}
-              provider={getProviderByType(type)}
-              onConfigure={() => setEditingType(type)}
-              onDelete={() => {
-                const p = getProviderByType(type)
-                if (p) handleDelete(p)
-              }}
-            />
-          ))}
-        </div>
-      </main>
+      <Stack gap="sm">
+        {PROVIDER_TYPES.map(({ type, label }) => (
+          <ProviderCard
+            key={type}
+            label={label}
+            provider={getProviderByType(type)}
+            onConfigure={() => setEditingType(type)}
+            onDelete={() => {
+              const p = getProviderByType(type)
+              if (p) handleDelete(p)
+            }}
+          />
+        ))}
+      </Stack>
 
       {editingType && (
         <ProviderForm
@@ -100,75 +94,6 @@ export default function SettingsPage() {
           onCancel={() => setEditingType(null)}
         />
       )}
-    </div>
+    </>
   )
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    padding: '24px',
-    maxWidth: '800px',
-    margin: '0 auto',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '32px',
-  },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-  },
-  backLink: {
-    fontSize: '14px',
-    color: '#666',
-    textDecoration: 'none',
-  },
-  heading: {
-    margin: 0,
-    fontSize: '20px',
-  },
-  userSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  username: {
-    fontSize: '14px',
-    color: '#666',
-  },
-  signOutButton: {
-    padding: '6px 12px',
-    fontSize: '13px',
-    backgroundColor: 'transparent',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
-  sectionTitle: {
-    margin: '0 0 4px 0',
-    fontSize: '16px',
-    fontWeight: 600,
-  },
-  sectionDesc: {
-    margin: '0 0 20px 0',
-    fontSize: '14px',
-    color: '#666',
-  },
-  loading: {
-    color: '#666',
-    fontSize: '14px',
-  },
-  errorText: {
-    color: '#d32f2f',
-    fontSize: '14px',
-  },
-  cardGrid: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '12px',
-  },
 }
