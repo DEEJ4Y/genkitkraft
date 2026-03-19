@@ -4,8 +4,99 @@ info:
   version: 0.0.0
 tags:
   - name: Health
+  - name: Auth
 paths:
-  /live:
+  /api/auth/login:
+    post:
+      operationId: login
+      summary: Login
+      description: Authenticate with username and password. Sets an HttpOnly session cookie on success.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.LoginResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+        '429':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.LoginRequest'
+  /api/auth/logout:
+    post:
+      operationId: logout
+      summary: Logout
+      description: End the current session. Clears the session cookie.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.LogoutResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Auth
+  /api/auth/me:
+    get:
+      operationId: getMe
+      summary: Current user
+      description: Get the currently authenticated user.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.MeResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Auth
+  /api/auth/status:
+    get:
+      operationId: getAuthStatus
+      summary: Auth status
+      description: Check whether authentication is required for this instance.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.AuthStatusResponse'
+      tags:
+        - Auth
+  /livez:
     get:
       operationId: Health_liveness
       summary: Liveness check
@@ -20,7 +111,7 @@ paths:
                 $ref: '#/components/schemas/Models.HealthCheckResponse'
       tags:
         - Health
-  /ready:
+  /readyz:
     get:
       operationId: Health_readiness
       summary: Readiness check
@@ -43,6 +134,24 @@ paths:
         - Health
 components:
   schemas:
+    Models.AuthStatusResponse:
+      type: object
+      required:
+        - required
+      properties:
+        required:
+          type: boolean
+          description: True if AUTH_CREDENTIALS is configured and non-empty.
+      description: Response indicating whether authentication is required.
+    Models.ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error description.
+      description: Standard error response.
     Models.HealthCheckResponse:
       type: object
       required:
@@ -63,6 +172,45 @@ components:
         - up
         - down
       description: Status of a health check probe.
+    Models.LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: Username to authenticate with.
+        password:
+          type: string
+          description: Plaintext password.
+      description: Request body for the login endpoint.
+    Models.LoginResponse:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+          description: Authenticated username.
+      description: Response after successful login.
+    Models.LogoutResponse:
+      type: object
+      required:
+        - ok
+      properties:
+        ok:
+          type: boolean
+      description: Response after successful logout.
+    Models.MeResponse:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+          description: Username of the currently authenticated user.
+      description: Current authenticated user info.
 servers:
   - url: http://localhost:8080
     description: Local development

@@ -1,0 +1,15 @@
+.claude/settings.local.json
+.vscode/
+
+# Dependencies
+spec/node_modules/
+ui/node_modules/
+
+# Build output
+ui/.next/
+ui/dist/
+
+# Docs
+website/node_modules/
+website/build/
+website/.docusaurus/
