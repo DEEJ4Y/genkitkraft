@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/rs/zerolog"
+
 	aesgcmencryptor "github.com/DEEJ4Y/genkitkraft/internal/adapters/aesgcm_encryptor"
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
@@ -64,12 +66,14 @@ func NewServer(cfg config.Config) (*Server, error) {
 
 	authRequired := len(users) > 0
 
+	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
+
 	// Create commands
 	loginCmd := commands.NewLoginCommand(users, sessionStore, passwordHasher)
 	logoutCmd := commands.NewLogoutCommand(sessionStore)
 
 	// Apply decorators
-	decoratedLogin := decorators.NewRateLimitingLoginDecorator(loginCmd)
+	rateLimitedLogin := decorators.NewRateLimitingLoginDecorator(loginCmd)
 
 	// Create queries
 	getMeQuery := queries.NewGetMeQuery(sessionStore)
@@ -78,12 +82,12 @@ func NewServer(cfg config.Config) (*Server, error) {
 	// Build application
 	authApp := &app.AuthApp{
 		Commands: app.AuthCommands{
-			Login:  decoratedLogin,
-			Logout: logoutCmd,
+			Login:  decorators.ApplyLogging(rateLimitedLogin, "Login", logger),
+			Logout: decorators.ApplyLoggingExecutor(logoutCmd, "Logout", logger),
 		},
 		Queries: app.AuthQueries{
-			GetMe:         getMeQuery,
-			GetAuthStatus: getAuthStatusQuery,
+			GetMe:         decorators.ApplyLogging(getMeQuery, "GetMe", logger),
+			GetAuthStatus: decorators.ApplyLogging(getAuthStatusQuery, "GetAuthStatus", logger),
 		},
 	}
 
@@ -117,14 +121,14 @@ func NewServer(cfg config.Config) (*Server, error) {
 	// Build provider application
 	providerApp := &app.ProviderApp{
 		Commands: app.ProviderCommands{
-			CreateProvider: createProviderCmd,
-			UpdateProvider: updateProviderCmd,
-			DeleteProvider: deleteProviderCmd,
-			TestProvider:   testProviderCmd,
+			CreateProvider: decorators.ApplyLogging(createProviderCmd, "CreateProvider", logger),
+			UpdateProvider: decorators.ApplyLogging(updateProviderCmd, "UpdateProvider", logger),
+			DeleteProvider: decorators.ApplyLoggingExecutor(deleteProviderCmd, "DeleteProvider", logger),
+			TestProvider:   decorators.ApplyLogging(testProviderCmd, "TestProvider", logger),
 		},
 		Queries: app.ProviderQueries{
-			ListProviders: listProvidersQuery,
-			GetProvider:   getProviderQuery,
+			ListProviders: decorators.ApplyLogging(listProvidersQuery, "ListProviders", logger),
+			GetProvider:   decorators.ApplyLogging(getProviderQuery, "GetProvider", logger),
 		},
 	}
 
