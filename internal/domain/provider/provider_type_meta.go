@@ -25,28 +25,18 @@ type ProviderTypeInfo struct {
 // ProviderTypeMeta is the static registry of all provider type metadata.
 var ProviderTypeMeta = []ProviderTypeInfo{
 	{
-		Type:           GoogleAI,
-		DisplayName:    "Google AI (Gemini)",
-		RequiresAPIKey: true,
-		EnvVarHint:     "GEMINI_API_KEY or GOOGLE_API_KEY",
-		ModelPrefix:    "googleai",
-	},
-	{
-		Type:        VertexAI,
-		DisplayName: "Vertex AI",
-		EnvVarHint:  "GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION",
-		ModelPrefix: "vertexai",
-		ConfigFields: []ConfigFieldInfo{
-			{Name: "project", Label: "GCP Project ID", Required: true, Placeholder: "my-gcp-project"},
-			{Name: "location", Label: "GCP Location", Required: true, Placeholder: "us-central1"},
-		},
-	},
-	{
 		Type:           OpenAI,
 		DisplayName:    "OpenAI",
 		RequiresAPIKey: true,
 		EnvVarHint:     "OPENAI_API_KEY",
 		ModelPrefix:    "openai",
+	},
+	{
+		Type:           GoogleAI,
+		DisplayName:    "Google AI (Gemini)",
+		RequiresAPIKey: true,
+		EnvVarHint:     "GEMINI_API_KEY or GOOGLE_API_KEY",
+		ModelPrefix:    "googleai",
 	},
 	{
 		Type:           Anthropic,
@@ -56,26 +46,19 @@ var ProviderTypeMeta = []ProviderTypeInfo{
 		ModelPrefix:    "anthropic",
 	},
 	{
+		Type:           DeepSeek,
+		DisplayName:    "DeepSeek",
+		RequiresAPIKey: true,
+		EnvVarHint:     "DEEPSEEK_API_KEY",
+		ModelPrefix:    "deepseek",
+	},
+	{
 		Type:            Ollama,
 		DisplayName:     "Ollama",
 		RequiresBaseURL: true,
 		EnvVarHint:      "",
 		ModelPrefix:     "ollama",
 		BaseURLDefault:  "http://localhost:11434",
-	},
-	{
-		Type:           XAI,
-		DisplayName:    "xAI (Grok)",
-		RequiresAPIKey: true,
-		EnvVarHint:     "XAI_API_KEY",
-		ModelPrefix:    "xai",
-	},
-	{
-		Type:           DeepSeek,
-		DisplayName:    "DeepSeek",
-		RequiresAPIKey: true,
-		EnvVarHint:     "DEEPSEEK_API_KEY",
-		ModelPrefix:    "deepseek",
 	},
 	{
 		Type:            AzureOpenAI,
@@ -100,6 +83,23 @@ var ProviderTypeMeta = []ProviderTypeInfo{
 			{Name: "secret_access_key", Label: "Secret Access Key", Required: true, Sensitive: true},
 			{Name: "session_token", Label: "Session Token", Sensitive: true},
 		},
+	},
+	{
+		Type:        VertexAI,
+		DisplayName: "Vertex AI",
+		EnvVarHint:  "GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION",
+		ModelPrefix: "vertexai",
+		ConfigFields: []ConfigFieldInfo{
+			{Name: "project", Label: "GCP Project ID", Required: true, Placeholder: "my-gcp-project"},
+			{Name: "location", Label: "GCP Location", Required: true, Placeholder: "us-central1"},
+		},
+	},
+	{
+		Type:           XAI,
+		DisplayName:    "xAI (Grok)",
+		RequiresAPIKey: true,
+		EnvVarHint:     "XAI_API_KEY",
+		ModelPrefix:    "xai",
 	},
 	{
 		Type:            AzureAIFoundry,
