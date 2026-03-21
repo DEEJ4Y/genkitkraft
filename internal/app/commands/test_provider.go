@@ -35,9 +35,12 @@ func (c *TestProviderCommand) Execute(ctx context.Context, params TestProviderPa
 	}
 
 	// Decrypt API key so the tester can use it in HTTP headers
-	p.APIKey, err = c.enc.Decrypt(p.APIKey)
-	if err != nil {
-		return TestProviderResult{}, errors.NewAppErrorf(errors.Internal, "decrypting api key: %v", err)
+	if p.APIKey != nil {
+		decrypted, err := c.enc.Decrypt(*p.APIKey)
+		if err != nil {
+			return TestProviderResult{}, errors.NewAppErrorf(errors.Internal, "decrypting api key: %v", err)
+		}
+		p.APIKey = &decrypted
 	}
 
 	success, message, err := c.tester.Test(ctx, p)

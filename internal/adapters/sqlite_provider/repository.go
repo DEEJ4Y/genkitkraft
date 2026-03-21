@@ -3,6 +3,7 @@ package sqliteprovider
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -28,7 +29,7 @@ func NewProviderRepository(db *sql.DB) *ProviderRepository {
 
 func (r *ProviderRepository) List(ctx context.Context) ([]*provider.Provider, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, name, provider_type, api_key, base_url, enabled, created_at, updated_at
+		`SELECT id, name, provider_type, api_key, base_url, config, enabled, created_at, updated_at
 		 FROM providers ORDER BY created_at`)
 	if err != nil {
 		return nil, apperrors.NewAppErrorf(apperrors.Internal, "listing providers: %v", err)
@@ -48,7 +49,7 @@ func (r *ProviderRepository) List(ctx context.Context) ([]*provider.Provider, er
 
 func (r *ProviderRepository) GetByID(ctx context.Context, id string) (*provider.Provider, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, name, provider_type, api_key, base_url, enabled, created_at, updated_at
+		`SELECT id, name, provider_type, api_key, base_url, config, enabled, created_at, updated_at
 		 FROM providers WHERE id = ?`, id)
 
 	p, err := scanProviderRow(row)
@@ -63,7 +64,7 @@ func (r *ProviderRepository) GetByID(ctx context.Context, id string) (*provider.
 
 func (r *ProviderRepository) GetByType(ctx context.Context, pt provider.ProviderType) (*provider.Provider, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, name, provider_type, api_key, base_url, enabled, created_at, updated_at
+		`SELECT id, name, provider_type, api_key, base_url, config, enabled, created_at, updated_at
 		 FROM providers WHERE provider_type = ?`, string(pt))
 
 	p, err := scanProviderRow(row)
@@ -82,11 +83,16 @@ func (r *ProviderRepository) Create(ctx context.Context, p *provider.Provider) e
 	p.CreatedAt = now
 	p.UpdatedAt = now
 
+	rawConfig := p.RawConfig
+	if len(rawConfig) == 0 {
+		rawConfig = json.RawMessage("{}")
+	}
+
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO providers (id, name, provider_type, api_key, base_url, enabled, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.ID, p.Name, string(p.ProviderType), p.APIKey, p.BaseURL, boolToInt(p.Enabled),
-		p.CreatedAt, p.UpdatedAt)
+		`INSERT INTO providers (id, name, provider_type, api_key, base_url, config, enabled, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.ID, p.Name, string(p.ProviderType), nullString(p.APIKey), p.BaseURL,
+		string(rawConfig), boolToInt(p.Enabled), p.CreatedAt, p.UpdatedAt)
 	if err != nil {
 		if isUniqueConstraintError(err) {
 			return apperrors.NewAppErrorf(apperrors.Conflict, "a provider of type %q already exists", p.ProviderType)
@@ -99,10 +105,16 @@ func (r *ProviderRepository) Create(ctx context.Context, p *provider.Provider) e
 func (r *ProviderRepository) Update(ctx context.Context, p *provider.Provider) error {
 	p.UpdatedAt = time.Now().UTC()
 
+	rawConfig := p.RawConfig
+	if len(rawConfig) == 0 {
+		rawConfig = json.RawMessage("{}")
+	}
+
 	result, err := r.db.ExecContext(ctx,
-		`UPDATE providers SET name = ?, api_key = ?, base_url = ?, enabled = ?, updated_at = ?
+		`UPDATE providers SET name = ?, api_key = ?, base_url = ?, config = ?, enabled = ?, updated_at = ?
 		 WHERE id = ?`,
-		p.Name, p.APIKey, p.BaseURL, boolToInt(p.Enabled), p.UpdatedAt, p.ID)
+		p.Name, nullString(p.APIKey), p.BaseURL, string(rawConfig),
+		boolToInt(p.Enabled), p.UpdatedAt, p.ID)
 	if err != nil {
 		if isUniqueConstraintError(err) {
 			return apperrors.NewAppError(apperrors.Conflict, "provider type conflict")
@@ -136,28 +148,49 @@ func (r *ProviderRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// scanner is satisfied by both *sql.Rows and *sql.Row.
-type scanner interface {
-	Scan(dest ...any) error
-}
-
 func scanProvider(rows *sql.Rows) (*provider.Provider, error) {
 	var p provider.Provider
+	var apiKey sql.NullString
+	var configStr string
 	var enabled int
-	if err := rows.Scan(&p.ID, &p.Name, &p.ProviderType, &p.APIKey, &p.BaseURL, &enabled, &p.CreatedAt, &p.UpdatedAt); err != nil {
+	if err := rows.Scan(&p.ID, &p.Name, &p.ProviderType, &apiKey, &p.BaseURL, &configStr, &enabled, &p.CreatedAt, &p.UpdatedAt); err != nil {
 		return nil, apperrors.NewAppErrorf(apperrors.Internal, "scanning provider: %v", err)
 	}
+	if apiKey.Valid {
+		p.APIKey = &apiKey.String
+	}
+	p.RawConfig = json.RawMessage(configStr)
 	p.Enabled = enabled != 0
+
+	cfg, err := provider.ParseProviderConfig(string(p.ProviderType), p.RawConfig)
+	if err != nil {
+		return nil, apperrors.NewAppErrorf(apperrors.Internal, "parsing provider config: %v", err)
+	}
+	p.Config = cfg
+
 	return &p, nil
 }
 
 func scanProviderRow(row *sql.Row) (*provider.Provider, error) {
 	var p provider.Provider
+	var apiKey sql.NullString
+	var configStr string
 	var enabled int
-	if err := row.Scan(&p.ID, &p.Name, &p.ProviderType, &p.APIKey, &p.BaseURL, &enabled, &p.CreatedAt, &p.UpdatedAt); err != nil {
+	if err := row.Scan(&p.ID, &p.Name, &p.ProviderType, &apiKey, &p.BaseURL, &configStr, &enabled, &p.CreatedAt, &p.UpdatedAt); err != nil {
 		return nil, err // caller handles sql.ErrNoRows
 	}
+	if apiKey.Valid {
+		p.APIKey = &apiKey.String
+	}
+	p.RawConfig = json.RawMessage(configStr)
 	p.Enabled = enabled != 0
+
+	cfg, err := provider.ParseProviderConfig(string(p.ProviderType), p.RawConfig)
+	if err != nil {
+		return nil, apperrors.NewAppErrorf(apperrors.Internal, "parsing provider config: %v", err)
+	}
+	p.Config = cfg
+
 	return &p, nil
 }
 
@@ -170,4 +203,12 @@ func boolToInt(b bool) int {
 
 func isUniqueConstraintError(err error) bool {
 	return strings.Contains(err.Error(), "UNIQUE constraint failed")
+}
+
+// nullString converts a *string to sql.NullString for nullable DB columns.
+func nullString(s *string) sql.NullString {
+	if s == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *s, Valid: true}
 }

@@ -117,6 +117,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 	// Create provider queries
 	listProvidersQuery := queries.NewListProvidersQuery(providerRepo, enc)
 	getProviderQuery := queries.NewGetProviderQuery(providerRepo, enc)
+	listProviderTypesQuery := queries.NewListProviderTypesQuery()
 
 	// Build provider application
 	providerApp := &app.ProviderApp{
@@ -127,8 +128,9 @@ func NewServer(cfg config.Config) (*Server, error) {
 			TestProvider:   decorators.ApplyLogging(testProviderCmd, "TestProvider", logger),
 		},
 		Queries: app.ProviderQueries{
-			ListProviders: decorators.ApplyLogging(listProvidersQuery, "ListProviders", logger),
-			GetProvider:   decorators.ApplyLogging(getProviderQuery, "GetProvider", logger),
+			ListProviders:     decorators.ApplyLogging(listProvidersQuery, "ListProviders", logger),
+			GetProvider:       decorators.ApplyLogging(getProviderQuery, "GetProvider", logger),
+			ListProviderTypes: decorators.ApplyLogging(listProviderTypesQuery, "ListProviderTypes", logger),
 		},
 	}
 

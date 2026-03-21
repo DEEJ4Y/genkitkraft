@@ -84,6 +84,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/provider-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List provider types
+         * @description List metadata about all supported provider types for dynamic UI rendering.
+         */
+        get: operations["listProviderTypes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/providers": {
         parameters: {
             query?: never;
@@ -200,10 +220,45 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Anthropic provider config (no extra fields needed). */
+        "Models.AnthropicProviderConfig": Record<string, never>;
         /** @description Response indicating whether authentication is required. */
         "Models.AuthStatusResponse": {
             /** @description True if AUTH_CREDENTIALS is configured and non-empty. */
             required: boolean;
+        };
+        /** @description Azure AI Foundry provider config (no extra fields needed, uses base_url for endpoint and api_key). */
+        "Models.AzureAIFoundryProviderConfig": Record<string, never>;
+        /** @description Azure OpenAI provider config. */
+        "Models.AzureOpenAIProviderConfig": {
+            /** @description Azure deployment name. */
+            deploymentName: string;
+            /** @description Azure API version (e.g. "2024-10-21"). */
+            apiVersion: string;
+        };
+        /** @description AWS Bedrock provider config. */
+        "Models.BedrockProviderConfig": {
+            /** @description AWS region (e.g. "us-east-1"). */
+            region: string;
+            /** @description AWS access key ID. */
+            accessKeyId: string;
+            /** @description AWS secret access key. */
+            secretAccessKey: string;
+            /** @description AWS session token (optional). */
+            sessionToken?: string;
+        };
+        /** @description Describes a config field for a provider type. */
+        "Models.ConfigFieldInfo": {
+            /** @description Field name (key in config object). */
+            name: string;
+            /** @description Human-readable label. */
+            label: string;
+            /** @description Whether this field is required. */
+            required: boolean;
+            /** @description Placeholder text for UI. */
+            placeholder?: string;
+            /** @description Whether the field contains sensitive data. */
+            sensitive?: boolean;
         };
         /** @description Request to create a new provider configuration. */
         "Models.CreateProviderRequest": {
@@ -211,16 +266,24 @@ export interface components {
             name: string;
             /** @description The provider type. */
             providerType: components["schemas"]["Models.ProviderType"];
-            /** @description Full API key (stored securely, returned masked). */
-            apiKey: string;
+            /** @description Full API key (stored securely, returned masked). Optional for providers that don't use API keys. */
+            apiKey?: string;
             /** @description Optional base URL override. */
             baseUrl?: string;
+            /** @description Provider-specific configuration. */
+            config?: {
+                [key: string]: string;
+            };
         };
+        /** @description DeepSeek provider config (no extra fields needed). */
+        "Models.DeepSeekProviderConfig": Record<string, never>;
         /** @description Standard error response. */
         "Models.ErrorResponse": {
             /** @description Human-readable error description. */
             error: string;
         };
+        /** @description Google AI provider config (no extra fields needed). */
+        "Models.GoogleAIProviderConfig": Record<string, never>;
         /** @description Response body for health check endpoints. */
         "Models.HealthCheckResponse": {
             /** @description Current status of the probe. */
@@ -254,6 +317,17 @@ export interface components {
             /** @description Username of the currently authenticated user. */
             username: string;
         };
+        /** @description Ollama provider config (no extra fields needed, uses base_url). */
+        "Models.OllamaProviderConfig": Record<string, never>;
+        /** @description OpenAI-compatible provider config. */
+        "Models.OpenAICompatibleProviderConfig": {
+            /** @description Organization ID (e.g. for OpenAI org routing). */
+            organization?: string;
+            /** @description Custom headers as a JSON-encoded key-value object. */
+            customHeaders?: string;
+        };
+        /** @description OpenAI provider config (no extra fields needed). */
+        "Models.OpenAIProviderConfig": Record<string, never>;
         /** @description List of configured providers. */
         "Models.ProviderListResponse": {
             /** @description Array of provider configurations. */
@@ -267,10 +341,14 @@ export interface components {
             name: string;
             /** @description The provider type. */
             providerType: components["schemas"]["Models.ProviderType"];
-            /** @description Masked API key (last 4 characters visible). */
-            apiKey: string;
+            /** @description Masked API key (last 4 characters visible). Null if provider does not use an API key. */
+            apiKey?: string;
             /** @description Optional base URL override (e.g. for OpenAI-compatible proxies). */
             baseUrl?: string;
+            /** @description Provider-specific configuration as a JSON object. */
+            config?: {
+                [key: string]: string;
+            };
             /** @description Whether this provider is enabled. */
             enabled: boolean;
             /**
@@ -288,7 +366,33 @@ export interface components {
          * @description Supported LLM provider types.
          * @enum {string}
          */
-        "Models.ProviderType": "anthropic" | "openai" | "googleai";
+        "Models.ProviderType": "google_ai" | "vertex_ai" | "openai" | "anthropic" | "ollama" | "xai" | "deepseek" | "azure_openai" | "bedrock" | "azure_ai_foundry" | "openai_compatible";
+        /** @description Metadata about a provider type for dynamic UI rendering. */
+        "Models.ProviderTypeInfo": {
+            /** @description The provider type identifier. */
+            type: components["schemas"]["Models.ProviderType"];
+            /** @description Human-readable display name. */
+            displayName: string;
+            /** @description Whether this provider type requires an API key. */
+            requiresApiKey: boolean;
+            /** @description Whether this provider type requires a base URL. */
+            requiresBaseUrl: boolean;
+            /** @description Config fields specific to this provider type. */
+            configFields: components["schemas"]["Models.ConfigFieldInfo"][];
+            /** @description Hint about which environment variable to set. */
+            envVarHint: string;
+            /** @description Model name prefix used by Genkit. */
+            modelPrefix: string;
+            /** @description Default base URL if applicable. */
+            baseUrlDefault?: string;
+            /** @description True if this provider is not yet fully supported. */
+            comingSoon?: boolean;
+        };
+        /** @description List of provider type metadata. */
+        "Models.ProviderTypeListResponse": {
+            /** @description Array of provider type information. */
+            providerTypes: components["schemas"]["Models.ProviderTypeInfo"][];
+        };
         /** @description Result of testing provider connectivity. */
         "Models.TestProviderResponse": {
             /** @description Whether the connection test succeeded. */
@@ -304,9 +408,22 @@ export interface components {
             apiKey?: string;
             /** @description Updated base URL. */
             baseUrl?: string;
+            /** @description Provider-specific configuration (replaces existing). */
+            config?: {
+                [key: string]: string;
+            };
             /** @description Enable or disable this provider. */
             enabled?: boolean;
         };
+        /** @description Vertex AI provider config. */
+        "Models.VertexAIProviderConfig": {
+            /** @description GCP project ID. */
+            project: string;
+            /** @description GCP region (e.g. "us-central1"). */
+            location: string;
+        };
+        /** @description xAI provider config (no extra fields needed). */
+        "Models.XAIProviderConfig": Record<string, never>;
     };
     responses: never;
     parameters: never;
@@ -432,6 +549,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Models.AuthStatusResponse"];
+                };
+            };
+        };
+    };
+    listProviderTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ProviderTypeListResponse"];
                 };
             };
         };

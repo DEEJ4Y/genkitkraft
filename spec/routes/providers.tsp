@@ -10,6 +10,13 @@ namespace Api.Routes;
 
 @tag("Settings")
 namespace Settings {
+  /** List metadata about all supported provider types for dynamic UI rendering. */
+  @get
+  @route("/api/v1/provider-types")
+  @summary("List provider types")
+  @operationId("listProviderTypes")
+  op listProviderTypes(): ProviderTypeListResponse;
+
   /** List all configured providers. */
   @get
   @route("/api/v1/settings/providers")

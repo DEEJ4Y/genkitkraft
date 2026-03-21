@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Title, Text, Stack, Loader, Alert, Center } from '@mantine/core'
+import { Title, Text, Stack, Loader, Alert, Center, Tabs } from '@mantine/core'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchClient } from '../lib/api/client'
 import { ProviderCard } from '../components/ProviderCard'
@@ -8,15 +8,20 @@ import type { components } from '../lib/api/schema'
 
 type Provider = components['schemas']['Models.ProviderResponse']
 type ProviderType = components['schemas']['Models.ProviderType']
+type ProviderTypeInfo = components['schemas']['Models.ProviderTypeInfo']
 
-const PROVIDER_TYPES: { type: ProviderType; label: string }[] = [
-  { type: 'anthropic', label: 'Anthropic' },
-  { type: 'openai', label: 'OpenAI' },
-  { type: 'googleai', label: 'Google AI' },
-]
-
-export default function SettingsPage() {
+function ProvidersTab() {
   const queryClient = useQueryClient()
+
+  const providerTypesQuery = useQuery({
+    queryKey: ['get', '/api/v1/provider-types'],
+    queryFn: async () => {
+      const { data, error } = await fetchClient.GET('/api/v1/provider-types')
+      if (error) throw new Error('Failed to fetch provider types')
+      return data
+    },
+    staleTime: Infinity,
+  })
 
   const providersQuery = useQuery({
     queryKey: ['get', '/api/v1/settings/providers'],
@@ -28,6 +33,8 @@ export default function SettingsPage() {
   })
 
   const [editingType, setEditingType] = useState<ProviderType | null>(null)
+
+  const providerTypes: ProviderTypeInfo[] = providerTypesQuery.data?.providerTypes ?? []
 
   function getProviderByType(type: ProviderType): Provider | undefined {
     return providersQuery.data?.providers?.find((p) => p.providerType === type)
@@ -46,54 +53,71 @@ export default function SettingsPage() {
     queryClient.invalidateQueries({ queryKey: ['get', '/api/v1/settings/providers'] })
   }
 
+  const editingTypeInfo = editingType ? providerTypes.find((pt) => pt.type === editingType) : undefined
   const editingProvider = editingType ? getProviderByType(editingType) : undefined
-  const editingLabel = editingType ? PROVIDER_TYPES.find((p) => p.type === editingType)?.label ?? '' : ''
+
+  const isLoading = providerTypesQuery.isPending || providersQuery.isPending
 
   return (
     <>
-      <Title order={2} mb={4}>
-        LLM Providers
-      </Title>
-      <Text size="sm" c="dimmed" mb="lg">
-        Configure API keys for the LLM providers you want to use.
-      </Text>
-
-      {providersQuery.isPending && (
+      {isLoading && (
         <Center py="xl">
           <Loader />
         </Center>
       )}
 
-      {providersQuery.error && (
+      {(providerTypesQuery.error || providersQuery.error) && (
         <Alert color="red" variant="light" mb="md">
           Failed to load providers.
         </Alert>
       )}
 
       <Stack gap="sm">
-        {PROVIDER_TYPES.map(({ type, label }) => (
+        {providerTypes.map((pt) => (
           <ProviderCard
-            key={type}
-            label={label}
-            provider={getProviderByType(type)}
-            onConfigure={() => setEditingType(type)}
+            key={pt.type}
+            typeInfo={pt}
+            provider={getProviderByType(pt.type)}
+            onConfigure={() => setEditingType(pt.type)}
             onDelete={() => {
-              const p = getProviderByType(type)
+              const p = getProviderByType(pt.type)
               if (p) handleDelete(p)
             }}
           />
         ))}
       </Stack>
 
-      {editingType && (
+      {editingType && editingTypeInfo && (
         <ProviderForm
           provider={editingProvider}
-          providerType={editingType}
-          providerLabel={editingLabel}
+          typeInfo={editingTypeInfo}
           onSaved={handleSaved}
           onCancel={() => setEditingType(null)}
         />
       )}
+    </>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <>
+      <Title order={2} mb="lg">
+        Settings
+      </Title>
+
+      <Tabs defaultValue="providers">
+        <Tabs.List mb="md">
+          <Tabs.Tab value="providers">LLM Providers</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="providers">
+          <Text size="sm" c="dimmed" mb="md">
+            Configure API keys for the LLM providers you want to use.
+          </Text>
+          <ProvidersTab />
+        </Tabs.Panel>
+      </Tabs>
     </>
   )
 }

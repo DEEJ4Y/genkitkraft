@@ -34,9 +34,32 @@ func (t *Tester) Test(ctx context.Context, p *provider.Provider) (bool, string, 
 		return t.testOpenAI(ctx, p)
 	case provider.GoogleAI:
 		return t.testGoogleAI(ctx, p)
+	case provider.Ollama:
+		return t.testOllama(ctx, p)
+	case provider.XAI:
+		return t.testXAI(ctx, p)
+	case provider.DeepSeek:
+		return t.testDeepSeek(ctx, p)
+	case provider.AzureOpenAI:
+		return t.testAzureOpenAI(ctx, p)
+	case provider.VertexAI:
+		return false, "Vertex AI connectivity test not yet implemented (uses service account auth)", nil
+	case provider.Bedrock:
+		return false, "AWS Bedrock connectivity test not yet implemented (uses AWS credential chain auth)", nil
+	case provider.AzureAIFoundry:
+		return t.testAzureAIFoundry(ctx, p)
+	case provider.OpenAICompatible:
+		return t.testOpenAICompatible(ctx, p)
 	default:
 		return false, fmt.Sprintf("unknown provider type: %s", p.ProviderType), nil
 	}
+}
+
+func (t *Tester) apiKey(p *provider.Provider) string {
+	if p.APIKey != nil {
+		return *p.APIKey
+	}
+	return ""
 }
 
 func (t *Tester) testAnthropic(ctx context.Context, p *provider.Provider) (bool, string, error) {
@@ -44,7 +67,7 @@ func (t *Tester) testAnthropic(ctx context.Context, p *provider.Provider) (bool,
 	if err != nil {
 		return false, "", fmt.Errorf("creating request: %w", err)
 	}
-	req.Header.Set("x-api-key", p.APIKey)
+	req.Header.Set("x-api-key", t.apiKey(p))
 	req.Header.Set("anthropic-version", "2023-06-01")
 
 	return t.doTest(req, "Anthropic")
@@ -60,19 +83,111 @@ func (t *Tester) testOpenAI(ctx context.Context, p *provider.Provider) (bool, st
 	if err != nil {
 		return false, "", fmt.Errorf("creating request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+p.APIKey)
+	req.Header.Set("Authorization", "Bearer "+t.apiKey(p))
 
 	return t.doTest(req, "OpenAI")
 }
 
 func (t *Tester) testGoogleAI(ctx context.Context, p *provider.Provider) (bool, string, error) {
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1/models?key=%s", p.APIKey)
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1/models?key=%s", t.apiKey(p))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return false, "", fmt.Errorf("creating request: %w", err)
 	}
 
 	return t.doTest(req, "Google AI")
+}
+
+func (t *Tester) testOllama(ctx context.Context, p *provider.Provider) (bool, string, error) {
+	baseURL := p.BaseURL
+	if baseURL == "" {
+		baseURL = "http://localhost:11434"
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/api/tags", nil)
+	if err != nil {
+		return false, "", fmt.Errorf("creating request: %w", err)
+	}
+
+	return t.doTest(req, "Ollama")
+}
+
+func (t *Tester) testXAI(ctx context.Context, p *provider.Provider) (bool, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.x.ai/v1/models", nil)
+	if err != nil {
+		return false, "", fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+t.apiKey(p))
+
+	return t.doTest(req, "xAI")
+}
+
+func (t *Tester) testDeepSeek(ctx context.Context, p *provider.Provider) (bool, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.deepseek.com/v1/models", nil)
+	if err != nil {
+		return false, "", fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+t.apiKey(p))
+
+	return t.doTest(req, "DeepSeek")
+}
+
+func (t *Tester) testAzureOpenAI(ctx context.Context, p *provider.Provider) (bool, string, error) {
+	if p.BaseURL == "" {
+		return false, "Azure OpenAI requires a base URL (endpoint)", nil
+	}
+
+	// Use the Azure models list endpoint
+	url := fmt.Sprintf("%s/openai/models?api-version=2024-10-21", p.BaseURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return false, "", fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("api-key", t.apiKey(p))
+
+	return t.doTest(req, "Azure OpenAI")
+}
+
+func (t *Tester) testAzureAIFoundry(ctx context.Context, p *provider.Provider) (bool, string, error) {
+	if p.BaseURL == "" {
+		return false, "Azure AI Foundry requires a base URL (endpoint)", nil
+	}
+
+	// Use the Azure OpenAI-compatible models endpoint
+	url := fmt.Sprintf("%s/openai/models?api-version=2024-10-21", p.BaseURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return false, "", fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("api-key", t.apiKey(p))
+
+	return t.doTest(req, "Azure AI Foundry")
+}
+
+func (t *Tester) testOpenAICompatible(ctx context.Context, p *provider.Provider) (bool, string, error) {
+	if p.BaseURL == "" {
+		return false, "OpenAI Compatible requires a base URL", nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.BaseURL+"/v1/models", nil)
+	if err != nil {
+		return false, "", fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+t.apiKey(p))
+
+	// Apply organization and custom headers from config
+	if cfg, ok := p.Config.(*provider.OpenAICompatibleConfig); ok {
+		if cfg.Organization != "" {
+			req.Header.Set("OpenAI-Organization", cfg.Organization)
+		}
+		if headers, err := cfg.ParseCustomHeaders(); err == nil {
+			for k, v := range headers {
+				req.Header.Set(k, v)
+			}
+		}
+	}
+
+	return t.doTest(req, "OpenAI Compatible")
 }
 
 func (t *Tester) doTest(req *http.Request, providerName string) (bool, string, error) {
