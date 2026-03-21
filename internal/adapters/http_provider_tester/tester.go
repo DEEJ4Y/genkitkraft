@@ -175,6 +175,18 @@ func (t *Tester) testOpenAICompatible(ctx context.Context, p *provider.Provider)
 	}
 	req.Header.Set("Authorization", "Bearer "+t.apiKey(p))
 
+	// Apply organization and custom headers from config
+	if cfg, ok := p.Config.(*provider.OpenAICompatibleConfig); ok {
+		if cfg.Organization != "" {
+			req.Header.Set("OpenAI-Organization", cfg.Organization)
+		}
+		if headers, err := cfg.ParseCustomHeaders(); err == nil {
+			for k, v := range headers {
+				req.Header.Set(k, v)
+			}
+		}
+	}
+
 	return t.doTest(req, "OpenAI Compatible")
 }
 

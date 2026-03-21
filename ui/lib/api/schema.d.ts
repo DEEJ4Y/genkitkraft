@@ -319,8 +319,13 @@ export interface components {
         };
         /** @description Ollama provider config (no extra fields needed, uses base_url). */
         "Models.OllamaProviderConfig": Record<string, never>;
-        /** @description OpenAI-compatible provider config (no extra fields needed, uses base_url and api_key). */
-        "Models.OpenAICompatibleProviderConfig": Record<string, never>;
+        /** @description OpenAI-compatible provider config. */
+        "Models.OpenAICompatibleProviderConfig": {
+            /** @description Organization ID (e.g. for OpenAI org routing). */
+            organization?: string;
+            /** @description Custom headers as a JSON-encoded key-value object. */
+            customHeaders?: string;
+        };
         /** @description OpenAI provider config (no extra fields needed). */
         "Models.OpenAIProviderConfig": Record<string, never>;
         /** @description List of configured providers. */

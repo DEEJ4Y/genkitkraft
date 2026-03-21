@@ -116,5 +116,9 @@ var ProviderTypeMeta = []ProviderTypeInfo{
 		RequiresBaseURL: true,
 		EnvVarHint:      "API key and base URL from your provider",
 		ModelPrefix:     "openai",
+		ConfigFields: []ConfigFieldInfo{
+			{Name: "organization", Label: "Organization", Placeholder: "org-..."},
+			{Name: "custom_headers", Label: "Custom Headers (JSON)", Placeholder: `{"X-Custom-Header": "value"}`},
+		},
 	},
 }

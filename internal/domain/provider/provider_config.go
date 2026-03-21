@@ -99,9 +99,24 @@ type AzureAIFoundryConfig struct{}
 func (c *AzureAIFoundryConfig) Validate() error { return nil }
 
 // OpenAICompatibleConfig holds OpenAI-compatible provider configuration.
-type OpenAICompatibleConfig struct{}
+type OpenAICompatibleConfig struct {
+	Organization  string `json:"organization,omitempty"`
+	CustomHeaders string `json:"custom_headers,omitempty"` // JSON-encoded key-value pairs
+}
 
 func (c *OpenAICompatibleConfig) Validate() error { return nil }
+
+// ParseCustomHeaders parses the custom_headers JSON string into a map.
+func (c *OpenAICompatibleConfig) ParseCustomHeaders() (map[string]string, error) {
+	if c.CustomHeaders == "" {
+		return nil, nil
+	}
+	var headers map[string]string
+	if err := json.Unmarshal([]byte(c.CustomHeaders), &headers); err != nil {
+		return nil, fmt.Errorf("invalid custom_headers JSON: %w", err)
+	}
+	return headers, nil
+}
 
 // ParseProviderConfig unmarshals raw JSON into the correct config struct for the provider type.
 func ParseProviderConfig(providerType string, raw json.RawMessage) (ProviderConfig, error) {

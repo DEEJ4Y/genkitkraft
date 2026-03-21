@@ -171,8 +171,14 @@ model BedrockProviderConfig {
 /** Azure AI Foundry provider config (no extra fields needed, uses base_url for endpoint and api_key). */
 model AzureAIFoundryProviderConfig {}
 
-/** OpenAI-compatible provider config (no extra fields needed, uses base_url and api_key). */
-model OpenAICompatibleProviderConfig {}
+/** OpenAI-compatible provider config. */
+model OpenAICompatibleProviderConfig {
+  /** Organization ID (e.g. for OpenAI org routing). */
+  organization?: string;
+
+  /** Custom headers as a JSON-encoded key-value object. */
+  customHeaders?: string;
+}
 
 /** Describes a config field for a provider type. */
 model ConfigFieldInfo {

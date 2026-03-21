@@ -476,7 +476,14 @@ components:
       description: Ollama provider config (no extra fields needed, uses base_url).
     Models.OpenAICompatibleProviderConfig:
       type: object
-      description: OpenAI-compatible provider config (no extra fields needed, uses base_url and api_key).
+      properties:
+        organization:
+          type: string
+          description: Organization ID (e.g. for OpenAI org routing).
+        customHeaders:
+          type: string
+          description: Custom headers as a JSON-encoded key-value object.
+      description: OpenAI-compatible provider config.
     Models.OpenAIProviderConfig:
       type: object
       description: OpenAI provider config (no extra fields needed).
