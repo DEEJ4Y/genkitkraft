@@ -16,14 +16,15 @@ const (
 	Ollama      ProviderType = "ollama"
 	XAI         ProviderType = "xai"
 	DeepSeek    ProviderType = "deepseek"
-	AzureOpenAI ProviderType = "azure_openai"
-	Bedrock     ProviderType = "bedrock"
+	AzureOpenAI    ProviderType = "azure_openai"
+	Bedrock        ProviderType = "bedrock"
+	AzureAIFoundry ProviderType = "azure_ai_foundry"
 )
 
 // Valid returns true if the provider type is a known value.
 func (pt ProviderType) Valid() bool {
 	switch pt {
-	case GoogleAI, VertexAI, OpenAI, Anthropic, Ollama, XAI, DeepSeek, AzureOpenAI, Bedrock:
+	case GoogleAI, VertexAI, OpenAI, Anthropic, Ollama, XAI, DeepSeek, AzureOpenAI, Bedrock, AzureAIFoundry:
 		return true
 	}
 	return false

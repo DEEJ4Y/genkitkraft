@@ -313,6 +313,9 @@ components:
           type: boolean
           description: True if AUTH_CREDENTIALS is configured and non-empty.
       description: Response indicating whether authentication is required.
+    Models.AzureAIFoundryProviderConfig:
+      type: object
+      description: Azure AI Foundry provider config (no extra fields needed, uses base_url for endpoint and api_key).
     Models.AzureOpenAIProviderConfig:
       type: object
       required:
@@ -540,6 +543,7 @@ components:
         - deepseek
         - azure_openai
         - bedrock
+        - azure_ai_foundry
       description: Supported LLM provider types.
     Models.ProviderTypeInfo:
       type: object

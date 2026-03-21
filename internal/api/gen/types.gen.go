@@ -15,15 +15,16 @@ const (
 
 // Defines values for ModelsProviderType.
 const (
-	Anthropic   ModelsProviderType = "anthropic"
-	AzureOpenai ModelsProviderType = "azure_openai"
-	Bedrock     ModelsProviderType = "bedrock"
-	Deepseek    ModelsProviderType = "deepseek"
-	GoogleAi    ModelsProviderType = "google_ai"
-	Ollama      ModelsProviderType = "ollama"
-	Openai      ModelsProviderType = "openai"
-	VertexAi    ModelsProviderType = "vertex_ai"
-	Xai         ModelsProviderType = "xai"
+	Anthropic      ModelsProviderType = "anthropic"
+	AzureAiFoundry ModelsProviderType = "azure_ai_foundry"
+	AzureOpenai    ModelsProviderType = "azure_openai"
+	Bedrock        ModelsProviderType = "bedrock"
+	Deepseek       ModelsProviderType = "deepseek"
+	GoogleAi       ModelsProviderType = "google_ai"
+	Ollama         ModelsProviderType = "ollama"
+	Openai         ModelsProviderType = "openai"
+	VertexAi       ModelsProviderType = "vertex_ai"
+	Xai            ModelsProviderType = "xai"
 )
 
 // ModelsAuthStatusResponse Response indicating whether authentication is required.

@@ -45,7 +45,9 @@ func (t *Tester) Test(ctx context.Context, p *provider.Provider) (bool, string, 
 	case provider.VertexAI:
 		return false, "Vertex AI connectivity test not yet implemented (uses service account auth)", nil
 	case provider.Bedrock:
-		return false, "AWS Bedrock connectivity test not yet implemented (coming soon)", nil
+		return false, "AWS Bedrock connectivity test not yet implemented (uses AWS credential chain auth)", nil
+	case provider.AzureAIFoundry:
+		return t.testAzureAIFoundry(ctx, p)
 	default:
 		return false, fmt.Sprintf("unknown provider type: %s", p.ProviderType), nil
 	}
@@ -142,6 +144,22 @@ func (t *Tester) testAzureOpenAI(ctx context.Context, p *provider.Provider) (boo
 	req.Header.Set("api-key", t.apiKey(p))
 
 	return t.doTest(req, "Azure OpenAI")
+}
+
+func (t *Tester) testAzureAIFoundry(ctx context.Context, p *provider.Provider) (bool, string, error) {
+	if p.BaseURL == "" {
+		return false, "Azure AI Foundry requires a base URL (endpoint)", nil
+	}
+
+	// Use the Azure OpenAI-compatible models endpoint
+	url := fmt.Sprintf("%s/openai/models?api-version=2024-10-21", p.BaseURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return false, "", fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("api-key", t.apiKey(p))
+
+	return t.doTest(req, "Azure AI Foundry")
 }
 
 func (t *Tester) doTest(req *http.Request, providerName string) (bool, string, error) {

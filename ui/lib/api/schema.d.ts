@@ -227,6 +227,8 @@ export interface components {
             /** @description True if AUTH_CREDENTIALS is configured and non-empty. */
             required: boolean;
         };
+        /** @description Azure AI Foundry provider config (no extra fields needed, uses base_url for endpoint and api_key). */
+        "Models.AzureAIFoundryProviderConfig": Record<string, never>;
         /** @description Azure OpenAI provider config. */
         "Models.AzureOpenAIProviderConfig": {
             /** @description Azure deployment name. */
@@ -357,7 +359,7 @@ export interface components {
          * @description Supported LLM provider types.
          * @enum {string}
          */
-        "Models.ProviderType": "google_ai" | "vertex_ai" | "openai" | "anthropic" | "ollama" | "xai" | "deepseek" | "azure_openai" | "bedrock";
+        "Models.ProviderType": "google_ai" | "vertex_ai" | "openai" | "anthropic" | "ollama" | "xai" | "deepseek" | "azure_openai" | "bedrock" | "azure_ai_foundry";
         /** @description Metadata about a provider type for dynamic UI rendering. */
         "Models.ProviderTypeInfo": {
             /** @description The provider type identifier. */

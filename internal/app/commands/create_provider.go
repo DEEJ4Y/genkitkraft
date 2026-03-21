@@ -114,6 +114,13 @@ func validateProviderRequirements(pt provider.ProviderType, apiKey *string, base
 		// config.project and config.location validated by VertexAIConfig.Validate()
 	case provider.Bedrock:
 		// config fields validated by BedrockConfig.Validate()
+	case provider.AzureAIFoundry:
+		if !hasAPIKey {
+			return errors.NewAppError(errors.InvalidInput, "api key is required for Azure AI Foundry")
+		}
+		if baseURL == "" {
+			return errors.NewAppError(errors.InvalidInput, "base_url is required for Azure AI Foundry")
+		}
 	}
 
 	return nil

@@ -28,6 +28,9 @@ enum ProviderType {
 
   /** AWS Bedrock. */
   bedrock: "bedrock",
+
+  /** Azure AI Foundry. */
+  azure_ai_foundry: "azure_ai_foundry",
 }
 
 /** A configured LLM provider with masked API key. */
@@ -161,6 +164,9 @@ model BedrockProviderConfig {
   /** AWS session token (optional). */
   sessionToken?: string;
 }
+
+/** Azure AI Foundry provider config (no extra fields needed, uses base_url for endpoint and api_key). */
+model AzureAIFoundryProviderConfig {}
 
 /** Describes a config field for a provider type. */
 model ConfigFieldInfo {

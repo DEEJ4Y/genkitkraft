@@ -93,6 +93,11 @@ func (c *BedrockConfig) Validate() error {
 	return nil
 }
 
+// AzureAIFoundryConfig holds Azure AI Foundry-specific configuration.
+type AzureAIFoundryConfig struct{}
+
+func (c *AzureAIFoundryConfig) Validate() error { return nil }
+
 // ParseProviderConfig unmarshals raw JSON into the correct config struct for the provider type.
 func ParseProviderConfig(providerType string, raw json.RawMessage) (ProviderConfig, error) {
 	if len(raw) == 0 || string(raw) == "{}" || string(raw) == "null" {
@@ -119,6 +124,8 @@ func ParseProviderConfig(providerType string, raw json.RawMessage) (ProviderConf
 		cfg = &AzureOpenAIConfig{}
 	case Bedrock:
 		cfg = &BedrockConfig{}
+	case AzureAIFoundry:
+		cfg = &AzureAIFoundryConfig{}
 	default:
 		return nil, fmt.Errorf("unknown provider type: %s", providerType)
 	}
@@ -149,6 +156,8 @@ func defaultConfig(providerType string) (ProviderConfig, error) {
 		return &AzureOpenAIConfig{}, nil
 	case Bedrock:
 		return &BedrockConfig{}, nil
+	case AzureAIFoundry:
+		return &AzureAIFoundryConfig{}, nil
 	default:
 		return nil, fmt.Errorf("unknown provider type: %s", providerType)
 	}

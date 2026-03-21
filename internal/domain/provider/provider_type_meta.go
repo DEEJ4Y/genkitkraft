@@ -94,12 +94,19 @@ var ProviderTypeMeta = []ProviderTypeInfo{
 		DisplayName: "AWS Bedrock",
 		EnvVarHint:  "AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY",
 		ModelPrefix: "bedrock",
-		ComingSoon:  true,
 		ConfigFields: []ConfigFieldInfo{
 			{Name: "region", Label: "AWS Region", Required: true, Placeholder: "us-east-1"},
 			{Name: "access_key_id", Label: "Access Key ID", Required: true, Sensitive: true},
 			{Name: "secret_access_key", Label: "Secret Access Key", Required: true, Sensitive: true},
 			{Name: "session_token", Label: "Session Token", Sensitive: true},
 		},
+	},
+	{
+		Type:            AzureAIFoundry,
+		DisplayName:     "Azure AI Foundry",
+		RequiresAPIKey:  true,
+		RequiresBaseURL: true,
+		EnvVarHint:      "AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY",
+		ModelPrefix:     "azureaifoundry",
 	},
 }
