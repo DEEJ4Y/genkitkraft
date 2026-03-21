@@ -121,6 +121,13 @@ func validateProviderRequirements(pt provider.ProviderType, apiKey *string, base
 		if baseURL == "" {
 			return errors.NewAppError(errors.InvalidInput, "base_url is required for Azure AI Foundry")
 		}
+	case provider.OpenAICompatible:
+		if !hasAPIKey {
+			return errors.NewAppError(errors.InvalidInput, "api key is required for OpenAI Compatible")
+		}
+		if baseURL == "" {
+			return errors.NewAppError(errors.InvalidInput, "base_url is required for OpenAI Compatible")
+		}
 	}
 
 	return nil

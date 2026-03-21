@@ -474,6 +474,9 @@ components:
     Models.OllamaProviderConfig:
       type: object
       description: Ollama provider config (no extra fields needed, uses base_url).
+    Models.OpenAICompatibleProviderConfig:
+      type: object
+      description: OpenAI-compatible provider config (no extra fields needed, uses base_url and api_key).
     Models.OpenAIProviderConfig:
       type: object
       description: OpenAI provider config (no extra fields needed).
@@ -544,6 +547,7 @@ components:
         - azure_openai
         - bedrock
         - azure_ai_foundry
+        - openai_compatible
       description: Supported LLM provider types.
     Models.ProviderTypeInfo:
       type: object

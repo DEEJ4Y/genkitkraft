@@ -48,6 +48,8 @@ func (t *Tester) Test(ctx context.Context, p *provider.Provider) (bool, string, 
 		return false, "AWS Bedrock connectivity test not yet implemented (uses AWS credential chain auth)", nil
 	case provider.AzureAIFoundry:
 		return t.testAzureAIFoundry(ctx, p)
+	case provider.OpenAICompatible:
+		return t.testOpenAICompatible(ctx, p)
 	default:
 		return false, fmt.Sprintf("unknown provider type: %s", p.ProviderType), nil
 	}
@@ -160,6 +162,20 @@ func (t *Tester) testAzureAIFoundry(ctx context.Context, p *provider.Provider) (
 	req.Header.Set("api-key", t.apiKey(p))
 
 	return t.doTest(req, "Azure AI Foundry")
+}
+
+func (t *Tester) testOpenAICompatible(ctx context.Context, p *provider.Provider) (bool, string, error) {
+	if p.BaseURL == "" {
+		return false, "OpenAI Compatible requires a base URL", nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.BaseURL+"/v1/models", nil)
+	if err != nil {
+		return false, "", fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+t.apiKey(p))
+
+	return t.doTest(req, "OpenAI Compatible")
 }
 
 func (t *Tester) doTest(req *http.Request, providerName string) (bool, string, error) {

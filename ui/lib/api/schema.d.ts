@@ -319,6 +319,8 @@ export interface components {
         };
         /** @description Ollama provider config (no extra fields needed, uses base_url). */
         "Models.OllamaProviderConfig": Record<string, never>;
+        /** @description OpenAI-compatible provider config (no extra fields needed, uses base_url and api_key). */
+        "Models.OpenAICompatibleProviderConfig": Record<string, never>;
         /** @description OpenAI provider config (no extra fields needed). */
         "Models.OpenAIProviderConfig": Record<string, never>;
         /** @description List of configured providers. */
@@ -359,7 +361,7 @@ export interface components {
          * @description Supported LLM provider types.
          * @enum {string}
          */
-        "Models.ProviderType": "google_ai" | "vertex_ai" | "openai" | "anthropic" | "ollama" | "xai" | "deepseek" | "azure_openai" | "bedrock" | "azure_ai_foundry";
+        "Models.ProviderType": "google_ai" | "vertex_ai" | "openai" | "anthropic" | "ollama" | "xai" | "deepseek" | "azure_openai" | "bedrock" | "azure_ai_foundry" | "openai_compatible";
         /** @description Metadata about a provider type for dynamic UI rendering. */
         "Models.ProviderTypeInfo": {
             /** @description The provider type identifier. */

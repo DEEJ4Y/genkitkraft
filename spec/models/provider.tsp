@@ -31,6 +31,9 @@ enum ProviderType {
 
   /** Azure AI Foundry. */
   azure_ai_foundry: "azure_ai_foundry",
+
+  /** OpenAI-compatible API (custom endpoint). */
+  openai_compatible: "openai_compatible",
 }
 
 /** A configured LLM provider with masked API key. */
@@ -167,6 +170,9 @@ model BedrockProviderConfig {
 
 /** Azure AI Foundry provider config (no extra fields needed, uses base_url for endpoint and api_key). */
 model AzureAIFoundryProviderConfig {}
+
+/** OpenAI-compatible provider config (no extra fields needed, uses base_url and api_key). */
+model OpenAICompatibleProviderConfig {}
 
 /** Describes a config field for a provider type. */
 model ConfigFieldInfo {

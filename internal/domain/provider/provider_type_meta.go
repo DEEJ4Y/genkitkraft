@@ -109,4 +109,12 @@ var ProviderTypeMeta = []ProviderTypeInfo{
 		EnvVarHint:      "AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY",
 		ModelPrefix:     "azureaifoundry",
 	},
+	{
+		Type:            OpenAICompatible,
+		DisplayName:     "OpenAI Compatible",
+		RequiresAPIKey:  true,
+		RequiresBaseURL: true,
+		EnvVarHint:      "API key and base URL from your provider",
+		ModelPrefix:     "openai",
+	},
 }
