@@ -75,6 +75,13 @@ func toProviderResponse(p *provider.Provider) gen.ModelsProviderResponse {
 	if p.BaseURL != "" {
 		resp.BaseUrl = &p.BaseURL
 	}
+	// Include config if non-empty
+	if len(p.RawConfig) > 0 && string(p.RawConfig) != "{}" {
+		var configMap map[string]string
+		if err := json.Unmarshal(p.RawConfig, &configMap); err == nil && len(configMap) > 0 {
+			resp.Config = &configMap
+		}
+	}
 	return resp
 }
 
@@ -95,6 +102,9 @@ func toCreateProviderParams(req gen.ModelsCreateProviderRequest) commands.Create
 	if req.BaseUrl != nil {
 		params.BaseURL = *req.BaseUrl
 	}
+	if req.Config != nil {
+		params.Config = *req.Config
+	}
 	return params
 }
 
@@ -104,6 +114,47 @@ func toUpdateProviderParams(id string, req gen.ModelsUpdateProviderRequest) comm
 		Name:    req.Name,
 		APIKey:  req.ApiKey,
 		BaseURL: req.BaseUrl,
+		Config:  req.Config,
 		Enabled: req.Enabled,
 	}
+}
+
+func toProviderTypeListResponse(result queries.ListProviderTypesResult) gen.ModelsProviderTypeListResponse {
+	types := make([]gen.ModelsProviderTypeInfo, len(result.ProviderTypes))
+	for i, pt := range result.ProviderTypes {
+		info := gen.ModelsProviderTypeInfo{
+			Type:            gen.ModelsProviderType(pt.Type),
+			DisplayName:     pt.DisplayName,
+			RequiresApiKey:  pt.RequiresAPIKey,
+			RequiresBaseUrl: pt.RequiresBaseURL,
+			EnvVarHint:      pt.EnvVarHint,
+			ModelPrefix:     pt.ModelPrefix,
+		}
+		if pt.BaseURLDefault != "" {
+			info.BaseUrlDefault = &pt.BaseURLDefault
+		}
+		if pt.ComingSoon {
+			comingSoon := true
+			info.ComingSoon = &comingSoon
+		}
+		fields := make([]gen.ModelsConfigFieldInfo, len(pt.ConfigFields))
+		for j, f := range pt.ConfigFields {
+			field := gen.ModelsConfigFieldInfo{
+				Name:     f.Name,
+				Label:    f.Label,
+				Required: f.Required,
+			}
+			if f.Placeholder != "" {
+				field.Placeholder = &f.Placeholder
+			}
+			if f.Sensitive {
+				sensitive := true
+				field.Sensitive = &sensitive
+			}
+			fields[j] = field
+		}
+		info.ConfigFields = fields
+		types[i] = info
+	}
+	return gen.ModelsProviderTypeListResponse{ProviderTypes: types}
 }

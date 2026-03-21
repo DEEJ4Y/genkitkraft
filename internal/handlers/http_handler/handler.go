@@ -117,6 +117,15 @@ func (h *Handler) HealthReadiness(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) ListProviderTypes(w http.ResponseWriter, r *http.Request) {
+	result, err := h.providerApp.Queries.ListProviderTypes.Execute(r.Context(), queries.ListProviderTypesParams{})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toProviderTypeListResponse(result))
+}
+
 func (h *Handler) ListProviders(w http.ResponseWriter, r *http.Request) {
 	result, err := h.providerApp.Queries.ListProviders.Execute(r.Context(), queries.ListProvidersParams{})
 	if err != nil {

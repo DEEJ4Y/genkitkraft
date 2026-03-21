@@ -97,6 +97,21 @@ paths:
                 $ref: '#/components/schemas/Models.AuthStatusResponse'
       tags:
         - Auth
+  /api/v1/provider-types:
+    get:
+      operationId: listProviderTypes
+      summary: List provider types
+      description: List metadata about all supported provider types for dynamic UI rendering.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ProviderTypeListResponse'
+      tags:
+        - Settings
   /api/v1/settings/providers:
     get:
       operationId: listProviders
@@ -286,6 +301,9 @@ paths:
         - Health
 components:
   schemas:
+    Models.AnthropicProviderConfig:
+      type: object
+      description: Anthropic provider config (no extra fields needed).
     Models.AuthStatusResponse:
       type: object
       required:
@@ -295,12 +313,67 @@ components:
           type: boolean
           description: True if AUTH_CREDENTIALS is configured and non-empty.
       description: Response indicating whether authentication is required.
+    Models.AzureOpenAIProviderConfig:
+      type: object
+      required:
+        - deploymentName
+        - apiVersion
+      properties:
+        deploymentName:
+          type: string
+          description: Azure deployment name.
+        apiVersion:
+          type: string
+          description: Azure API version (e.g. "2024-10-21").
+      description: Azure OpenAI provider config.
+    Models.BedrockProviderConfig:
+      type: object
+      required:
+        - region
+        - accessKeyId
+        - secretAccessKey
+      properties:
+        region:
+          type: string
+          description: AWS region (e.g. "us-east-1").
+        accessKeyId:
+          type: string
+          description: AWS access key ID.
+        secretAccessKey:
+          type: string
+          description: AWS secret access key.
+        sessionToken:
+          type: string
+          description: AWS session token (optional).
+      description: AWS Bedrock provider config.
+    Models.ConfigFieldInfo:
+      type: object
+      required:
+        - name
+        - label
+        - required
+      properties:
+        name:
+          type: string
+          description: Field name (key in config object).
+        label:
+          type: string
+          description: Human-readable label.
+        required:
+          type: boolean
+          description: Whether this field is required.
+        placeholder:
+          type: string
+          description: Placeholder text for UI.
+        sensitive:
+          type: boolean
+          description: Whether the field contains sensitive data.
+      description: Describes a config field for a provider type.
     Models.CreateProviderRequest:
       type: object
       required:
         - name
         - providerType
-        - apiKey
       properties:
         name:
           type: string
@@ -311,11 +384,19 @@ components:
           description: The provider type.
         apiKey:
           type: string
-          description: Full API key (stored securely, returned masked).
+          description: Full API key (stored securely, returned masked). Optional for providers that don't use API keys.
         baseUrl:
           type: string
           description: Optional base URL override.
+        config:
+          type: object
+          additionalProperties:
+            type: string
+          description: Provider-specific configuration.
       description: Request to create a new provider configuration.
+    Models.DeepSeekProviderConfig:
+      type: object
+      description: DeepSeek provider config (no extra fields needed).
     Models.ErrorResponse:
       type: object
       required:
@@ -325,6 +406,9 @@ components:
           type: string
           description: Human-readable error description.
       description: Standard error response.
+    Models.GoogleAIProviderConfig:
+      type: object
+      description: Google AI provider config (no extra fields needed).
     Models.HealthCheckResponse:
       type: object
       required:
@@ -384,6 +468,12 @@ components:
           type: string
           description: Username of the currently authenticated user.
       description: Current authenticated user info.
+    Models.OllamaProviderConfig:
+      type: object
+      description: Ollama provider config (no extra fields needed, uses base_url).
+    Models.OpenAIProviderConfig:
+      type: object
+      description: OpenAI provider config (no extra fields needed).
     Models.ProviderListResponse:
       type: object
       required:
@@ -401,7 +491,6 @@ components:
         - id
         - name
         - providerType
-        - apiKey
         - enabled
         - createdAt
         - updatedAt
@@ -418,10 +507,15 @@ components:
           description: The provider type.
         apiKey:
           type: string
-          description: Masked API key (last 4 characters visible).
+          description: Masked API key (last 4 characters visible). Null if provider does not use an API key.
         baseUrl:
           type: string
           description: Optional base URL override (e.g. for OpenAI-compatible proxies).
+        config:
+          type: object
+          additionalProperties:
+            type: string
+          description: Provider-specific configuration as a JSON object.
         enabled:
           type: boolean
           description: Whether this provider is enabled.
@@ -437,10 +531,69 @@ components:
     Models.ProviderType:
       type: string
       enum:
-        - anthropic
+        - google_ai
+        - vertex_ai
         - openai
-        - googleai
+        - anthropic
+        - ollama
+        - xai
+        - deepseek
+        - azure_openai
+        - bedrock
       description: Supported LLM provider types.
+    Models.ProviderTypeInfo:
+      type: object
+      required:
+        - type
+        - displayName
+        - requiresApiKey
+        - requiresBaseUrl
+        - configFields
+        - envVarHint
+        - modelPrefix
+      properties:
+        type:
+          allOf:
+            - $ref: '#/components/schemas/Models.ProviderType'
+          description: The provider type identifier.
+        displayName:
+          type: string
+          description: Human-readable display name.
+        requiresApiKey:
+          type: boolean
+          description: Whether this provider type requires an API key.
+        requiresBaseUrl:
+          type: boolean
+          description: Whether this provider type requires a base URL.
+        configFields:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.ConfigFieldInfo'
+          description: Config fields specific to this provider type.
+        envVarHint:
+          type: string
+          description: Hint about which environment variable to set.
+        modelPrefix:
+          type: string
+          description: Model name prefix used by Genkit.
+        baseUrlDefault:
+          type: string
+          description: Default base URL if applicable.
+        comingSoon:
+          type: boolean
+          description: True if this provider is not yet fully supported.
+      description: Metadata about a provider type for dynamic UI rendering.
+    Models.ProviderTypeListResponse:
+      type: object
+      required:
+        - providerTypes
+      properties:
+        providerTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.ProviderTypeInfo'
+          description: Array of provider type information.
+      description: List of provider type metadata.
     Models.TestProviderResponse:
       type: object
       required:
@@ -466,10 +619,31 @@ components:
         baseUrl:
           type: string
           description: Updated base URL.
+        config:
+          type: object
+          additionalProperties:
+            type: string
+          description: Provider-specific configuration (replaces existing).
         enabled:
           type: boolean
           description: Enable or disable this provider.
       description: Request to update an existing provider configuration.
+    Models.VertexAIProviderConfig:
+      type: object
+      required:
+        - project
+        - location
+      properties:
+        project:
+          type: string
+          description: GCP project ID.
+        location:
+          type: string
+          description: GCP region (e.g. "us-central1").
+      description: Vertex AI provider config.
+    Models.XAIProviderConfig:
+      type: object
+      description: xAI provider config (no extra fields needed).
 servers:
   - url: http://localhost:8080
     description: Local development

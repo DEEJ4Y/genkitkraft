@@ -14,6 +14,7 @@ type UpdateProviderParams struct {
 	Name    *string
 	APIKey  *string
 	BaseURL *string
+	Config  *map[string]string
 	Enabled *bool
 }
 
@@ -37,16 +38,19 @@ func (c *UpdateProviderCommand) Execute(ctx context.Context, params UpdateProvid
 	}
 
 	// Decrypt existing key so we work with plaintext in memory
-	p.APIKey, err = c.enc.Decrypt(p.APIKey)
-	if err != nil {
-		return UpdateProviderResult{}, errors.NewAppErrorf(errors.Internal, "decrypting api key: %v", err)
+	if p.APIKey != nil {
+		decrypted, err := c.enc.Decrypt(*p.APIKey)
+		if err != nil {
+			return UpdateProviderResult{}, errors.NewAppErrorf(errors.Internal, "decrypting api key: %v", err)
+		}
+		p.APIKey = &decrypted
 	}
 
 	if params.Name != nil {
 		p.Name = *params.Name
 	}
 	if params.APIKey != nil && *params.APIKey != "" {
-		p.APIKey = *params.APIKey
+		p.APIKey = params.APIKey
 	}
 	if params.BaseURL != nil {
 		p.BaseURL = *params.BaseURL
@@ -55,13 +59,33 @@ func (c *UpdateProviderCommand) Execute(ctx context.Context, params UpdateProvid
 		p.Enabled = *params.Enabled
 	}
 
+	// Update config if provided
+	if params.Config != nil {
+		rawConfig, err := marshalConfig(*params.Config)
+		if err != nil {
+			return UpdateProviderResult{}, errors.NewAppErrorf(errors.Internal, "marshaling config: %v", err)
+		}
+		cfg, err := provider.ParseProviderConfig(string(p.ProviderType), rawConfig)
+		if err != nil {
+			return UpdateProviderResult{}, errors.NewAppErrorf(errors.InvalidInput, "invalid config: %v", err)
+		}
+		if err := cfg.Validate(); err != nil {
+			return UpdateProviderResult{}, errors.NewAppErrorf(errors.InvalidInput, "config validation: %v", err)
+		}
+		p.Config = cfg
+		p.RawConfig = rawConfig
+	}
+
 	// Save plaintext for response
 	plaintextKey := p.APIKey
 
 	// Encrypt for storage
-	p.APIKey, err = c.enc.Encrypt(p.APIKey)
-	if err != nil {
-		return UpdateProviderResult{}, errors.NewAppErrorf(errors.Internal, "encrypting api key: %v", err)
+	if p.APIKey != nil {
+		encrypted, err := c.enc.Encrypt(*p.APIKey)
+		if err != nil {
+			return UpdateProviderResult{}, errors.NewAppErrorf(errors.Internal, "encrypting api key: %v", err)
+		}
+		p.APIKey = &encrypted
 	}
 
 	if err := c.repo.Update(ctx, p); err != nil {

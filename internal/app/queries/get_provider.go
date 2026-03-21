@@ -32,9 +32,12 @@ func (q *GetProviderQuery) Execute(ctx context.Context, params GetProviderParams
 		return GetProviderResult{}, err
 	}
 
-	p.APIKey, err = q.enc.Decrypt(p.APIKey)
-	if err != nil {
-		return GetProviderResult{}, errors.NewAppErrorf(errors.Internal, "decrypting api key: %v", err)
+	if p.APIKey != nil {
+		decrypted, err := q.enc.Decrypt(*p.APIKey)
+		if err != nil {
+			return GetProviderResult{}, errors.NewAppErrorf(errors.Internal, "decrypting api key: %v", err)
+		}
+		p.APIKey = &decrypted
 	}
 
 	return GetProviderResult{Provider: p}, nil

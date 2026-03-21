@@ -31,11 +31,13 @@ func (q *ListProvidersQuery) Execute(ctx context.Context, params ListProvidersPa
 	}
 
 	for _, p := range providers {
-		decrypted, err := q.enc.Decrypt(p.APIKey)
-		if err != nil {
-			return ListProvidersResult{}, errors.NewAppErrorf(errors.Internal, "decrypting api key: %v", err)
+		if p.APIKey != nil {
+			decrypted, err := q.enc.Decrypt(*p.APIKey)
+			if err != nil {
+				return ListProvidersResult{}, errors.NewAppErrorf(errors.Internal, "decrypting api key: %v", err)
+			}
+			p.APIKey = &decrypted
 		}
-		p.APIKey = decrypted
 	}
 
 	return ListProvidersResult{Providers: providers}, nil

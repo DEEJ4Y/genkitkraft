@@ -20,6 +20,7 @@ type ProviderCommands struct {
 }
 
 type ProviderQueries struct {
-	ListProviders executors.ExecutorWithReturn[queries.ListProvidersParams, queries.ListProvidersResult]
-	GetProvider   executors.ExecutorWithReturn[queries.GetProviderParams, queries.GetProviderResult]
+	ListProviders     executors.ExecutorWithReturn[queries.ListProvidersParams, queries.ListProvidersResult]
+	GetProvider       executors.ExecutorWithReturn[queries.GetProviderParams, queries.GetProviderResult]
+	ListProviderTypes executors.ExecutorWithReturn[queries.ListProviderTypesParams, queries.ListProviderTypesResult]
 }
