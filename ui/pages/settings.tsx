@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Title, Text, Stack, Loader, Alert, Center, Badge, Group } from '@mantine/core'
+import { Title, Text, Stack, Loader, Alert, Center, Tabs } from '@mantine/core'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchClient } from '../lib/api/client'
 import { ProviderCard } from '../components/ProviderCard'
@@ -10,7 +10,7 @@ type Provider = components['schemas']['Models.ProviderResponse']
 type ProviderType = components['schemas']['Models.ProviderType']
 type ProviderTypeInfo = components['schemas']['Models.ProviderTypeInfo']
 
-export default function SettingsPage() {
+function ProvidersTab() {
   const queryClient = useQueryClient()
 
   const providerTypesQuery = useQuery({
@@ -60,13 +60,6 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Title order={2} mb={4}>
-        LLM Providers
-      </Title>
-      <Text size="sm" c="dimmed" mb="lg">
-        Configure API keys for the LLM providers you want to use.
-      </Text>
-
       {isLoading && (
         <Center py="xl">
           <Loader />
@@ -102,6 +95,29 @@ export default function SettingsPage() {
           onCancel={() => setEditingType(null)}
         />
       )}
+    </>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <>
+      <Title order={2} mb="lg">
+        Settings
+      </Title>
+
+      <Tabs defaultValue="providers">
+        <Tabs.List mb="md">
+          <Tabs.Tab value="providers">LLM Providers</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="providers">
+          <Text size="sm" c="dimmed" mb="md">
+            Configure API keys for the LLM providers you want to use.
+          </Text>
+          <ProvidersTab />
+        </Tabs.Panel>
+      </Tabs>
     </>
   )
 }
