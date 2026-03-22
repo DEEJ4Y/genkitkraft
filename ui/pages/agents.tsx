@@ -14,6 +14,7 @@ import { IconPlus } from '@tabler/icons-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchClient } from '../lib/api/client'
 import { AgentCard } from '../components/AgentCard'
+import { AgentEditView } from '../components/AgentEditView'
 import { AgentForm } from '../components/AgentForm'
 import type { components } from '../lib/api/schema'
 
@@ -91,7 +92,7 @@ export default function AgentsPage() {
     }
 
     return (
-      <AgentForm
+      <AgentEditView
         agent={editingAgentQuery.data}
         onSaved={handleSaved}
         onCancel={() => setView({ mode: 'list' })}

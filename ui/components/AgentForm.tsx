@@ -18,6 +18,7 @@ import {
 import { IconArrowLeft } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchClient } from '../lib/api/client'
+import { MODEL_OPTIONS } from '../lib/model-options'
 import type { components } from '../lib/api/schema'
 
 type AgentResponse = components['schemas']['Models.AgentResponse']
@@ -27,48 +28,6 @@ interface AgentFormProps {
   agent?: AgentResponse
   onSaved: () => void
   onCancel: () => void
-}
-
-const MODEL_OPTIONS: Record<string, string[]> = {
-  google_ai: [
-    'gemini-3.1-pro-preview',
-    'gemini-3-flash-preview',
-    'gemini-3.1-flash-lite-preview',
-    'gemini-2.5-pro',
-    'gemini-2.5-flash',
-    'gemini-2.5-flash-lite',
-  ],
-  vertex_ai: [
-    'gemini-3.1-pro-preview',
-    'gemini-3-flash-preview',
-    'gemini-3.1-flash-lite-preview',
-    'gemini-2.5-pro',
-    'gemini-2.5-flash',
-    'gemini-2.5-flash-lite',
-  ],
-  openai: [
-    'gpt-5.4',
-    'gpt-5.4-mini',
-    'gpt-5.4-nano',
-    'gpt-5.3-codex',
-    'gpt-4o',
-    'gpt-4o-mini',
-  ],
-  anthropic: [
-    'claude-opus-4-6-20250205',
-    'claude-sonnet-4-6-20250217',
-    'claude-opus-4-5-20251202',
-    'claude-sonnet-4-5-20250929',
-    'claude-haiku-4-5-20251001',
-  ],
-  xai: [
-    'grok-4.20-beta',
-    'grok-4-1-fast-reasoning',
-    'grok-4-1-fast-non-reasoning',
-    'grok-4',
-    'grok-code-fast-1',
-  ],
-  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
 }
 
 export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
@@ -197,19 +156,23 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
 
   return (
     <Stack>
-      <Button
-        variant="subtle"
-        leftSection={<IconArrowLeft size={16} />}
-        onClick={onCancel}
-        size="sm"
-        w="fit-content"
-      >
-        Back to Agents
-      </Button>
+      {!isEdit && (
+        <>
+          <Button
+            variant="subtle"
+            leftSection={<IconArrowLeft size={16} />}
+            onClick={onCancel}
+            size="sm"
+            w="fit-content"
+          >
+            Back to Agents
+          </Button>
 
-      <Text size="xl" fw={600}>
-        {isEdit ? 'Edit Agent' : 'New Agent'}
-      </Text>
+          <Text size="xl" fw={600}>
+            New Agent
+          </Text>
+        </>
+      )}
 
       {error && (
         <Alert color="red" variant="light">

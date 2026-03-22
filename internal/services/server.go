@@ -14,10 +14,12 @@ import (
 
 	aesgcmencryptor "github.com/DEEJ4Y/genkitkraft/internal/adapters/aesgcm_encryptor"
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
+	httpchatprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_chat_provider"
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
 	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
 	sqliteagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent"
+	sqliteplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_playground"
 	sqliteprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_prompt"
 	sqliteprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_provider"
 	"github.com/DEEJ4Y/genkitkraft/internal/api/gen"
@@ -29,20 +31,23 @@ import (
 	domainauth "github.com/DEEJ4Y/genkitkraft/internal/domain/auth"
 	httphandler "github.com/DEEJ4Y/genkitkraft/internal/handlers/http_handler"
 	"github.com/DEEJ4Y/genkitkraft/internal/handlers/http_handler/interceptors"
+	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/hasher"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/session"
 )
 
 // Server is the main HTTP server for GenKitKraft.
 type Server struct {
-	cfg          config.Config
-	authApp      *app.AuthApp
-	providerApp  *app.ProviderApp
-	promptApp    *app.PromptApp
-	agentApp     *app.AgentApp
-	sessionStore session.Store
-	db           *sql.DB
-	done         chan struct{}
+	cfg           config.Config
+	authApp       *app.AuthApp
+	providerApp   *app.ProviderApp
+	promptApp     *app.PromptApp
+	agentApp      *app.AgentApp
+	playgroundApp *app.PlaygroundApp
+	chatProvider  chatprovider.ChatProvider
+	sessionStore  session.Store
+	db            *sql.DB
+	done          chan struct{}
 }
 
 // NewServer wires all dependencies and returns a ready-to-start Server.
@@ -188,15 +193,45 @@ func NewServer(cfg config.Config) (*Server, error) {
 		},
 	}
 
+	// Create playground adapters
+	playgroundRepo := sqliteplayground.NewPlaygroundRepository(db)
+	chatProvider := httpchatprovider.NewChatProvider()
+
+	// Create playground commands
+	createSessionCmd := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)
+	deleteSessionCmd := commands.NewDeletePlaygroundSessionCommand(playgroundRepo)
+	saveMessageCmd := commands.NewSavePlaygroundMessageCommand(playgroundRepo)
+
+	// Create playground queries
+	listSessionsQuery := queries.NewListPlaygroundSessionsQuery(playgroundRepo)
+	listMessagesQuery := queries.NewListPlaygroundMessagesQuery(playgroundRepo)
+	resolveConfigQuery := queries.NewResolvePlaygroundConfigQuery(agentRepo, providerRepo, promptRepo, enc)
+
+	// Build playground application
+	playgroundApp := &app.PlaygroundApp{
+		Commands: app.PlaygroundCommands{
+			CreateSession: decorators.ApplyLogging(createSessionCmd, "CreatePlaygroundSession", logger),
+			DeleteSession: decorators.ApplyLoggingExecutor(deleteSessionCmd, "DeletePlaygroundSession", logger),
+			SaveMessage:   decorators.ApplyLogging(saveMessageCmd, "SavePlaygroundMessage", logger),
+		},
+		Queries: app.PlaygroundQueries{
+			ListSessions:  decorators.ApplyLogging(listSessionsQuery, "ListPlaygroundSessions", logger),
+			ListMessages:  decorators.ApplyLogging(listMessagesQuery, "ListPlaygroundMessages", logger),
+			ResolveConfig: decorators.ApplyLogging(resolveConfigQuery, "ResolvePlaygroundConfig", logger),
+		},
+	}
+
 	return &Server{
-		cfg:          cfg,
-		authApp:      authApp,
-		providerApp:  providerApp,
-		promptApp:    promptApp,
-		agentApp:     agentApp,
-		sessionStore: sessionStore,
-		db:           db,
-		done:         make(chan struct{}),
+		cfg:           cfg,
+		authApp:       authApp,
+		providerApp:   providerApp,
+		promptApp:     promptApp,
+		agentApp:      agentApp,
+		playgroundApp: playgroundApp,
+		chatProvider:  chatProvider,
+		sessionStore:  sessionStore,
+		db:            db,
+		done:          make(chan struct{}),
 	}, nil
 }
 
@@ -207,7 +242,7 @@ func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
 	// Register all API routes via generated handler
-	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp, s.promptApp, s.agentApp)
+	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp, s.promptApp, s.agentApp, s.playgroundApp, s.chatProvider)
 	gen.HandlerFromMux(apiHandler, mux)
 
 	// SPA fallback: serve embedded UI or fallback to index.html

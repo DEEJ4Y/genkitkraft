@@ -13,6 +13,12 @@ const (
 	Up   ModelsHealthStatus = "up"
 )
 
+// Defines values for ModelsPlaygroundMessageResponseRole.
+const (
+	Assistant ModelsPlaygroundMessageResponseRole = "assistant"
+	User      ModelsPlaygroundMessageResponseRole = "user"
+)
+
 // Defines values for ModelsProviderType.
 const (
 	Anthropic        ModelsProviderType = "anthropic"
@@ -133,6 +139,12 @@ type ModelsCreateAgentRequest struct {
 	TopP *float32 `json:"topP,omitempty"`
 }
 
+// ModelsCreatePlaygroundSessionRequest Request to create a new playground session.
+type ModelsCreatePlaygroundSessionRequest struct {
+	// Title Optional title for the session.
+	Title *string `json:"title,omitempty"`
+}
+
 // ModelsCreatePromptRequest Request to create a new prompt.
 type ModelsCreatePromptRequest struct {
 	// Content Prompt content in markdown format.
@@ -202,6 +214,84 @@ type ModelsLogoutResponse struct {
 type ModelsMeResponse struct {
 	// Username Username of the currently authenticated user.
 	Username string `json:"username"`
+}
+
+// ModelsPlaygroundChatRequest Request to send a chat message in the playground.
+type ModelsPlaygroundChatRequest struct {
+	// Content The user message content.
+	Content string `json:"content"`
+
+	// ModelId Optional model override for testing.
+	ModelId *string `json:"modelId,omitempty"`
+
+	// ProviderId Optional provider override for testing.
+	ProviderId *string `json:"providerId,omitempty"`
+
+	// SessionId The session to send the message in.
+	SessionId string `json:"sessionId"`
+
+	// SystemPromptId Optional system prompt override for testing.
+	SystemPromptId *string `json:"systemPromptId,omitempty"`
+
+	// Temperature Optional temperature override for testing.
+	Temperature *float32 `json:"temperature,omitempty"`
+
+	// TopK Optional top-k override for testing.
+	TopK *int32 `json:"topK,omitempty"`
+
+	// TopP Optional top-p override for testing.
+	TopP *float32 `json:"topP,omitempty"`
+}
+
+// ModelsPlaygroundMessageListResponse List of messages in a session.
+type ModelsPlaygroundMessageListResponse struct {
+	// Messages Array of messages.
+	Messages []ModelsPlaygroundMessageResponse `json:"messages"`
+}
+
+// ModelsPlaygroundMessageResponse A single message in a playground session.
+type ModelsPlaygroundMessageResponse struct {
+	// Content Message text content.
+	Content string `json:"content"`
+
+	// CreatedAt When this message was created.
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Id Unique message ID.
+	Id string `json:"id"`
+
+	// Role Message role.
+	Role ModelsPlaygroundMessageResponseRole `json:"role"`
+
+	// SessionId Session this message belongs to.
+	SessionId string `json:"sessionId"`
+}
+
+// ModelsPlaygroundMessageResponseRole Message role.
+type ModelsPlaygroundMessageResponseRole string
+
+// ModelsPlaygroundSessionListResponse List of playground sessions.
+type ModelsPlaygroundSessionListResponse struct {
+	// Sessions Array of sessions.
+	Sessions []ModelsPlaygroundSessionResponse `json:"sessions"`
+}
+
+// ModelsPlaygroundSessionResponse A playground chat session for testing an agent.
+type ModelsPlaygroundSessionResponse struct {
+	// AgentId ID of the agent this session belongs to.
+	AgentId string `json:"agentId"`
+
+	// CreatedAt When this session was created.
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Id Unique session ID.
+	Id string `json:"id"`
+
+	// Title Session title (auto-generated from first message).
+	Title string `json:"title"`
+
+	// UpdatedAt When this session was last updated.
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // ModelsPromptListResponse Paginated list of prompts.
@@ -389,6 +479,12 @@ type LoginJSONRequestBody = ModelsLoginRequest
 
 // CreateAgentJSONRequestBody defines body for CreateAgent for application/json ContentType.
 type CreateAgentJSONRequestBody = ModelsCreateAgentRequest
+
+// PlaygroundChatJSONRequestBody defines body for PlaygroundChat for application/json ContentType.
+type PlaygroundChatJSONRequestBody = ModelsPlaygroundChatRequest
+
+// CreatePlaygroundSessionJSONRequestBody defines body for CreatePlaygroundSession for application/json ContentType.
+type CreatePlaygroundSessionJSONRequestBody = ModelsCreatePlaygroundSessionRequest
 
 // UpdateAgentJSONRequestBody defines body for UpdateAgent for application/json ContentType.
 type UpdateAgentJSONRequestBody = ModelsUpdateAgentRequest

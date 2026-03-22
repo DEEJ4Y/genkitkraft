@@ -2,13 +2,16 @@ package httphandler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/DEEJ4Y/genkitkraft/internal/api/gen"
 	"github.com/DEEJ4Y/genkitkraft/internal/app"
 	"github.com/DEEJ4Y/genkitkraft/internal/app/commands"
 	"github.com/DEEJ4Y/genkitkraft/internal/app/queries"
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
+	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
 )
 
 const sessionCookieName = "session_token"
@@ -19,14 +22,16 @@ var _ gen.ServerInterface = (*Handler)(nil)
 
 // Handler implements gen.ServerInterface, delegating to the application layer.
 type Handler struct {
-	authApp     *app.AuthApp
-	providerApp *app.ProviderApp
-	promptApp   *app.PromptApp
-	agentApp    *app.AgentApp
+	authApp       *app.AuthApp
+	providerApp   *app.ProviderApp
+	promptApp     *app.PromptApp
+	agentApp      *app.AgentApp
+	playgroundApp *app.PlaygroundApp
+	chatProvider  chatprovider.ChatProvider
 }
 
-func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp, promptApp *app.PromptApp, agentApp *app.AgentApp) *Handler {
-	return &Handler{authApp: authApp, providerApp: providerApp, promptApp: promptApp, agentApp: agentApp}
+func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp, promptApp *app.PromptApp, agentApp *app.AgentApp, playgroundApp *app.PlaygroundApp, chatProvider chatprovider.ChatProvider) *Handler {
+	return &Handler{authApp: authApp, providerApp: providerApp, promptApp: promptApp, agentApp: agentApp, playgroundApp: playgroundApp, chatProvider: chatProvider}
 }
 
 func (h *Handler) GetAuthStatus(w http.ResponseWriter, r *http.Request) {
@@ -323,4 +328,173 @@ func (h *Handler) DeleteAgent(w http.ResponseWriter, r *http.Request, id string)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) ListPlaygroundSessions(w http.ResponseWriter, r *http.Request, agentId string) {
+	result, err := h.playgroundApp.Queries.ListSessions.Execute(r.Context(), queries.ListPlaygroundSessionsParams{AgentID: agentId})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toPlaygroundSessionListResponse(result))
+}
+
+func (h *Handler) CreatePlaygroundSession(w http.ResponseWriter, r *http.Request, agentId string) {
+	var req gen.ModelsCreatePlaygroundSessionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	params := commands.CreatePlaygroundSessionParams{
+		AgentID: agentId,
+	}
+	if req.Title != nil {
+		params.Title = *req.Title
+	}
+
+	result, err := h.playgroundApp.Commands.CreateSession.Execute(r.Context(), params)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toPlaygroundSessionResponse(result.Session))
+}
+
+func (h *Handler) DeletePlaygroundSession(w http.ResponseWriter, r *http.Request, agentId string, sessionId string) {
+	err := h.playgroundApp.Commands.DeleteSession.Execute(r.Context(), commands.DeletePlaygroundSessionParams{ID: sessionId})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) ListPlaygroundMessages(w http.ResponseWriter, r *http.Request, agentId string, sessionId string) {
+	result, err := h.playgroundApp.Queries.ListMessages.Execute(r.Context(), queries.ListPlaygroundMessagesParams{SessionID: sessionId})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toPlaygroundMessageListResponse(result))
+}
+
+func (h *Handler) PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId string) {
+	var req gen.ModelsPlaygroundChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	if req.SessionId == "" {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "session ID is required"))
+		return
+	}
+	if req.Content == "" {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "content is required"))
+		return
+	}
+
+	// Save user message
+	_, err := h.playgroundApp.Commands.SaveMessage.Execute(r.Context(), commands.SavePlaygroundMessageParams{
+		SessionID: req.SessionId,
+		Role:      "user",
+		Content:   req.Content,
+	})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	// Resolve config (agent defaults + overrides)
+	configParams := queries.ResolvePlaygroundConfigParams{
+		AgentID: agentId,
+	}
+	if req.ProviderId != nil {
+		configParams.ProviderID = *req.ProviderId
+	}
+	if req.ModelId != nil {
+		configParams.ModelID = *req.ModelId
+	}
+	if req.SystemPromptId != nil {
+		configParams.SystemPromptID = req.SystemPromptId
+	}
+	if req.Temperature != nil {
+		t := float64(*req.Temperature)
+		configParams.Temperature = &t
+	}
+	if req.TopP != nil {
+		t := float64(*req.TopP)
+		configParams.TopP = &t
+	}
+	if req.TopK != nil {
+		t := int(*req.TopK)
+		configParams.TopK = &t
+	}
+
+	configResult, err := h.playgroundApp.Queries.ResolveConfig.Execute(r.Context(), configParams)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	// Load conversation history
+	messagesResult, err := h.playgroundApp.Queries.ListMessages.Execute(r.Context(), queries.ListPlaygroundMessagesParams{SessionID: req.SessionId})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	// Build chat messages from history
+	chatMessages := make([]chatprovider.ChatMessage, 0, len(messagesResult.Messages))
+	for _, m := range messagesResult.Messages {
+		chatMessages = append(chatMessages, chatprovider.ChatMessage{
+			Role:    m.Role,
+			Content: m.Content,
+		})
+	}
+
+	chatReq := configResult.ChatRequest
+	chatReq.Messages = chatMessages
+
+	// Stream response via SSE
+	tokenCh, errCh := h.chatProvider.ChatStream(r.Context(), chatReq)
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeAppError(w, errors.NewAppError(errors.Internal, "streaming not supported"))
+		return
+	}
+
+	var fullResponse strings.Builder
+
+	for token := range tokenCh {
+		fullResponse.WriteString(token)
+		fmt.Fprintf(w, "data: %s\n\n", escapeSSEData(token))
+		flusher.Flush()
+	}
+
+	// Check for streaming errors
+	if streamErr := <-errCh; streamErr != nil {
+		fmt.Fprintf(w, "data: [ERROR] %s\n\n", streamErr.Error())
+		flusher.Flush()
+		return
+	}
+
+	fmt.Fprintf(w, "data: [DONE]\n\n")
+	flusher.Flush()
+
+	// Save assistant message
+	if fullResponse.Len() > 0 {
+		_, _ = h.playgroundApp.Commands.SaveMessage.Execute(r.Context(), commands.SavePlaygroundMessageParams{
+			SessionID: req.SessionId,
+			Role:      "assistant",
+			Content:   fullResponse.String(),
+		})
+	}
 }

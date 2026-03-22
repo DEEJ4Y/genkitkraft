@@ -8,6 +8,7 @@ tags:
   - name: Settings
   - name: Prompts
   - name: Agents
+  - name: Playground
 paths:
   /api/auth/login:
     post:
@@ -150,6 +151,153 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Models.CreateAgentRequest'
+  /api/v1/agents/{agentId}/playground/chat:
+    post:
+      operationId: playgroundChat
+      summary: Playground chat
+      description: Send a message and receive a streaming response (SSE).
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.PlaygroundMessageResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Playground
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.PlaygroundChatRequest'
+  /api/v1/agents/{agentId}/playground/sessions:
+    get:
+      operationId: listPlaygroundSessions
+      summary: List playground sessions
+      description: List all playground sessions for an agent.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.PlaygroundSessionListResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Playground
+    post:
+      operationId: createPlaygroundSession
+      summary: Create playground session
+      description: Create a new playground session for an agent.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.PlaygroundSessionResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Playground
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.CreatePlaygroundSessionRequest'
+  /api/v1/agents/{agentId}/playground/sessions/{sessionId}:
+    delete:
+      operationId: deletePlaygroundSession
+      summary: Delete playground session
+      description: Delete a playground session.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Playground
+  /api/v1/agents/{agentId}/playground/sessions/{sessionId}/messages:
+    get:
+      operationId: listPlaygroundMessages
+      summary: List playground messages
+      description: Get all messages in a playground session.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.PlaygroundMessageListResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Playground
   /api/v1/agents/{id}:
     get:
       operationId: getAgent
@@ -751,6 +899,13 @@ components:
           format: int32
           description: Top-k sampling (default 40).
       description: Request to create a new agent.
+    Models.CreatePlaygroundSessionRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Optional title for the session.
+      description: Request to create a new playground session.
     Models.CreatePromptRequest:
       type: object
       required:
@@ -879,6 +1034,118 @@ components:
     Models.OpenAIProviderConfig:
       type: object
       description: OpenAI provider config (no extra fields needed).
+    Models.PlaygroundChatRequest:
+      type: object
+      required:
+        - sessionId
+        - content
+      properties:
+        sessionId:
+          type: string
+          description: The session to send the message in.
+        content:
+          type: string
+          description: The user message content.
+        providerId:
+          type: string
+          description: Optional provider override for testing.
+        modelId:
+          type: string
+          description: Optional model override for testing.
+        systemPromptId:
+          type: string
+          description: Optional system prompt override for testing.
+        temperature:
+          type: number
+          format: float
+          description: Optional temperature override for testing.
+        topP:
+          type: number
+          format: float
+          description: Optional top-p override for testing.
+        topK:
+          type: integer
+          format: int32
+          description: Optional top-k override for testing.
+      description: Request to send a chat message in the playground.
+    Models.PlaygroundMessageListResponse:
+      type: object
+      required:
+        - messages
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.PlaygroundMessageResponse'
+          description: Array of messages.
+      description: List of messages in a session.
+    Models.PlaygroundMessageResponse:
+      type: object
+      required:
+        - id
+        - sessionId
+        - role
+        - content
+        - createdAt
+      properties:
+        id:
+          type: string
+          description: Unique message ID.
+        sessionId:
+          type: string
+          description: Session this message belongs to.
+        role:
+          type: string
+          enum:
+            - user
+            - assistant
+          description: Message role.
+        content:
+          type: string
+          description: Message text content.
+        createdAt:
+          type: string
+          format: date-time
+          description: When this message was created.
+      description: A single message in a playground session.
+    Models.PlaygroundSessionListResponse:
+      type: object
+      required:
+        - sessions
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.PlaygroundSessionResponse'
+          description: Array of sessions.
+      description: List of playground sessions.
+    Models.PlaygroundSessionResponse:
+      type: object
+      required:
+        - id
+        - agentId
+        - title
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Unique session ID.
+        agentId:
+          type: string
+          description: ID of the agent this session belongs to.
+        title:
+          type: string
+          description: Session title (auto-generated from first message).
+        createdAt:
+          type: string
+          format: date-time
+          description: When this session was created.
+        updatedAt:
+          type: string
+          format: date-time
+          description: When this session was last updated.
+      description: A playground chat session for testing an agent.
     Models.PromptListResponse:
       type: object
       required:

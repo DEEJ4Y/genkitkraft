@@ -10,6 +10,7 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/app/queries"
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/agent"
+	"github.com/DEEJ4Y/genkitkraft/internal/domain/playground"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/prompt"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
 )
@@ -310,4 +311,46 @@ func toListAgentsParams(params gen.ListAgentsParams) queries.ListAgentsParams {
 		Limit:  limit,
 		Offset: offset,
 	}
+}
+
+func toPlaygroundSessionResponse(s *playground.Session) gen.ModelsPlaygroundSessionResponse {
+	return gen.ModelsPlaygroundSessionResponse{
+		Id:        s.ID,
+		AgentId:   s.AgentID,
+		Title:     s.Title,
+		CreatedAt: s.CreatedAt,
+		UpdatedAt: s.UpdatedAt,
+	}
+}
+
+func toPlaygroundSessionListResponse(result queries.ListPlaygroundSessionsResult) gen.ModelsPlaygroundSessionListResponse {
+	sessions := make([]gen.ModelsPlaygroundSessionResponse, len(result.Sessions))
+	for i, s := range result.Sessions {
+		sessions[i] = toPlaygroundSessionResponse(s)
+	}
+	return gen.ModelsPlaygroundSessionListResponse{Sessions: sessions}
+}
+
+func toPlaygroundMessageResponse(m *playground.Message) gen.ModelsPlaygroundMessageResponse {
+	return gen.ModelsPlaygroundMessageResponse{
+		Id:        m.ID,
+		SessionId: m.SessionID,
+		Role:      gen.ModelsPlaygroundMessageResponseRole(m.Role),
+		Content:   m.Content,
+		CreatedAt: m.CreatedAt,
+	}
+}
+
+func toPlaygroundMessageListResponse(result queries.ListPlaygroundMessagesResult) gen.ModelsPlaygroundMessageListResponse {
+	messages := make([]gen.ModelsPlaygroundMessageResponse, len(result.Messages))
+	for i, m := range result.Messages {
+		messages[i] = toPlaygroundMessageResponse(m)
+	}
+	return gen.ModelsPlaygroundMessageListResponse{Messages: messages}
+}
+
+// escapeSSEData escapes newlines in SSE data fields.
+// Each line in an SSE data field must be prefixed with "data: ".
+func escapeSSEData(s string) string {
+	return strings.ReplaceAll(s, "\n", "\ndata: ")
 }
