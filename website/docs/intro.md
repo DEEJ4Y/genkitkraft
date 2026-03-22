@@ -19,7 +19,7 @@ GenKitKraft is a self-hostable platform for configuring and running LLM agents, 
 
 ### Using the Pre-built Docker Image (GHCR)
 
-The latest image is published to the GitHub Container Registry on every push to `main`.
+The latest image is published to the [GitHub Container Registry](https://github.com/DEEJ4Y/genkitkraft/pkgs/container/genkitkraft) on every push to `main`.
 
 ```bash
 docker pull ghcr.io/deej4y/genkitkraft:latest
@@ -35,7 +35,7 @@ docker run -d \
   ghcr.io/deej4y/genkitkraft:latest
 ```
 
-You can also pin to a specific version tag (e.g. `ghcr.io/deej4y/genkitkraft:1.0.0`, coming soon) or a commit SHA (e.g. `ghcr.io/deej4y/genkitkraft:sha-a1b2c3d`).
+Visit the [GHCR page for GenKitKraft](https://github.com/DEEJ4Y/genkitkraft/pkgs/container/genkitkraft) to see the list of available tags, including older versions.
 
 ### Using Docker Compose
 
