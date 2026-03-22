@@ -84,6 +84,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List agents
+         * @description List all agents with pagination.
+         */
+        get: operations["listAgents"];
+        put?: never;
+        /**
+         * Create agent
+         * @description Create a new agent.
+         */
+        post: operations["createAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get agent
+         * @description Get a single agent by ID.
+         */
+        get: operations["getAgent"];
+        /**
+         * Update agent
+         * @description Update an existing agent.
+         */
+        put: operations["updateAgent"];
+        post?: never;
+        /**
+         * Delete agent
+         * @description Delete an agent.
+         */
+        delete: operations["deleteAgent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/prompts": {
         parameters: {
             query?: never;
@@ -272,6 +324,70 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Paginated list of agents. */
+        "Models.AgentListResponse": {
+            /** @description Array of agents. */
+            agents: components["schemas"]["Models.AgentResponse"][];
+            /**
+             * Format: int32
+             * @description Total number of agents.
+             */
+            total: number;
+            /**
+             * Format: int32
+             * @description Number of agents per page.
+             */
+            limit: number;
+            /**
+             * Format: int32
+             * @description Number of agents skipped.
+             */
+            offset: number;
+        };
+        /** @description An AI agent configuration. */
+        "Models.AgentResponse": {
+            /** @description Unique agent ID. */
+            id: string;
+            /** @description Display name for this agent. */
+            name: string;
+            /** @description ID of the provider this agent uses. */
+            providerId: string;
+            /** @description Resolved display name of the provider. */
+            providerName: string;
+            /** @description Resolved type of the provider. */
+            providerType: components["schemas"]["Models.ProviderType"];
+            /** @description Model identifier (e.g. gemini-2.5-flash, gpt-4o). */
+            modelId: string;
+            /** @description ID of the system prompt, if any. */
+            systemPromptId?: string;
+            /** @description Resolved name of the system prompt, if any. */
+            systemPromptName?: string;
+            /**
+             * Format: float
+             * @description Sampling temperature.
+             */
+            temperature: number;
+            /**
+             * Format: float
+             * @description Nucleus sampling (top-p).
+             */
+            topP: number;
+            /**
+             * Format: int32
+             * @description Top-k sampling.
+             */
+            topK: number;
+            /**
+             * Format: date-time
+             * @description When this agent was created.
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description When this agent was last updated.
+             */
+            updatedAt: string;
+        };
         /** @description Anthropic provider config (no extra fields needed). */
         "Models.AnthropicProviderConfig": Record<string, never>;
         /** @description Response indicating whether authentication is required. */
@@ -311,6 +427,32 @@ export interface components {
             placeholder?: string;
             /** @description Whether the field contains sensitive data. */
             sensitive?: boolean;
+        };
+        /** @description Request to create a new agent. */
+        "Models.CreateAgentRequest": {
+            /** @description Display name for this agent. */
+            name: string;
+            /** @description ID of the provider to use. */
+            providerId: string;
+            /** @description Model identifier. */
+            modelId: string;
+            /** @description ID of an existing system prompt (optional). */
+            systemPromptId?: string;
+            /**
+             * Format: float
+             * @description Sampling temperature (default 0.95).
+             */
+            temperature?: number;
+            /**
+             * Format: float
+             * @description Nucleus sampling top-p (default 0.95).
+             */
+            topP?: number;
+            /**
+             * Format: int32
+             * @description Top-k sampling (default 40).
+             */
+            topK?: number;
         };
         /** @description Request to create a new prompt. */
         "Models.CreatePromptRequest": {
@@ -498,6 +640,32 @@ export interface components {
             /** @description Human-readable result message. */
             message: string;
         };
+        /** @description Request to update an existing agent. */
+        "Models.UpdateAgentRequest": {
+            /** @description Updated display name. */
+            name?: string;
+            /** @description Updated provider ID. */
+            providerId?: string;
+            /** @description Updated model identifier. */
+            modelId?: string;
+            /** @description Updated system prompt ID (empty string to clear). */
+            systemPromptId?: string;
+            /**
+             * Format: float
+             * @description Updated sampling temperature.
+             */
+            temperature?: number;
+            /**
+             * Format: float
+             * @description Updated nucleus sampling top-p.
+             */
+            topP?: number;
+            /**
+             * Format: int32
+             * @description Updated top-k sampling.
+             */
+            topK?: number;
+        };
         /** @description Request to update an existing prompt. */
         "Models.UpdatePromptRequest": {
             /** @description Updated display name. */
@@ -654,6 +822,148 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Models.AuthStatusResponse"];
+                };
+            };
+        };
+    };
+    listAgents: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.AgentListResponse"];
+                };
+            };
+        };
+    };
+    createAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.CreateAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded and a new resource has been created as a result. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.AgentResponse"];
+                };
+            };
+        };
+    };
+    getAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.AgentResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.UpdateAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.AgentResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
                 };
             };
         };

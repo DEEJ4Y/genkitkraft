@@ -1,4 +1,5 @@
-import { Card, Group, Text, Badge, Code, Button, Stack } from '@mantine/core'
+import { Card, Group, Text, Badge, Code, Stack, ActionIcon, Tooltip } from '@mantine/core'
+import { IconEdit, IconTrash } from '@tabler/icons-react'
 import type { components } from '../lib/api/schema'
 
 type Provider = components['schemas']['Models.ProviderResponse']
@@ -15,31 +16,51 @@ export function ProviderCard({ typeInfo, provider, onConfigure, onDelete }: Prov
   const configured = !!provider
 
   return (
-    <Card withBorder padding="lg" radius="md">
-      <Group justify="space-between" mb="sm">
-        <Group gap="xs">
-          <div
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              backgroundColor: configured && provider.enabled ? 'var(--mantine-color-green-6)' : 'var(--mantine-color-gray-4)',
-            }}
-          />
-          <Text fw={600}>{typeInfo.displayName}</Text>
-          {typeInfo.comingSoon && (
-            <Badge size="xs" variant="light" color="yellow">
-              Coming soon
-            </Badge>
+    <Card shadow="xs" padding="md" radius="sm" withBorder>
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Group gap="xs">
+            <div
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                backgroundColor: configured && provider.enabled ? 'var(--mantine-color-green-6)' : 'var(--mantine-color-gray-4)',
+              }}
+            />
+            <Text fw={600} size="md">
+              {typeInfo.displayName}
+            </Text>
+            {typeInfo.comingSoon && (
+              <Badge size="xs" variant="light" color="yellow">
+                Coming soon
+              </Badge>
+            )}
+          </Group>
+
+          <Badge variant="light" color={configured ? 'green' : 'gray'} size="sm" mt={4}>
+            {configured ? 'Configured' : 'Not configured'}
+          </Badge>
+        </div>
+
+        <Group gap="xs" wrap="nowrap">
+          <Tooltip label={configured ? 'Edit' : 'Configure'}>
+            <ActionIcon variant="subtle" onClick={onConfigure} disabled={!!typeInfo.comingSoon}>
+              <IconEdit size={18} />
+            </ActionIcon>
+          </Tooltip>
+          {configured && (
+            <Tooltip label="Delete">
+              <ActionIcon variant="subtle" color="red" onClick={onDelete}>
+                <IconTrash size={18} />
+              </ActionIcon>
+            </Tooltip>
           )}
         </Group>
-        <Badge variant="light" color={configured ? 'green' : 'gray'}>
-          {configured ? 'Configured' : 'Not configured'}
-        </Badge>
       </Group>
 
       {configured && (
-        <Stack gap="xs" mb="md">
+        <Stack gap="xs" mt="xs">
           {provider.apiKey && (
             <Group justify="space-between">
               <Text size="sm" c="dimmed">
@@ -72,17 +93,6 @@ export function ProviderCard({ typeInfo, provider, onConfigure, onDelete }: Prov
           )}
         </Stack>
       )}
-
-      <Group gap="xs">
-        <Button size="xs" color="dark" onClick={onConfigure} disabled={!!typeInfo.comingSoon}>
-          {configured ? 'Edit' : 'Configure'}
-        </Button>
-        {configured && (
-          <Button size="xs" variant="outline" color="red" onClick={onDelete}>
-            Delete
-          </Button>
-        )}
-      </Group>
     </Card>
   )
 }

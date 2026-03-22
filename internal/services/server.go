@@ -17,6 +17,7 @@ import (
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
 	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
+	sqliteagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent"
 	sqliteprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_prompt"
 	sqliteprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_provider"
 	"github.com/DEEJ4Y/genkitkraft/internal/api/gen"
@@ -38,6 +39,7 @@ type Server struct {
 	authApp      *app.AuthApp
 	providerApp  *app.ProviderApp
 	promptApp    *app.PromptApp
+	agentApp     *app.AgentApp
 	sessionStore session.Store
 	db           *sql.DB
 	done         chan struct{}
@@ -161,11 +163,37 @@ func NewServer(cfg config.Config) (*Server, error) {
 		},
 	}
 
+	// Create agent adapters
+	agentRepo := sqliteagent.NewAgentRepository(db)
+
+	// Create agent commands
+	createAgentCmd := commands.NewCreateAgentCommand(agentRepo, providerRepo, promptRepo)
+	updateAgentCmd := commands.NewUpdateAgentCommand(agentRepo, providerRepo, promptRepo)
+	deleteAgentCmd := commands.NewDeleteAgentCommand(agentRepo)
+
+	// Create agent queries
+	listAgentsQuery := queries.NewListAgentsQuery(agentRepo)
+	getAgentQuery := queries.NewGetAgentQuery(agentRepo)
+
+	// Build agent application
+	agentApp := &app.AgentApp{
+		Commands: app.AgentCommands{
+			CreateAgent: decorators.ApplyLogging(createAgentCmd, "CreateAgent", logger),
+			UpdateAgent: decorators.ApplyLogging(updateAgentCmd, "UpdateAgent", logger),
+			DeleteAgent: decorators.ApplyLoggingExecutor(deleteAgentCmd, "DeleteAgent", logger),
+		},
+		Queries: app.AgentQueries{
+			ListAgents: decorators.ApplyLogging(listAgentsQuery, "ListAgents", logger),
+			GetAgent:   decorators.ApplyLogging(getAgentQuery, "GetAgent", logger),
+		},
+	}
+
 	return &Server{
 		cfg:          cfg,
 		authApp:      authApp,
 		providerApp:  providerApp,
 		promptApp:    promptApp,
+		agentApp:     agentApp,
 		sessionStore: sessionStore,
 		db:           db,
 		done:         make(chan struct{}),
@@ -179,7 +207,7 @@ func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
 	// Register all API routes via generated handler
-	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp, s.promptApp)
+	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp, s.promptApp, s.agentApp)
 	gen.HandlerFromMux(apiHandler, mux)
 
 	// SPA fallback: serve embedded UI or fallback to index.html

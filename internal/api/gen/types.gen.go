@@ -28,6 +28,63 @@ const (
 	Xai              ModelsProviderType = "xai"
 )
 
+// ModelsAgentListResponse Paginated list of agents.
+type ModelsAgentListResponse struct {
+	// Agents Array of agents.
+	Agents []ModelsAgentResponse `json:"agents"`
+
+	// Limit Number of agents per page.
+	Limit int32 `json:"limit"`
+
+	// Offset Number of agents skipped.
+	Offset int32 `json:"offset"`
+
+	// Total Total number of agents.
+	Total int32 `json:"total"`
+}
+
+// ModelsAgentResponse An AI agent configuration.
+type ModelsAgentResponse struct {
+	// CreatedAt When this agent was created.
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Id Unique agent ID.
+	Id string `json:"id"`
+
+	// ModelId Model identifier (e.g. gemini-2.5-flash, gpt-4o).
+	ModelId string `json:"modelId"`
+
+	// Name Display name for this agent.
+	Name string `json:"name"`
+
+	// ProviderId ID of the provider this agent uses.
+	ProviderId string `json:"providerId"`
+
+	// ProviderName Resolved display name of the provider.
+	ProviderName string `json:"providerName"`
+
+	// ProviderType Resolved type of the provider.
+	ProviderType ModelsProviderType `json:"providerType"`
+
+	// SystemPromptId ID of the system prompt, if any.
+	SystemPromptId *string `json:"systemPromptId,omitempty"`
+
+	// SystemPromptName Resolved name of the system prompt, if any.
+	SystemPromptName *string `json:"systemPromptName,omitempty"`
+
+	// Temperature Sampling temperature.
+	Temperature float32 `json:"temperature"`
+
+	// TopK Top-k sampling.
+	TopK int32 `json:"topK"`
+
+	// TopP Nucleus sampling (top-p).
+	TopP float32 `json:"topP"`
+
+	// UpdatedAt When this agent was last updated.
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
 // ModelsAuthStatusResponse Response indicating whether authentication is required.
 type ModelsAuthStatusResponse struct {
 	// Required True if AUTH_CREDENTIALS is configured and non-empty.
@@ -50,6 +107,30 @@ type ModelsConfigFieldInfo struct {
 
 	// Sensitive Whether the field contains sensitive data.
 	Sensitive *bool `json:"sensitive,omitempty"`
+}
+
+// ModelsCreateAgentRequest Request to create a new agent.
+type ModelsCreateAgentRequest struct {
+	// ModelId Model identifier.
+	ModelId string `json:"modelId"`
+
+	// Name Display name for this agent.
+	Name string `json:"name"`
+
+	// ProviderId ID of the provider to use.
+	ProviderId string `json:"providerId"`
+
+	// SystemPromptId ID of an existing system prompt (optional).
+	SystemPromptId *string `json:"systemPromptId,omitempty"`
+
+	// Temperature Sampling temperature (default 0.95).
+	Temperature *float32 `json:"temperature,omitempty"`
+
+	// TopK Top-k sampling (default 40).
+	TopK *int32 `json:"topK,omitempty"`
+
+	// TopP Nucleus sampling top-p (default 0.95).
+	TopP *float32 `json:"topP,omitempty"`
 }
 
 // ModelsCreatePromptRequest Request to create a new prompt.
@@ -240,6 +321,30 @@ type ModelsTestProviderResponse struct {
 	Success bool `json:"success"`
 }
 
+// ModelsUpdateAgentRequest Request to update an existing agent.
+type ModelsUpdateAgentRequest struct {
+	// ModelId Updated model identifier.
+	ModelId *string `json:"modelId,omitempty"`
+
+	// Name Updated display name.
+	Name *string `json:"name,omitempty"`
+
+	// ProviderId Updated provider ID.
+	ProviderId *string `json:"providerId,omitempty"`
+
+	// SystemPromptId Updated system prompt ID (empty string to clear).
+	SystemPromptId *string `json:"systemPromptId,omitempty"`
+
+	// Temperature Updated sampling temperature.
+	Temperature *float32 `json:"temperature,omitempty"`
+
+	// TopK Updated top-k sampling.
+	TopK *int32 `json:"topK,omitempty"`
+
+	// TopP Updated nucleus sampling top-p.
+	TopP *float32 `json:"topP,omitempty"`
+}
+
 // ModelsUpdatePromptRequest Request to update an existing prompt.
 type ModelsUpdatePromptRequest struct {
 	// Content Updated prompt content in markdown format.
@@ -267,6 +372,12 @@ type ModelsUpdateProviderRequest struct {
 	Name *string `json:"name,omitempty"`
 }
 
+// ListAgentsParams defines parameters for ListAgents.
+type ListAgentsParams struct {
+	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // ListPromptsParams defines parameters for ListPrompts.
 type ListPromptsParams struct {
 	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
@@ -275,6 +386,12 @@ type ListPromptsParams struct {
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = ModelsLoginRequest
+
+// CreateAgentJSONRequestBody defines body for CreateAgent for application/json ContentType.
+type CreateAgentJSONRequestBody = ModelsCreateAgentRequest
+
+// UpdateAgentJSONRequestBody defines body for UpdateAgent for application/json ContentType.
+type UpdateAgentJSONRequestBody = ModelsUpdateAgentRequest
 
 // CreatePromptJSONRequestBody defines body for CreatePrompt for application/json ContentType.
 type CreatePromptJSONRequestBody = ModelsCreatePromptRequest

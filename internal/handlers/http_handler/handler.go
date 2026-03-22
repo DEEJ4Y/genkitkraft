@@ -22,10 +22,11 @@ type Handler struct {
 	authApp     *app.AuthApp
 	providerApp *app.ProviderApp
 	promptApp   *app.PromptApp
+	agentApp    *app.AgentApp
 }
 
-func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp, promptApp *app.PromptApp) *Handler {
-	return &Handler{authApp: authApp, providerApp: providerApp, promptApp: promptApp}
+func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp, promptApp *app.PromptApp, agentApp *app.AgentApp) *Handler {
+	return &Handler{authApp: authApp, providerApp: providerApp, promptApp: promptApp, agentApp: agentApp}
 }
 
 func (h *Handler) GetAuthStatus(w http.ResponseWriter, r *http.Request) {
@@ -255,6 +256,68 @@ func (h *Handler) UpdatePrompt(w http.ResponseWriter, r *http.Request, id string
 
 func (h *Handler) DeletePrompt(w http.ResponseWriter, r *http.Request, id string) {
 	err := h.promptApp.Commands.DeletePrompt.Execute(r.Context(), commands.DeletePromptParams{ID: id})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) ListAgents(w http.ResponseWriter, r *http.Request, params gen.ListAgentsParams) {
+	qParams := toListAgentsParams(params)
+	result, err := h.agentApp.Queries.ListAgents.Execute(r.Context(), qParams)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toAgentListResponse(result, qParams.Limit, qParams.Offset))
+}
+
+func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
+	var req gen.ModelsCreateAgentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	params := toCreateAgentParams(req)
+	result, err := h.agentApp.Commands.CreateAgent.Execute(r.Context(), params)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toAgentResponse(result.Agent))
+}
+
+func (h *Handler) GetAgent(w http.ResponseWriter, r *http.Request, id string) {
+	result, err := h.agentApp.Queries.GetAgent.Execute(r.Context(), queries.GetAgentParams{ID: id})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toAgentResponse(result.Agent))
+}
+
+func (h *Handler) UpdateAgent(w http.ResponseWriter, r *http.Request, id string) {
+	var req gen.ModelsUpdateAgentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	params := toUpdateAgentParams(id, req)
+	result, err := h.agentApp.Commands.UpdateAgent.Execute(r.Context(), params)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toAgentResponse(result.Agent))
+}
+
+func (h *Handler) DeleteAgent(w http.ResponseWriter, r *http.Request, id string) {
+	err := h.agentApp.Commands.DeleteAgent.Execute(r.Context(), commands.DeleteAgentParams{ID: id})
 	if err != nil {
 		writeAppError(w, err)
 		return

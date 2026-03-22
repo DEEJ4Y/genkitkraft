@@ -7,6 +7,7 @@ tags:
   - name: Auth
   - name: Settings
   - name: Prompts
+  - name: Agents
 paths:
   /api/auth/login:
     post:
@@ -98,6 +99,135 @@ paths:
                 $ref: '#/components/schemas/Models.AuthStatusResponse'
       tags:
         - Auth
+  /api/v1/agents:
+    get:
+      operationId: listAgents
+      summary: List agents
+      description: List all agents with pagination.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 20
+          explode: false
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.AgentListResponse'
+      tags:
+        - Agents
+    post:
+      operationId: createAgent
+      summary: Create agent
+      description: Create a new agent.
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.AgentResponse'
+      tags:
+        - Agents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.CreateAgentRequest'
+  /api/v1/agents/{id}:
+    get:
+      operationId: getAgent
+      summary: Get agent
+      description: Get a single agent by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.AgentResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Agents
+    put:
+      operationId: updateAgent
+      summary: Update agent
+      description: Update an existing agent.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.AgentResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Agents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.UpdateAgentRequest'
+    delete:
+      operationId: deleteAgent
+      summary: Delete agent
+      description: Delete an agent.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Agents
   /api/v1/prompts:
     get:
       operationId: listPrompts
@@ -431,6 +561,93 @@ paths:
         - Health
 components:
   schemas:
+    Models.AgentListResponse:
+      type: object
+      required:
+        - agents
+        - total
+        - limit
+        - offset
+      properties:
+        agents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.AgentResponse'
+          description: Array of agents.
+        total:
+          type: integer
+          format: int32
+          description: Total number of agents.
+        limit:
+          type: integer
+          format: int32
+          description: Number of agents per page.
+        offset:
+          type: integer
+          format: int32
+          description: Number of agents skipped.
+      description: Paginated list of agents.
+    Models.AgentResponse:
+      type: object
+      required:
+        - id
+        - name
+        - providerId
+        - providerName
+        - providerType
+        - modelId
+        - temperature
+        - topP
+        - topK
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Unique agent ID.
+        name:
+          type: string
+          description: Display name for this agent.
+        providerId:
+          type: string
+          description: ID of the provider this agent uses.
+        providerName:
+          type: string
+          description: Resolved display name of the provider.
+        providerType:
+          allOf:
+            - $ref: '#/components/schemas/Models.ProviderType'
+          description: Resolved type of the provider.
+        modelId:
+          type: string
+          description: Model identifier (e.g. gemini-2.5-flash, gpt-4o).
+        systemPromptId:
+          type: string
+          description: ID of the system prompt, if any.
+        systemPromptName:
+          type: string
+          description: Resolved name of the system prompt, if any.
+        temperature:
+          type: number
+          format: float
+          description: Sampling temperature.
+        topP:
+          type: number
+          format: float
+          description: Nucleus sampling (top-p).
+        topK:
+          type: integer
+          format: int32
+          description: Top-k sampling.
+        createdAt:
+          type: string
+          format: date-time
+          description: When this agent was created.
+        updatedAt:
+          type: string
+          format: date-time
+          description: When this agent was last updated.
+      description: An AI agent configuration.
     Models.AnthropicProviderConfig:
       type: object
       description: Anthropic provider config (no extra fields needed).
@@ -502,6 +719,38 @@ components:
           type: boolean
           description: Whether the field contains sensitive data.
       description: Describes a config field for a provider type.
+    Models.CreateAgentRequest:
+      type: object
+      required:
+        - name
+        - providerId
+        - modelId
+      properties:
+        name:
+          type: string
+          description: Display name for this agent.
+        providerId:
+          type: string
+          description: ID of the provider to use.
+        modelId:
+          type: string
+          description: Model identifier.
+        systemPromptId:
+          type: string
+          description: ID of an existing system prompt (optional).
+        temperature:
+          type: number
+          format: float
+          description: Sampling temperature (default 0.95).
+        topP:
+          type: number
+          format: float
+          description: Nucleus sampling top-p (default 0.95).
+        topK:
+          type: integer
+          format: int32
+          description: Top-k sampling (default 40).
+      description: Request to create a new agent.
     Models.CreatePromptRequest:
       type: object
       required:
@@ -818,6 +1067,34 @@ components:
           type: string
           description: Human-readable result message.
       description: Result of testing provider connectivity.
+    Models.UpdateAgentRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Updated display name.
+        providerId:
+          type: string
+          description: Updated provider ID.
+        modelId:
+          type: string
+          description: Updated model identifier.
+        systemPromptId:
+          type: string
+          description: Updated system prompt ID (empty string to clear).
+        temperature:
+          type: number
+          format: float
+          description: Updated sampling temperature.
+        topP:
+          type: number
+          format: float
+          description: Updated nucleus sampling top-p.
+        topK:
+          type: integer
+          format: int32
+          description: Updated top-k sampling.
+      description: Request to update an existing agent.
     Models.UpdatePromptRequest:
       type: object
       properties:

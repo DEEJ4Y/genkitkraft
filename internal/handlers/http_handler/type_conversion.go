@@ -9,6 +9,7 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/app/commands"
 	"github.com/DEEJ4Y/genkitkraft/internal/app/queries"
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
+	"github.com/DEEJ4Y/genkitkraft/internal/domain/agent"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/prompt"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
 )
@@ -211,4 +212,102 @@ func toProviderTypeListResponse(result queries.ListProviderTypesResult) gen.Mode
 		types[i] = info
 	}
 	return gen.ModelsProviderTypeListResponse{ProviderTypes: types}
+}
+
+func toAgentResponse(a *agent.Agent) gen.ModelsAgentResponse {
+	resp := gen.ModelsAgentResponse{
+		Id:           a.ID,
+		Name:         a.Name,
+		ProviderId:   a.ProviderID,
+		ProviderName: a.ProviderName,
+		ProviderType: gen.ModelsProviderType(a.ProviderType),
+		ModelId:      a.ModelID,
+		Temperature:  float32(a.Temperature),
+		TopP:         float32(a.TopP),
+		TopK:         int32(a.TopK),
+		CreatedAt:    a.CreatedAt,
+		UpdatedAt:    a.UpdatedAt,
+	}
+	if a.SystemPromptID != "" {
+		resp.SystemPromptId = &a.SystemPromptID
+	}
+	if a.SystemPromptName != "" {
+		resp.SystemPromptName = &a.SystemPromptName
+	}
+	return resp
+}
+
+func toAgentListResponse(result queries.ListAgentsResult, limit, offset int) gen.ModelsAgentListResponse {
+	agents := make([]gen.ModelsAgentResponse, len(result.Agents))
+	for i, a := range result.Agents {
+		agents[i] = toAgentResponse(a)
+	}
+	return gen.ModelsAgentListResponse{
+		Agents: agents,
+		Total:  int32(result.Total),
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	}
+}
+
+func toCreateAgentParams(req gen.ModelsCreateAgentRequest) commands.CreateAgentParams {
+	params := commands.CreateAgentParams{
+		Name:       req.Name,
+		ProviderID: req.ProviderId,
+		ModelID:    req.ModelId,
+	}
+	if req.SystemPromptId != nil {
+		params.SystemPromptID = *req.SystemPromptId
+	}
+	if req.Temperature != nil {
+		t := float64(*req.Temperature)
+		params.Temperature = &t
+	}
+	if req.TopP != nil {
+		t := float64(*req.TopP)
+		params.TopP = &t
+	}
+	if req.TopK != nil {
+		t := int(*req.TopK)
+		params.TopK = &t
+	}
+	return params
+}
+
+func toUpdateAgentParams(id string, req gen.ModelsUpdateAgentRequest) commands.UpdateAgentParams {
+	params := commands.UpdateAgentParams{
+		ID: id,
+	}
+	params.Name = req.Name
+	params.ProviderID = req.ProviderId
+	params.ModelID = req.ModelId
+	params.SystemPromptID = req.SystemPromptId
+	if req.Temperature != nil {
+		t := float64(*req.Temperature)
+		params.Temperature = &t
+	}
+	if req.TopP != nil {
+		t := float64(*req.TopP)
+		params.TopP = &t
+	}
+	if req.TopK != nil {
+		t := int(*req.TopK)
+		params.TopK = &t
+	}
+	return params
+}
+
+func toListAgentsParams(params gen.ListAgentsParams) queries.ListAgentsParams {
+	limit := 20
+	offset := 0
+	if params.Limit != nil {
+		limit = int(*params.Limit)
+	}
+	if params.Offset != nil {
+		offset = int(*params.Offset)
+	}
+	return queries.ListAgentsParams{
+		Limit:  limit,
+		Offset: offset,
+	}
 }
