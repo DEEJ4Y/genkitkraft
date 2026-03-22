@@ -15,16 +15,17 @@ const (
 
 // Defines values for ModelsProviderType.
 const (
-	Anthropic      ModelsProviderType = "anthropic"
-	AzureAiFoundry ModelsProviderType = "azure_ai_foundry"
-	AzureOpenai    ModelsProviderType = "azure_openai"
-	Bedrock        ModelsProviderType = "bedrock"
-	Deepseek       ModelsProviderType = "deepseek"
-	GoogleAi       ModelsProviderType = "google_ai"
-	Ollama         ModelsProviderType = "ollama"
-	Openai         ModelsProviderType = "openai"
-	VertexAi       ModelsProviderType = "vertex_ai"
-	Xai            ModelsProviderType = "xai"
+	Anthropic        ModelsProviderType = "anthropic"
+	AzureAiFoundry   ModelsProviderType = "azure_ai_foundry"
+	AzureOpenai      ModelsProviderType = "azure_openai"
+	Bedrock          ModelsProviderType = "bedrock"
+	Deepseek         ModelsProviderType = "deepseek"
+	GoogleAi         ModelsProviderType = "google_ai"
+	Ollama           ModelsProviderType = "ollama"
+	Openai           ModelsProviderType = "openai"
+	OpenaiCompatible ModelsProviderType = "openai_compatible"
+	VertexAi         ModelsProviderType = "vertex_ai"
+	Xai              ModelsProviderType = "xai"
 )
 
 // ModelsAuthStatusResponse Response indicating whether authentication is required.
@@ -49,6 +50,15 @@ type ModelsConfigFieldInfo struct {
 
 	// Sensitive Whether the field contains sensitive data.
 	Sensitive *bool `json:"sensitive,omitempty"`
+}
+
+// ModelsCreatePromptRequest Request to create a new prompt.
+type ModelsCreatePromptRequest struct {
+	// Content Prompt content in markdown format.
+	Content string `json:"content"`
+
+	// Name Display name for this prompt.
+	Name string `json:"name"`
 }
 
 // ModelsCreateProviderRequest Request to create a new provider configuration.
@@ -111,6 +121,39 @@ type ModelsLogoutResponse struct {
 type ModelsMeResponse struct {
 	// Username Username of the currently authenticated user.
 	Username string `json:"username"`
+}
+
+// ModelsPromptListResponse Paginated list of prompts.
+type ModelsPromptListResponse struct {
+	// Limit Number of prompts per page.
+	Limit int32 `json:"limit"`
+
+	// Offset Number of prompts skipped.
+	Offset int32 `json:"offset"`
+
+	// Prompts Array of prompts.
+	Prompts []ModelsPromptResponse `json:"prompts"`
+
+	// Total Total number of prompts.
+	Total int32 `json:"total"`
+}
+
+// ModelsPromptResponse A prompt (system instruction) for an agent.
+type ModelsPromptResponse struct {
+	// Content Prompt content in markdown format.
+	Content string `json:"content"`
+
+	// CreatedAt When this prompt was created.
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Id Unique prompt ID.
+	Id string `json:"id"`
+
+	// Name Display name for this prompt.
+	Name string `json:"name"`
+
+	// UpdatedAt When this prompt was last updated.
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // ModelsProviderListResponse List of configured providers.
@@ -197,6 +240,15 @@ type ModelsTestProviderResponse struct {
 	Success bool `json:"success"`
 }
 
+// ModelsUpdatePromptRequest Request to update an existing prompt.
+type ModelsUpdatePromptRequest struct {
+	// Content Updated prompt content in markdown format.
+	Content *string `json:"content,omitempty"`
+
+	// Name Updated display name.
+	Name *string `json:"name,omitempty"`
+}
+
 // ModelsUpdateProviderRequest Request to update an existing provider configuration.
 type ModelsUpdateProviderRequest struct {
 	// ApiKey New API key (leave blank to keep existing).
@@ -215,8 +267,20 @@ type ModelsUpdateProviderRequest struct {
 	Name *string `json:"name,omitempty"`
 }
 
+// ListPromptsParams defines parameters for ListPrompts.
+type ListPromptsParams struct {
+	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = ModelsLoginRequest
+
+// CreatePromptJSONRequestBody defines body for CreatePrompt for application/json ContentType.
+type CreatePromptJSONRequestBody = ModelsCreatePromptRequest
+
+// UpdatePromptJSONRequestBody defines body for UpdatePrompt for application/json ContentType.
+type UpdatePromptJSONRequestBody = ModelsUpdatePromptRequest
 
 // CreateProviderJSONRequestBody defines body for CreateProvider for application/json ContentType.
 type CreateProviderJSONRequestBody = ModelsCreateProviderRequest

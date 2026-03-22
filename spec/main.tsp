@@ -2,6 +2,7 @@ import "@typespec/http";
 import "./routes/health.tsp";
 import "./routes/auth.tsp";
 import "./routes/providers.tsp";
+import "./routes/prompts.tsp";
 
 using TypeSpec.Http;
 

@@ -26,6 +26,21 @@ type ServerInterface interface {
 	// Auth status
 	// (GET /api/auth/status)
 	GetAuthStatus(w http.ResponseWriter, r *http.Request)
+	// List prompts
+	// (GET /api/v1/prompts)
+	ListPrompts(w http.ResponseWriter, r *http.Request, params ListPromptsParams)
+	// Create prompt
+	// (POST /api/v1/prompts)
+	CreatePrompt(w http.ResponseWriter, r *http.Request)
+	// Delete prompt
+	// (DELETE /api/v1/prompts/{id})
+	DeletePrompt(w http.ResponseWriter, r *http.Request, id string)
+	// Get prompt
+	// (GET /api/v1/prompts/{id})
+	GetPrompt(w http.ResponseWriter, r *http.Request, id string)
+	// Update prompt
+	// (PUT /api/v1/prompts/{id})
+	UpdatePrompt(w http.ResponseWriter, r *http.Request, id string)
 	// List provider types
 	// (GET /api/v1/provider-types)
 	ListProviderTypes(w http.ResponseWriter, r *http.Request)
@@ -111,6 +126,130 @@ func (siw *ServerInterfaceWrapper) GetAuthStatus(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAuthStatus(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPrompts operation middleware
+func (siw *ServerInterfaceWrapper) ListPrompts(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPromptsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPrompts(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreatePrompt operation middleware
+func (siw *ServerInterfaceWrapper) CreatePrompt(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreatePrompt(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeletePrompt operation middleware
+func (siw *ServerInterfaceWrapper) DeletePrompt(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeletePrompt(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPrompt operation middleware
+func (siw *ServerInterfaceWrapper) GetPrompt(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPrompt(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdatePrompt operation middleware
+func (siw *ServerInterfaceWrapper) UpdatePrompt(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdatePrompt(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -414,6 +553,11 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("POST "+options.BaseURL+"/api/auth/logout", wrapper.Logout)
 	m.HandleFunc("GET "+options.BaseURL+"/api/auth/me", wrapper.GetMe)
 	m.HandleFunc("GET "+options.BaseURL+"/api/auth/status", wrapper.GetAuthStatus)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/prompts", wrapper.ListPrompts)
+	m.HandleFunc("POST "+options.BaseURL+"/api/v1/prompts", wrapper.CreatePrompt)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/prompts/{id}", wrapper.DeletePrompt)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/prompts/{id}", wrapper.GetPrompt)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/v1/prompts/{id}", wrapper.UpdatePrompt)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/provider-types", wrapper.ListProviderTypes)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/settings/providers", wrapper.ListProviders)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/settings/providers", wrapper.CreateProvider)

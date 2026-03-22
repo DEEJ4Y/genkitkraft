@@ -21,10 +21,11 @@ var _ gen.ServerInterface = (*Handler)(nil)
 type Handler struct {
 	authApp     *app.AuthApp
 	providerApp *app.ProviderApp
+	promptApp   *app.PromptApp
 }
 
-func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp) *Handler {
-	return &Handler{authApp: authApp, providerApp: providerApp}
+func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp, promptApp *app.PromptApp) *Handler {
+	return &Handler{authApp: authApp, providerApp: providerApp, promptApp: promptApp}
 }
 
 func (h *Handler) GetAuthStatus(w http.ResponseWriter, r *http.Request) {
@@ -197,4 +198,66 @@ func (h *Handler) TestProvider(w http.ResponseWriter, r *http.Request, id string
 		Success: result.Success,
 		Message: result.Message,
 	})
+}
+
+func (h *Handler) ListPrompts(w http.ResponseWriter, r *http.Request, params gen.ListPromptsParams) {
+	qParams := toListPromptsParams(params)
+	result, err := h.promptApp.Queries.ListPrompts.Execute(r.Context(), qParams)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toPromptListResponse(result, qParams.Limit, qParams.Offset))
+}
+
+func (h *Handler) CreatePrompt(w http.ResponseWriter, r *http.Request) {
+	var req gen.ModelsCreatePromptRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	params := toCreatePromptParams(req)
+	result, err := h.promptApp.Commands.CreatePrompt.Execute(r.Context(), params)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toPromptResponse(result.Prompt))
+}
+
+func (h *Handler) GetPrompt(w http.ResponseWriter, r *http.Request, id string) {
+	result, err := h.promptApp.Queries.GetPrompt.Execute(r.Context(), queries.GetPromptParams{ID: id})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toPromptResponse(result.Prompt))
+}
+
+func (h *Handler) UpdatePrompt(w http.ResponseWriter, r *http.Request, id string) {
+	var req gen.ModelsUpdatePromptRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	params := toUpdatePromptParams(id, req)
+	result, err := h.promptApp.Commands.UpdatePrompt.Execute(r.Context(), params)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toPromptResponse(result.Prompt))
+}
+
+func (h *Handler) DeletePrompt(w http.ResponseWriter, r *http.Request, id string) {
+	err := h.promptApp.Commands.DeletePrompt.Execute(r.Context(), commands.DeletePromptParams{ID: id})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
