@@ -5,6 +5,7 @@ import { queryClient } from '../lib/queryClient'
 import { AuthProvider, AuthGate } from '../lib/auth'
 import { AppLayout } from '../components/AppLayout'
 import '@mantine/core/styles.css'
+import '@mantine/tiptap/styles.css'
 
 export default function App({ Component, pageProps }: AppProps) {
   return (

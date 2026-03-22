@@ -84,6 +84,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/prompts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List prompts
+         * @description List all prompts with pagination.
+         */
+        get: operations["listPrompts"];
+        put?: never;
+        /**
+         * Create prompt
+         * @description Create a new prompt.
+         */
+        post: operations["createPrompt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prompts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get prompt
+         * @description Get a single prompt by ID.
+         */
+        get: operations["getPrompt"];
+        /**
+         * Update prompt
+         * @description Update an existing prompt.
+         */
+        put: operations["updatePrompt"];
+        post?: never;
+        /**
+         * Delete prompt
+         * @description Delete a prompt.
+         */
+        delete: operations["deletePrompt"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/provider-types": {
         parameters: {
             query?: never;
@@ -260,6 +312,13 @@ export interface components {
             /** @description Whether the field contains sensitive data. */
             sensitive?: boolean;
         };
+        /** @description Request to create a new prompt. */
+        "Models.CreatePromptRequest": {
+            /** @description Display name for this prompt. */
+            name: string;
+            /** @description Prompt content in markdown format. */
+            content: string;
+        };
         /** @description Request to create a new provider configuration. */
         "Models.CreateProviderRequest": {
             /** @description Display name for this provider. */
@@ -328,6 +387,45 @@ export interface components {
         };
         /** @description OpenAI provider config (no extra fields needed). */
         "Models.OpenAIProviderConfig": Record<string, never>;
+        /** @description Paginated list of prompts. */
+        "Models.PromptListResponse": {
+            /** @description Array of prompts. */
+            prompts: components["schemas"]["Models.PromptResponse"][];
+            /**
+             * Format: int32
+             * @description Total number of prompts.
+             */
+            total: number;
+            /**
+             * Format: int32
+             * @description Number of prompts per page.
+             */
+            limit: number;
+            /**
+             * Format: int32
+             * @description Number of prompts skipped.
+             */
+            offset: number;
+        };
+        /** @description A prompt (system instruction) for an agent. */
+        "Models.PromptResponse": {
+            /** @description Unique prompt ID. */
+            id: string;
+            /** @description Display name for this prompt. */
+            name: string;
+            /** @description Prompt content in markdown format. */
+            content: string;
+            /**
+             * Format: date-time
+             * @description When this prompt was created.
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description When this prompt was last updated.
+             */
+            updatedAt: string;
+        };
         /** @description List of configured providers. */
         "Models.ProviderListResponse": {
             /** @description Array of provider configurations. */
@@ -399,6 +497,13 @@ export interface components {
             success: boolean;
             /** @description Human-readable result message. */
             message: string;
+        };
+        /** @description Request to update an existing prompt. */
+        "Models.UpdatePromptRequest": {
+            /** @description Updated display name. */
+            name?: string;
+            /** @description Updated prompt content in markdown format. */
+            content?: string;
         };
         /** @description Request to update an existing provider configuration. */
         "Models.UpdateProviderRequest": {
@@ -549,6 +654,148 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Models.AuthStatusResponse"];
+                };
+            };
+        };
+    };
+    listPrompts: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.PromptListResponse"];
+                };
+            };
+        };
+    };
+    createPrompt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.CreatePromptRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded and a new resource has been created as a result. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.PromptResponse"];
+                };
+            };
+        };
+    };
+    getPrompt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.PromptResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    updatePrompt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.UpdatePromptRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.PromptResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    deletePrompt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
                 };
             };
         };

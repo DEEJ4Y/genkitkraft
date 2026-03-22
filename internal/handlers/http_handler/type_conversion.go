@@ -9,6 +9,7 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/app/commands"
 	"github.com/DEEJ4Y/genkitkraft/internal/app/queries"
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
+	"github.com/DEEJ4Y/genkitkraft/internal/domain/prompt"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
 )
 
@@ -116,6 +117,59 @@ func toUpdateProviderParams(id string, req gen.ModelsUpdateProviderRequest) comm
 		BaseURL: req.BaseUrl,
 		Config:  req.Config,
 		Enabled: req.Enabled,
+	}
+}
+
+func toPromptResponse(p *prompt.Prompt) gen.ModelsPromptResponse {
+	return gen.ModelsPromptResponse{
+		Id:        p.ID,
+		Name:      p.Name,
+		Content:   p.Content,
+		CreatedAt: p.CreatedAt,
+		UpdatedAt: p.UpdatedAt,
+	}
+}
+
+func toPromptListResponse(result queries.ListPromptsResult, limit, offset int) gen.ModelsPromptListResponse {
+	prompts := make([]gen.ModelsPromptResponse, len(result.Prompts))
+	for i, p := range result.Prompts {
+		prompts[i] = toPromptResponse(p)
+	}
+	return gen.ModelsPromptListResponse{
+		Prompts: prompts,
+		Total:   int32(result.Total),
+		Limit:   int32(limit),
+		Offset:  int32(offset),
+	}
+}
+
+func toCreatePromptParams(req gen.ModelsCreatePromptRequest) commands.CreatePromptParams {
+	return commands.CreatePromptParams{
+		Name:    req.Name,
+		Content: req.Content,
+	}
+}
+
+func toUpdatePromptParams(id string, req gen.ModelsUpdatePromptRequest) commands.UpdatePromptParams {
+	return commands.UpdatePromptParams{
+		ID:      id,
+		Name:    req.Name,
+		Content: req.Content,
+	}
+}
+
+func toListPromptsParams(params gen.ListPromptsParams) queries.ListPromptsParams {
+	limit := 20
+	offset := 0
+	if params.Limit != nil {
+		limit = int(*params.Limit)
+	}
+	if params.Offset != nil {
+		offset = int(*params.Offset)
+	}
+	return queries.ListPromptsParams{
+		Limit:  limit,
+		Offset: offset,
 	}
 }
 

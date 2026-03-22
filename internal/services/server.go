@@ -17,6 +17,7 @@ import (
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
 	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
+	sqliteprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_prompt"
 	sqliteprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_provider"
 	"github.com/DEEJ4Y/genkitkraft/internal/api/gen"
 	"github.com/DEEJ4Y/genkitkraft/internal/app"
@@ -36,6 +37,7 @@ type Server struct {
 	cfg          config.Config
 	authApp      *app.AuthApp
 	providerApp  *app.ProviderApp
+	promptApp    *app.PromptApp
 	sessionStore session.Store
 	db           *sql.DB
 	done         chan struct{}
@@ -134,10 +136,36 @@ func NewServer(cfg config.Config) (*Server, error) {
 		},
 	}
 
+	// Create prompt adapters
+	promptRepo := sqliteprompt.NewPromptRepository(db)
+
+	// Create prompt commands
+	createPromptCmd := commands.NewCreatePromptCommand(promptRepo)
+	updatePromptCmd := commands.NewUpdatePromptCommand(promptRepo)
+	deletePromptCmd := commands.NewDeletePromptCommand(promptRepo)
+
+	// Create prompt queries
+	listPromptsQuery := queries.NewListPromptsQuery(promptRepo)
+	getPromptQuery := queries.NewGetPromptQuery(promptRepo)
+
+	// Build prompt application
+	promptApp := &app.PromptApp{
+		Commands: app.PromptCommands{
+			CreatePrompt: decorators.ApplyLogging(createPromptCmd, "CreatePrompt", logger),
+			UpdatePrompt: decorators.ApplyLogging(updatePromptCmd, "UpdatePrompt", logger),
+			DeletePrompt: decorators.ApplyLoggingExecutor(deletePromptCmd, "DeletePrompt", logger),
+		},
+		Queries: app.PromptQueries{
+			ListPrompts: decorators.ApplyLogging(listPromptsQuery, "ListPrompts", logger),
+			GetPrompt:   decorators.ApplyLogging(getPromptQuery, "GetPrompt", logger),
+		},
+	}
+
 	return &Server{
 		cfg:          cfg,
 		authApp:      authApp,
 		providerApp:  providerApp,
+		promptApp:    promptApp,
 		sessionStore: sessionStore,
 		db:           db,
 		done:         make(chan struct{}),
@@ -151,7 +179,7 @@ func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
 	// Register all API routes via generated handler
-	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp)
+	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp, s.promptApp)
 	gen.HandlerFromMux(apiHandler, mux)
 
 	// SPA fallback: serve embedded UI or fallback to index.html

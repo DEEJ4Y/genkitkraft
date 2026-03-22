@@ -6,6 +6,7 @@ tags:
   - name: Health
   - name: Auth
   - name: Settings
+  - name: Prompts
 paths:
   /api/auth/login:
     post:
@@ -97,6 +98,135 @@ paths:
                 $ref: '#/components/schemas/Models.AuthStatusResponse'
       tags:
         - Auth
+  /api/v1/prompts:
+    get:
+      operationId: listPrompts
+      summary: List prompts
+      description: List all prompts with pagination.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 20
+          explode: false
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.PromptListResponse'
+      tags:
+        - Prompts
+    post:
+      operationId: createPrompt
+      summary: Create prompt
+      description: Create a new prompt.
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.PromptResponse'
+      tags:
+        - Prompts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.CreatePromptRequest'
+  /api/v1/prompts/{id}:
+    get:
+      operationId: getPrompt
+      summary: Get prompt
+      description: Get a single prompt by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.PromptResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Prompts
+    put:
+      operationId: updatePrompt
+      summary: Update prompt
+      description: Update an existing prompt.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.PromptResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Prompts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.UpdatePromptRequest'
+    delete:
+      operationId: deletePrompt
+      summary: Delete prompt
+      description: Delete a prompt.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Prompts
   /api/v1/provider-types:
     get:
       operationId: listProviderTypes
@@ -372,6 +502,19 @@ components:
           type: boolean
           description: Whether the field contains sensitive data.
       description: Describes a config field for a provider type.
+    Models.CreatePromptRequest:
+      type: object
+      required:
+        - name
+        - content
+      properties:
+        name:
+          type: string
+          description: Display name for this prompt.
+        content:
+          type: string
+          description: Prompt content in markdown format.
+      description: Request to create a new prompt.
     Models.CreateProviderRequest:
       type: object
       required:
@@ -487,6 +630,59 @@ components:
     Models.OpenAIProviderConfig:
       type: object
       description: OpenAI provider config (no extra fields needed).
+    Models.PromptListResponse:
+      type: object
+      required:
+        - prompts
+        - total
+        - limit
+        - offset
+      properties:
+        prompts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.PromptResponse'
+          description: Array of prompts.
+        total:
+          type: integer
+          format: int32
+          description: Total number of prompts.
+        limit:
+          type: integer
+          format: int32
+          description: Number of prompts per page.
+        offset:
+          type: integer
+          format: int32
+          description: Number of prompts skipped.
+      description: Paginated list of prompts.
+    Models.PromptResponse:
+      type: object
+      required:
+        - id
+        - name
+        - content
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Unique prompt ID.
+        name:
+          type: string
+          description: Display name for this prompt.
+        content:
+          type: string
+          description: Prompt content in markdown format.
+        createdAt:
+          type: string
+          format: date-time
+          description: When this prompt was created.
+        updatedAt:
+          type: string
+          format: date-time
+          description: When this prompt was last updated.
+      description: A prompt (system instruction) for an agent.
     Models.ProviderListResponse:
       type: object
       required:
@@ -622,6 +818,16 @@ components:
           type: string
           description: Human-readable result message.
       description: Result of testing provider connectivity.
+    Models.UpdatePromptRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Updated display name.
+        content:
+          type: string
+          description: Updated prompt content in markdown format.
+      description: Request to update an existing prompt.
     Models.UpdateProviderRequest:
       type: object
       properties:
