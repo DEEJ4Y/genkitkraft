@@ -14,7 +14,7 @@ import (
 
 	aesgcmencryptor "github.com/DEEJ4Y/genkitkraft/internal/adapters/aesgcm_encryptor"
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
-	httpchatprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_chat_provider"
+	genkitchatprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/genkit_chat_provider"
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
 	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
@@ -195,7 +195,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 
 	// Create playground adapters
 	playgroundRepo := sqliteplayground.NewPlaygroundRepository(db)
-	chatProvider := httpchatprovider.NewChatProvider()
+	chatProvider := genkitchatprovider.NewChatProvider()
 
 	// Create playground commands
 	createSessionCmd := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)
