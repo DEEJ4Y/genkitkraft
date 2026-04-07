@@ -84,6 +84,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List agents
+         * @description List all agents with pagination.
+         */
+        get: operations["listAgents"];
+        put?: never;
+        /**
+         * Create agent
+         * @description Create a new agent.
+         */
+        post: operations["createAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agentId}/playground/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Playground chat
+         * @description Send a message and receive a streaming response (SSE).
+         */
+        post: operations["playgroundChat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agentId}/playground/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List playground sessions
+         * @description List all playground sessions for an agent.
+         */
+        get: operations["listPlaygroundSessions"];
+        put?: never;
+        /**
+         * Create playground session
+         * @description Create a new playground session for an agent.
+         */
+        post: operations["createPlaygroundSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agentId}/playground/sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete playground session
+         * @description Delete a playground session.
+         */
+        delete: operations["deletePlaygroundSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agentId}/playground/sessions/{sessionId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List playground messages
+         * @description Get all messages in a playground session.
+         */
+        get: operations["listPlaygroundMessages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get agent
+         * @description Get a single agent by ID.
+         */
+        get: operations["getAgent"];
+        /**
+         * Update agent
+         * @description Update an existing agent.
+         */
+        put: operations["updateAgent"];
+        post?: never;
+        /**
+         * Delete agent
+         * @description Delete an agent.
+         */
+        delete: operations["deleteAgent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/prompts": {
         parameters: {
             query?: never;
@@ -272,6 +408,70 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Paginated list of agents. */
+        "Models.AgentListResponse": {
+            /** @description Array of agents. */
+            agents: components["schemas"]["Models.AgentResponse"][];
+            /**
+             * Format: int32
+             * @description Total number of agents.
+             */
+            total: number;
+            /**
+             * Format: int32
+             * @description Number of agents per page.
+             */
+            limit: number;
+            /**
+             * Format: int32
+             * @description Number of agents skipped.
+             */
+            offset: number;
+        };
+        /** @description An AI agent configuration. */
+        "Models.AgentResponse": {
+            /** @description Unique agent ID. */
+            id: string;
+            /** @description Display name for this agent. */
+            name: string;
+            /** @description ID of the provider this agent uses. */
+            providerId: string;
+            /** @description Resolved display name of the provider. */
+            providerName: string;
+            /** @description Resolved type of the provider. */
+            providerType: components["schemas"]["Models.ProviderType"];
+            /** @description Model identifier (e.g. gemini-2.5-flash, gpt-4o). */
+            modelId: string;
+            /** @description ID of the system prompt, if any. */
+            systemPromptId?: string;
+            /** @description Resolved name of the system prompt, if any. */
+            systemPromptName?: string;
+            /**
+             * Format: float
+             * @description Sampling temperature.
+             */
+            temperature: number;
+            /**
+             * Format: float
+             * @description Nucleus sampling (top-p).
+             */
+            topP: number;
+            /**
+             * Format: int32
+             * @description Top-k sampling.
+             */
+            topK: number;
+            /**
+             * Format: date-time
+             * @description When this agent was created.
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description When this agent was last updated.
+             */
+            updatedAt: string;
+        };
         /** @description Anthropic provider config (no extra fields needed). */
         "Models.AnthropicProviderConfig": Record<string, never>;
         /** @description Response indicating whether authentication is required. */
@@ -311,6 +511,37 @@ export interface components {
             placeholder?: string;
             /** @description Whether the field contains sensitive data. */
             sensitive?: boolean;
+        };
+        /** @description Request to create a new agent. */
+        "Models.CreateAgentRequest": {
+            /** @description Display name for this agent. */
+            name: string;
+            /** @description ID of the provider to use. */
+            providerId: string;
+            /** @description Model identifier. */
+            modelId: string;
+            /** @description ID of an existing system prompt (optional). */
+            systemPromptId?: string;
+            /**
+             * Format: float
+             * @description Sampling temperature (default 0.95).
+             */
+            temperature?: number;
+            /**
+             * Format: float
+             * @description Nucleus sampling top-p (default 0.95).
+             */
+            topP?: number;
+            /**
+             * Format: int32
+             * @description Top-k sampling (default 40).
+             */
+            topK?: number;
+        };
+        /** @description Request to create a new playground session. */
+        "Models.CreatePlaygroundSessionRequest": {
+            /** @description Optional title for the session. */
+            title?: string;
         };
         /** @description Request to create a new prompt. */
         "Models.CreatePromptRequest": {
@@ -387,6 +618,82 @@ export interface components {
         };
         /** @description OpenAI provider config (no extra fields needed). */
         "Models.OpenAIProviderConfig": Record<string, never>;
+        /** @description Request to send a chat message in the playground. */
+        "Models.PlaygroundChatRequest": {
+            /** @description The session to send the message in. */
+            sessionId: string;
+            /** @description The user message content. */
+            content: string;
+            /** @description Optional provider override for testing. */
+            providerId?: string;
+            /** @description Optional model override for testing. */
+            modelId?: string;
+            /** @description Optional system prompt override for testing. */
+            systemPromptId?: string;
+            /**
+             * Format: float
+             * @description Optional temperature override for testing.
+             */
+            temperature?: number;
+            /**
+             * Format: float
+             * @description Optional top-p override for testing.
+             */
+            topP?: number;
+            /**
+             * Format: int32
+             * @description Optional top-k override for testing.
+             */
+            topK?: number;
+        };
+        /** @description List of messages in a session. */
+        "Models.PlaygroundMessageListResponse": {
+            /** @description Array of messages. */
+            messages: components["schemas"]["Models.PlaygroundMessageResponse"][];
+        };
+        /** @description A single message in a playground session. */
+        "Models.PlaygroundMessageResponse": {
+            /** @description Unique message ID. */
+            id: string;
+            /** @description Session this message belongs to. */
+            sessionId: string;
+            /**
+             * @description Message role.
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** @description Message text content. */
+            content: string;
+            /**
+             * Format: date-time
+             * @description When this message was created.
+             */
+            createdAt: string;
+        };
+        /** @description List of playground sessions. */
+        "Models.PlaygroundSessionListResponse": {
+            /** @description Array of sessions. */
+            sessions: components["schemas"]["Models.PlaygroundSessionResponse"][];
+        };
+        /** @description A playground chat session for testing an agent. */
+        "Models.PlaygroundSessionResponse": {
+            /** @description Unique session ID. */
+            id: string;
+            /** @description ID of the agent this session belongs to. */
+            agentId: string;
+            /** @description Session title (auto-generated from first message). */
+            title: string;
+            /**
+             * Format: date-time
+             * @description When this session was created.
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description When this session was last updated.
+             */
+            updatedAt: string;
+        };
         /** @description Paginated list of prompts. */
         "Models.PromptListResponse": {
             /** @description Array of prompts. */
@@ -497,6 +804,32 @@ export interface components {
             success: boolean;
             /** @description Human-readable result message. */
             message: string;
+        };
+        /** @description Request to update an existing agent. */
+        "Models.UpdateAgentRequest": {
+            /** @description Updated display name. */
+            name?: string;
+            /** @description Updated provider ID. */
+            providerId?: string;
+            /** @description Updated model identifier. */
+            modelId?: string;
+            /** @description Updated system prompt ID (empty string to clear). */
+            systemPromptId?: string;
+            /**
+             * Format: float
+             * @description Updated sampling temperature.
+             */
+            temperature?: number;
+            /**
+             * Format: float
+             * @description Updated nucleus sampling top-p.
+             */
+            topP?: number;
+            /**
+             * Format: int32
+             * @description Updated top-k sampling.
+             */
+            topK?: number;
         };
         /** @description Request to update an existing prompt. */
         "Models.UpdatePromptRequest": {
@@ -654,6 +987,311 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Models.AuthStatusResponse"];
+                };
+            };
+        };
+    };
+    listAgents: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.AgentListResponse"];
+                };
+            };
+        };
+    };
+    createAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.CreateAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded and a new resource has been created as a result. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.AgentResponse"];
+                };
+            };
+        };
+    };
+    playgroundChat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.PlaygroundChatRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.PlaygroundMessageResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPlaygroundSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.PlaygroundSessionListResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    createPlaygroundSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.CreatePlaygroundSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded and a new resource has been created as a result. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.PlaygroundSessionResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    deletePlaygroundSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPlaygroundMessages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.PlaygroundMessageListResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.AgentResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.UpdateAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.AgentResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
                 };
             };
         };
