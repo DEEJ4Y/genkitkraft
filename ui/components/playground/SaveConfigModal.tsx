@@ -6,16 +6,18 @@ interface SaveConfigModalProps {
   onConfirm: () => void
   saving: boolean
   error?: string
+  disableConfirm?: boolean
 }
 
-export function SaveConfigModal({ opened, onClose, onConfirm, saving, error }: SaveConfigModalProps) {
+export function SaveConfigModal({ opened, onClose, onConfirm, saving, error, disableConfirm }: SaveConfigModalProps) {
   return (
     <Modal opened={opened} onClose={onClose} title="Save Configuration to Agent" centered>
-      {error ? (
+      {error && (
         <Alert color="red" variant="light" mb="lg">
           {error}
         </Alert>
-      ) : (
+      )}
+      {!disableConfirm && (
         <>
           <Text size="sm" mb="lg">
             This will overwrite the agent&apos;s saved configuration with the current playground
@@ -31,7 +33,7 @@ export function SaveConfigModal({ opened, onClose, onConfirm, saving, error }: S
         <Button variant="default" onClick={onClose} disabled={saving}>
           Cancel
         </Button>
-        <Button color="red" onClick={onConfirm} loading={saving} disabled={!!error}>
+        <Button color="red" onClick={onConfirm} loading={saving} disabled={disableConfirm}>
           Overwrite Agent Config
         </Button>
       </Group>

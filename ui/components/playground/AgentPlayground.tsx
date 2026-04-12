@@ -132,6 +132,7 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
   async function handleSaveToAgent() {
     if (!config.providerId || !config.modelId.trim()) return
     setSaving(true)
+    setSaveError('')
     try {
       const { error } = await fetchClient.PUT('/api/v1/agents/{id}', {
         params: { path: { id: agent.id } },
@@ -147,11 +148,11 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
           topK: config.topK,
         } as any,
       })
-      if (error) throw new Error('Failed to save')
+      if (error) throw new Error('Failed to save configuration to agent.')
       queryClient.invalidateQueries({ queryKey: ['get', '/api/v1/agents'] })
       setSaveModalOpen(false)
-    } catch {
-      // keep modal open on failure
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save configuration to agent.')
     } finally {
       setSaving(false)
     }
@@ -218,6 +219,7 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
         onConfirm={handleSaveToAgent}
         saving={saving}
         error={saveError}
+        disableConfirm={!config.providerId || !config.modelId.trim()}
       />
     </>
   )
