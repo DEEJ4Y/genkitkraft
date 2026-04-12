@@ -7,6 +7,7 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/firebase/genkit/go/plugins/ollama"
+	"github.com/openai/openai-go"
 	"google.golang.org/genai"
 
 	anthropicsdk "github.com/anthropics/anthropic-sdk-go"
@@ -199,12 +200,25 @@ func buildOllamaConfig(req chatprovider.ChatRequest) *ollama.GenerateContentConf
 	return cfg
 }
 
-// buildOpenAICompatibleConfig returns nil since OpenAI-compatible providers
-// handle temperature/topP/topK through the default genkit pipeline.
-// The genkit compat_oai plugin maps these from the standard generate options.
+// buildOpenAICompatibleConfig builds an openai.ChatCompletionNewParams with
+// temperature and topP when enabled. The OpenAI API does not support topK,
+// so that parameter is intentionally skipped.
 func buildOpenAICompatibleConfig(req chatprovider.ChatRequest) any {
-	// The OpenAI-compatible plugins in genkit don't require explicit config
-	// for basic temperature/topP parameters — they are passed through the
-	// standard generate request. Return nil to use defaults.
-	return nil
+	cfg := &openai.ChatCompletionNewParams{}
+	hasConfig := false
+
+	if req.TemperatureEnabled {
+		cfg.Temperature = openai.Float(req.Temperature)
+		hasConfig = true
+	}
+	if req.TopPEnabled {
+		cfg.TopP = openai.Float(req.TopP)
+		hasConfig = true
+	}
+	// Note: topK is not supported by the OpenAI API and is intentionally skipped.
+
+	if !hasConfig {
+		return nil
+	}
+	return cfg
 }
