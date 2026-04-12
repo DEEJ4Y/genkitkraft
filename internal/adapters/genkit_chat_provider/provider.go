@@ -50,14 +50,11 @@ func (cp *ChatProvider) doStream(ctx context.Context, req chatprovider.ChatReque
 
 	g := genkit.Init(ctx, genkit.WithPlugins(result.plugin))
 
-	// Some plugins require explicit model registration after init.
-	if result.postInit != nil {
-		result.postInit(g)
-	}
+	model := result.getModel(g)
 
 	// Build generate options.
 	opts := []ai.GenerateOption{
-		ai.WithModelName(result.modelName),
+		ai.WithModel(model),
 	}
 
 	if req.SystemPrompt != "" {

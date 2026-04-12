@@ -23,12 +23,11 @@ import (
 	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
 )
 
-// pluginResult holds the genkit plugin and the model name to use for generation.
+// pluginResult holds the genkit plugin and a function to retrieve the model after init.
 type pluginResult struct {
-	plugin    api.Plugin
-	modelName string
-	// postInit is called after genkit.Init() for plugins that require explicit model registration.
-	postInit func(g *genkit.Genkit) ai.Model
+	plugin   api.Plugin
+	// getModel returns the ai.Model reference after genkit.Init() has been called.
+	getModel func(g *genkit.Genkit) ai.Model
 }
 
 // buildPlugin maps a ChatRequest to the appropriate Genkit plugin and model name.
@@ -37,28 +36,39 @@ func buildPlugin(req chatprovider.ChatRequest) (*pluginResult, error) {
 
 	switch pt {
 	case provider.GoogleAI:
+		plugin := &googlegenai.GoogleAI{APIKey: req.APIKey}
 		return &pluginResult{
-			plugin:    &googlegenai.GoogleAI{APIKey: req.APIKey},
-			modelName: req.ModelID,
+			plugin: plugin,
+			getModel: func(g *genkit.Genkit) ai.Model {
+				return googlegenai.GoogleAIModel(g, req.ModelID)
+			},
 		}, nil
 
 	case provider.VertexAI:
 		cfg := parseVertexAIConfig(req.Config)
+		plugin := &googlegenai.VertexAI{ProjectID: cfg.Project, Location: cfg.Location}
 		return &pluginResult{
-			plugin:    &googlegenai.VertexAI{ProjectID: cfg.Project, Location: cfg.Location},
-			modelName: req.ModelID,
+			plugin: plugin,
+			getModel: func(g *genkit.Genkit) ai.Model {
+				return googlegenai.VertexAIModel(g, req.ModelID)
+			},
 		}, nil
 
 	case provider.OpenAI:
+		oai := &openai.OpenAI{APIKey: req.APIKey}
 		return &pluginResult{
-			plugin:    &openai.OpenAI{APIKey: req.APIKey},
-			modelName: req.ModelID,
+			plugin: oai,
+			getModel: func(g *genkit.Genkit) ai.Model {
+				return oai.Model(g, req.ModelID)
+			},
 		}, nil
 
 	case provider.Anthropic:
 		return &pluginResult{
-			plugin:    &anthropic.Anthropic{APIKey: req.APIKey},
-			modelName: req.ModelID,
+			plugin: &anthropic.Anthropic{APIKey: req.APIKey},
+			getModel: func(g *genkit.Genkit) ai.Model {
+				return anthropic.Model(g, req.ModelID)
+			},
 		}, nil
 
 	case provider.Ollama:
@@ -68,9 +78,8 @@ func buildPlugin(req chatprovider.ChatRequest) (*pluginResult, error) {
 		}
 		ollamaPlugin := &ollama.Ollama{ServerAddress: serverAddr}
 		return &pluginResult{
-			plugin:    ollamaPlugin,
-			modelName: req.ModelID,
-			postInit: func(g *genkit.Genkit) ai.Model {
+			plugin: ollamaPlugin,
+			getModel: func(g *genkit.Genkit) ai.Model {
 				return ollamaPlugin.DefineModel(g, ollama.ModelDefinition{
 					Name: req.ModelID,
 					Type: "chat",
@@ -88,13 +97,16 @@ func buildPlugin(req chatprovider.ChatRequest) (*pluginResult, error) {
 		if baseURL == "" {
 			baseURL = "https://api.x.ai/v1"
 		}
+		xaiPlugin := &compat_oai.OpenAICompatible{
+			Provider: "xai",
+			APIKey:   req.APIKey,
+			BaseURL:  baseURL,
+		}
 		return &pluginResult{
-			plugin: &compat_oai.OpenAICompatible{
-				Provider: "xai",
-				APIKey:   req.APIKey,
-				BaseURL:  baseURL,
+			plugin: xaiPlugin,
+			getModel: func(g *genkit.Genkit) ai.Model {
+				return xaiPlugin.Model(g, req.ModelID)
 			},
-			modelName: req.ModelID,
 		}, nil
 
 	case provider.DeepSeek:
@@ -102,13 +114,16 @@ func buildPlugin(req chatprovider.ChatRequest) (*pluginResult, error) {
 		if baseURL == "" {
 			baseURL = "https://api.deepseek.com"
 		}
+		deepSeekPlugin := &compat_oai.OpenAICompatible{
+			Provider: "deepseek",
+			APIKey:   req.APIKey,
+			BaseURL:  baseURL,
+		}
 		return &pluginResult{
-			plugin: &compat_oai.OpenAICompatible{
-				Provider: "deepseek",
-				APIKey:   req.APIKey,
-				BaseURL:  baseURL,
+			plugin: deepSeekPlugin,
+			getModel: func(g *genkit.Genkit) ai.Model {
+				return deepSeekPlugin.Model(g, req.ModelID)
 			},
-			modelName: req.ModelID,
 		}, nil
 
 	case provider.AzureOpenAI:
@@ -125,16 +140,19 @@ func buildPlugin(req chatprovider.ChatRequest) (*pluginResult, error) {
 		}
 		baseURL := fmt.Sprintf("%s/openai/deployments/%s", strings.TrimRight(req.BaseURL, "/"), deploymentName)
 
-		return &pluginResult{
-			plugin: &compat_oai.OpenAICompatible{
-				Provider: "azure_openai",
-				Opts: []option.RequestOption{
-					option.WithHeader("api-key", req.APIKey),
-					option.WithBaseURL(baseURL),
-					option.WithHeader("api-version", apiVersion),
-				},
+		azurePlugin := &compat_oai.OpenAICompatible{
+			Provider: "azure_openai",
+			Opts: []option.RequestOption{
+				option.WithHeader("api-key", req.APIKey),
+				option.WithBaseURL(baseURL),
+				option.WithHeader("api-version", apiVersion),
 			},
-			modelName: req.ModelID,
+		}
+		return &pluginResult{
+			plugin: azurePlugin,
+			getModel: func(g *genkit.Genkit) ai.Model {
+				return azurePlugin.Model(g, req.ModelID)
+			},
 		}, nil
 
 	case provider.AzureAIFoundry:
@@ -143,9 +161,8 @@ func buildPlugin(req chatprovider.ChatRequest) (*pluginResult, error) {
 			APIKey:   req.APIKey,
 		}
 		return &pluginResult{
-			plugin:    foundryPlugin,
-			modelName: req.ModelID,
-			postInit: func(g *genkit.Genkit) ai.Model {
+			plugin: foundryPlugin,
+			getModel: func(g *genkit.Genkit) ai.Model {
 				return foundryPlugin.DefineModel(g, azureaifoundry.ModelDefinition{
 					Name: req.ModelID,
 					Type: "chat",
@@ -164,9 +181,8 @@ func buildPlugin(req chatprovider.ChatRequest) (*pluginResult, error) {
 			AWSConfig: &awsCfg,
 		}
 		return &pluginResult{
-			plugin:    bedrockPlugin,
-			modelName: req.ModelID,
-			postInit: func(g *genkit.Genkit) ai.Model {
+			plugin: bedrockPlugin,
+			getModel: func(g *genkit.Genkit) ai.Model {
 				return bedrockPlugin.DefineModel(g, bedrock.ModelDefinition{
 					Name: req.ModelID,
 					Type: "chat",
@@ -188,14 +204,17 @@ func buildPlugin(req chatprovider.ChatRequest) (*pluginResult, error) {
 				}
 			}
 		}
+		compatPlugin := &compat_oai.OpenAICompatible{
+			Provider: "openai_compatible",
+			APIKey:   req.APIKey,
+			BaseURL:  req.BaseURL,
+			Opts:     opts,
+		}
 		return &pluginResult{
-			plugin: &compat_oai.OpenAICompatible{
-				Provider: "openai_compatible",
-				APIKey:   req.APIKey,
-				BaseURL:  req.BaseURL,
-				Opts:     opts,
+			plugin: compatPlugin,
+			getModel: func(g *genkit.Genkit) ai.Model {
+				return compatPlugin.Model(g, req.ModelID)
 			},
-			modelName: req.ModelID,
 		}, nil
 
 	default:
