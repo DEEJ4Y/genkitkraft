@@ -4,12 +4,16 @@ import {
   Box,
   Button,
   Collapse,
+  Combobox,
   Group,
+  InputBase,
   NumberInput,
+  ScrollArea,
   Select,
   Slider,
   Switch,
   Text,
+  useCombobox,
 } from '@mantine/core'
 import { IconAdjustments, IconDeviceFloppy } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
@@ -45,6 +49,10 @@ interface PlaygroundConfigBarProps {
 
 export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent }: PlaygroundConfigBarProps) {
   const [opened, setOpened] = useState(false)
+  const [modelSearch, setModelSearch] = useState(config.modelId ?? '')
+  const modelCombobox = useCombobox({
+    onDropdownClose: () => modelCombobox.resetSelectedOption(),
+  })
 
   const providersQuery = useQuery({
     queryKey: ['get', '/api/v1/settings/providers'],
@@ -76,7 +84,6 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent }: 
   const selectedProviderType = selectedProvider?.providerType ?? ''
 
   const presetModels = MODEL_OPTIONS[selectedProviderType] ?? []
-  const modelSelectData = presetModels.map((m) => ({ value: m, label: m }))
 
   const providerSelectData = enabledProviders.map((p: ProviderResponse) => ({
     value: p.id,
@@ -100,7 +107,7 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent }: 
     config.topK !== agent.topK
 
   function handleProviderChange(val: string | null) {
-    // Reset model when provider changes
+    setModelSearch('')
     onChange({ ...config, providerId: val ?? '', modelId: '' })
   }
 
@@ -143,16 +150,71 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent }: 
               onChange={handleProviderChange}
               searchable
             />
-            <Select
-              label="Model"
-              size="xs"
-              data={modelSelectData}
-              value={config.modelId || null}
-              onChange={(val) => onChange({ ...config, modelId: val ?? '' })}
-              searchable
-              placeholder={presetModels.length > 0 ? 'Select a model' : 'Select a provider first'}
-              disabled={!config.providerId}
-            />
+            <div style={{ flex: 1 }}>
+              <Text size="xs" fw={500} mb={4}>
+                Model
+              </Text>
+              <Combobox
+                store={modelCombobox}
+                onOptionSubmit={(val) => {
+                  setModelSearch(val)
+                  onChange({ ...config, modelId: val })
+                  modelCombobox.closeDropdown()
+                }}
+              >
+                <Combobox.Target>
+                  <InputBase
+                    size="xs"
+                    placeholder={
+                      !config.providerId
+                        ? 'Select a provider first'
+                        : presetModels.length > 0
+                          ? 'Select or type a model name'
+                          : 'Type a model name'
+                    }
+                    value={modelSearch}
+                    onChange={(e) => {
+                      const val = e.currentTarget.value
+                      setModelSearch(val)
+                      onChange({ ...config, modelId: val })
+                      modelCombobox.openDropdown()
+                      modelCombobox.resetSelectedOption()
+                    }}
+                    onFocus={() => modelCombobox.openDropdown()}
+                    onBlur={() => modelCombobox.closeDropdown()}
+                    rightSection={<Combobox.Chevron />}
+                    rightSectionPointerEvents="none"
+                    disabled={!config.providerId}
+                  />
+                </Combobox.Target>
+                <Combobox.Dropdown>
+                  <Combobox.Options>
+                    <ScrollArea.Autosize mah={220} type="scroll">
+                      {presetModels
+                        .filter((m) =>
+                          m.toLowerCase().includes(modelSearch.toLowerCase())
+                        )
+                        .map((m) => (
+                          <Combobox.Option value={m} key={m}>
+                            {m}
+                          </Combobox.Option>
+                        ))}
+                      {modelSearch &&
+                        !presetModels.some(
+                          (m) => m.toLowerCase() === modelSearch.toLowerCase()
+                        ) && (
+                          <Combobox.Option value={modelSearch}>
+                            Use &quot;{modelSearch}&quot;
+                          </Combobox.Option>
+                        )}
+                      {!modelSearch && presetModels.length === 0 && (
+                        <Combobox.Empty>Type a model name</Combobox.Empty>
+                      )}
+                    </ScrollArea.Autosize>
+                  </Combobox.Options>
+                </Combobox.Dropdown>
+              </Combobox>
+            </div>
           </Group>
           <Group grow gap="md" mt="sm" align="flex-start">
             <Select
