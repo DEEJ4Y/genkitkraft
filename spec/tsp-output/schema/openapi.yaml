@@ -900,7 +900,7 @@ components:
           description: ID of an existing system prompt (optional).
         temperatureEnabled:
           type: boolean
-          description: Whether temperature sampling is enabled (default false).
+          description: Whether temperature sampling is enabled (default true).
         temperature:
           type: number
           format: float

@@ -38,7 +38,7 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
   const [modelId, setModelId] = useState(agent?.modelId ?? '')
   const [systemPromptId, setSystemPromptId] = useState(agent?.systemPromptId ?? '')
   const [temperature, setTemperature] = useState(agent?.temperature ?? 0.95)
-  const [temperatureEnabled, setTemperatureEnabled] = useState(agent?.temperatureEnabled ?? false)
+  const [temperatureEnabled, setTemperatureEnabled] = useState(agent?.temperatureEnabled ?? true)
   const [topP, setTopP] = useState(agent?.topP ?? 0.95)
   const [topPEnabled, setTopPEnabled] = useState(agent?.topPEnabled ?? false)
   const [topK, setTopK] = useState(agent?.topK ?? 40)

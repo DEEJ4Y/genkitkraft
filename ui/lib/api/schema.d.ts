@@ -528,7 +528,7 @@ export interface components {
             modelId: string;
             /** @description ID of an existing system prompt (optional). */
             systemPromptId?: string;
-            /** @description Whether temperature sampling is enabled (default false). */
+            /** @description Whether temperature sampling is enabled (default true). */
             temperatureEnabled?: boolean;
             /**
              * Format: float

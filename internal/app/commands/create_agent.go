@@ -64,7 +64,7 @@ func (c *CreateAgentCommand) Execute(ctx context.Context, params CreateAgentPara
 	if params.Temperature != nil {
 		temperature = *params.Temperature
 	}
-	temperatureEnabled := false
+	temperatureEnabled := true
 	if params.TemperatureEnabled != nil {
 		temperatureEnabled = *params.TemperatureEnabled
 	}

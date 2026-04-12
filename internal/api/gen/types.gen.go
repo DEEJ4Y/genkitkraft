@@ -141,7 +141,7 @@ type ModelsCreateAgentRequest struct {
 	// Temperature Sampling temperature (default 0.95).
 	Temperature *float32 `json:"temperature,omitempty"`
 
-	// TemperatureEnabled Whether temperature sampling is enabled (default false).
+	// TemperatureEnabled Whether temperature sampling is enabled (default true).
 	TemperatureEnabled *bool `json:"temperatureEnabled,omitempty"`
 
 	// TopK Top-k sampling (default 40).

@@ -65,7 +65,7 @@ model CreateAgentRequest {
   /** ID of an existing system prompt (optional). */
   systemPromptId?: string;
 
-  /** Whether temperature sampling is enabled (default false). */
+  /** Whether temperature sampling is enabled (default true). */
   temperatureEnabled?: boolean;
 
   /** Sampling temperature (default 0.95). */
