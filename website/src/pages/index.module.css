@@ -21,3 +21,39 @@
   align-items: center;
   justify-content: center;
 }
+
+.features {
+  padding: 3rem 0;
+}
+
+.featureCol {
+  margin-bottom: 1.5rem;
+}
+
+.featureCard {
+  padding: 1.5rem;
+  border-radius: 8px;
+  height: 100%;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  transition: box-shadow 0.2s ease;
+}
+
+.featureCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.featureIcon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.featureTitle {
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+}
+
+.featureDescription {
+  font-size: 0.95rem;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 0;
+}
