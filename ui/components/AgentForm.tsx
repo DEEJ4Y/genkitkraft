@@ -7,6 +7,7 @@ import {
   Button,
   Group,
   Stack,
+  Switch,
   Alert,
   Text,
   Anchor,
@@ -37,8 +38,11 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
   const [modelId, setModelId] = useState(agent?.modelId ?? '')
   const [systemPromptId, setSystemPromptId] = useState(agent?.systemPromptId ?? '')
   const [temperature, setTemperature] = useState(agent?.temperature ?? 0.95)
+  const [temperatureEnabled, setTemperatureEnabled] = useState(agent?.temperatureEnabled ?? false)
   const [topP, setTopP] = useState(agent?.topP ?? 0.95)
+  const [topPEnabled, setTopPEnabled] = useState(agent?.topPEnabled ?? false)
   const [topK, setTopK] = useState(agent?.topK ?? 40)
+  const [topKEnabled, setTopKEnabled] = useState(agent?.topKEnabled ?? false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -126,8 +130,11 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
             providerId,
             modelId: modelId.trim(),
             systemPromptId: systemPromptId || undefined,
+            temperatureEnabled,
             temperature,
+            topPEnabled,
             topP,
+            topKEnabled,
             topK,
           } as any,
         })
@@ -139,8 +146,11 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
             providerId,
             modelId: modelId.trim(),
             systemPromptId: systemPromptId || undefined,
+            temperatureEnabled,
             temperature,
+            topPEnabled,
             topP,
+            topKEnabled,
             topK,
           } as any,
         })
@@ -281,9 +291,20 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
       </div>
 
       <div>
-        <Text size="sm" fw={500} mb={4}>
-          Temperature ({temperature.toFixed(2)})
-        </Text>
+        <Group gap="xs" mb={4}>
+          <Switch
+            size="sm"
+            checked={temperatureEnabled}
+            onChange={(e) => {
+              const enabled = e.currentTarget.checked
+              setTemperatureEnabled(enabled)
+              if (enabled && !temperatureEnabled) setTemperature(0.95)
+            }}
+          />
+          <Text size="sm" fw={500} c={temperatureEnabled ? undefined : 'dimmed'}>
+            Temperature {temperatureEnabled ? `(${temperature.toFixed(2)})` : '(off)'}
+          </Text>
+        </Group>
         <Group align="center" gap="md">
           <Slider
             value={temperature}
@@ -293,6 +314,7 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
             step={0.05}
             style={{ flex: 1 }}
             label={(v) => v.toFixed(2)}
+            disabled={!temperatureEnabled}
           />
           <NumberInput
             value={temperature}
@@ -302,14 +324,26 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
             step={0.05}
             decimalScale={2}
             w={80}
+            disabled={!temperatureEnabled}
           />
         </Group>
       </div>
 
       <div>
-        <Text size="sm" fw={500} mb={4}>
-          Top P ({topP.toFixed(2)})
-        </Text>
+        <Group gap="xs" mb={4}>
+          <Switch
+            size="sm"
+            checked={topPEnabled}
+            onChange={(e) => {
+              const enabled = e.currentTarget.checked
+              setTopPEnabled(enabled)
+              if (enabled && !topPEnabled) setTopP(0.95)
+            }}
+          />
+          <Text size="sm" fw={500} c={topPEnabled ? undefined : 'dimmed'}>
+            Top P {topPEnabled ? `(${topP.toFixed(2)})` : '(off)'}
+          </Text>
+        </Group>
         <Group align="center" gap="md">
           <Slider
             value={topP}
@@ -319,6 +353,7 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
             step={0.05}
             style={{ flex: 1 }}
             label={(v) => v.toFixed(2)}
+            disabled={!topPEnabled}
           />
           <NumberInput
             value={topP}
@@ -328,14 +363,26 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
             step={0.05}
             decimalScale={2}
             w={80}
+            disabled={!topPEnabled}
           />
         </Group>
       </div>
 
       <div>
-        <Text size="sm" fw={500} mb={4}>
-          Top K
-        </Text>
+        <Group gap="xs" mb={4}>
+          <Switch
+            size="sm"
+            checked={topKEnabled}
+            onChange={(e) => {
+              const enabled = e.currentTarget.checked
+              setTopKEnabled(enabled)
+              if (enabled && !topKEnabled) setTopK(40)
+            }}
+          />
+          <Text size="sm" fw={500} c={topKEnabled ? undefined : 'dimmed'}>
+            Top K {topKEnabled ? '' : '(off)'}
+          </Text>
+        </Group>
         <NumberInput
           value={topK}
           onChange={(val) => setTopK(typeof val === 'number' ? val : 40)}
@@ -343,6 +390,7 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
           max={500}
           step={1}
           w={120}
+          disabled={!topKEnabled}
         />
       </div>
 

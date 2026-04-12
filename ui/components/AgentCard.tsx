@@ -48,13 +48,13 @@ export function AgentCard({ agent, onEdit, onDelete }: AgentCardProps) {
 
           <Group gap="xs" mt={4}>
             <Text size="xs" c="dimmed">
-              temp: {agent.temperature}
+              temp: {agent.temperatureEnabled ? agent.temperature : 'off'}
             </Text>
             <Text size="xs" c="dimmed">
-              topP: {agent.topP}
+              topP: {agent.topPEnabled ? agent.topP : 'off'}
             </Text>
             <Text size="xs" c="dimmed">
-              topK: {agent.topK}
+              topK: {agent.topKEnabled ? agent.topK : 'off'}
             </Text>
           </Group>
 
