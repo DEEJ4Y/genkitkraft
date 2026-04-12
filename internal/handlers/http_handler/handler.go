@@ -363,7 +363,7 @@ func (h *Handler) CreatePlaygroundSession(w http.ResponseWriter, r *http.Request
 }
 
 func (h *Handler) DeletePlaygroundSession(w http.ResponseWriter, r *http.Request, agentId string, sessionId string) {
-	err := h.playgroundApp.Commands.DeleteSession.Execute(r.Context(), commands.DeletePlaygroundSessionParams{ID: sessionId})
+	err := h.playgroundApp.Commands.DeleteSession.Execute(r.Context(), commands.DeletePlaygroundSessionParams{ID: sessionId, AgentID: agentId})
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -372,7 +372,7 @@ func (h *Handler) DeletePlaygroundSession(w http.ResponseWriter, r *http.Request
 }
 
 func (h *Handler) ListPlaygroundMessages(w http.ResponseWriter, r *http.Request, agentId string, sessionId string) {
-	result, err := h.playgroundApp.Queries.ListMessages.Execute(r.Context(), queries.ListPlaygroundMessagesParams{SessionID: sessionId})
+	result, err := h.playgroundApp.Queries.ListMessages.Execute(r.Context(), queries.ListPlaygroundMessagesParams{SessionID: sessionId, AgentID: agentId})
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -449,7 +449,7 @@ func (h *Handler) PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId
 	}
 
 	// Load conversation history
-	messagesResult, err := h.playgroundApp.Queries.ListMessages.Execute(r.Context(), queries.ListPlaygroundMessagesParams{SessionID: req.SessionId})
+	messagesResult, err := h.playgroundApp.Queries.ListMessages.Execute(r.Context(), queries.ListPlaygroundMessagesParams{SessionID: req.SessionId, AgentID: agentId})
 	if err != nil {
 		writeAppError(w, err)
 		return
