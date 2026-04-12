@@ -81,11 +81,20 @@ type ModelsAgentResponse struct {
 	// Temperature Sampling temperature.
 	Temperature float32 `json:"temperature"`
 
+	// TemperatureEnabled Whether temperature sampling is enabled.
+	TemperatureEnabled bool `json:"temperatureEnabled"`
+
 	// TopK Top-k sampling.
 	TopK int32 `json:"topK"`
 
+	// TopKEnabled Whether top-k sampling is enabled.
+	TopKEnabled bool `json:"topKEnabled"`
+
 	// TopP Nucleus sampling (top-p).
 	TopP float32 `json:"topP"`
+
+	// TopPEnabled Whether nucleus sampling (top-p) is enabled.
+	TopPEnabled bool `json:"topPEnabled"`
 
 	// UpdatedAt When this agent was last updated.
 	UpdatedAt time.Time `json:"updatedAt"`
@@ -132,11 +141,20 @@ type ModelsCreateAgentRequest struct {
 	// Temperature Sampling temperature (default 0.95).
 	Temperature *float32 `json:"temperature,omitempty"`
 
+	// TemperatureEnabled Whether temperature sampling is enabled (default false).
+	TemperatureEnabled *bool `json:"temperatureEnabled,omitempty"`
+
 	// TopK Top-k sampling (default 40).
 	TopK *int32 `json:"topK,omitempty"`
 
+	// TopKEnabled Whether top-k sampling is enabled (default false).
+	TopKEnabled *bool `json:"topKEnabled,omitempty"`
+
 	// TopP Nucleus sampling top-p (default 0.95).
 	TopP *float32 `json:"topP,omitempty"`
+
+	// TopPEnabled Whether nucleus sampling (top-p) is enabled (default false).
+	TopPEnabled *bool `json:"topPEnabled,omitempty"`
 }
 
 // ModelsCreatePlaygroundSessionRequest Request to create a new playground session.
@@ -236,11 +254,20 @@ type ModelsPlaygroundChatRequest struct {
 	// Temperature Optional temperature override for testing.
 	Temperature *float32 `json:"temperature,omitempty"`
 
+	// TemperatureEnabled Optional temperature enabled override for testing.
+	TemperatureEnabled *bool `json:"temperatureEnabled,omitempty"`
+
 	// TopK Optional top-k override for testing.
 	TopK *int32 `json:"topK,omitempty"`
 
+	// TopKEnabled Optional top-k enabled override for testing.
+	TopKEnabled *bool `json:"topKEnabled,omitempty"`
+
 	// TopP Optional top-p override for testing.
 	TopP *float32 `json:"topP,omitempty"`
+
+	// TopPEnabled Optional top-p enabled override for testing.
+	TopPEnabled *bool `json:"topPEnabled,omitempty"`
 }
 
 // ModelsPlaygroundMessageListResponse List of messages in a session.
@@ -428,11 +455,20 @@ type ModelsUpdateAgentRequest struct {
 	// Temperature Updated sampling temperature.
 	Temperature *float32 `json:"temperature,omitempty"`
 
+	// TemperatureEnabled Updated temperature enabled flag.
+	TemperatureEnabled *bool `json:"temperatureEnabled,omitempty"`
+
 	// TopK Updated top-k sampling.
 	TopK *int32 `json:"topK,omitempty"`
 
+	// TopKEnabled Updated top-k enabled flag.
+	TopKEnabled *bool `json:"topKEnabled,omitempty"`
+
 	// TopP Updated nucleus sampling top-p.
 	TopP *float32 `json:"topP,omitempty"`
+
+	// TopPEnabled Updated top-p enabled flag.
+	TopPEnabled *bool `json:"topPEnabled,omitempty"`
 }
 
 // ModelsUpdatePromptRequest Request to update an existing prompt.

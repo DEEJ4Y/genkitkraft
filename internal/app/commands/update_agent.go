@@ -11,14 +11,17 @@ import (
 )
 
 type UpdateAgentParams struct {
-	ID             string
-	Name           *string
-	ProviderID     *string
-	ModelID        *string
-	SystemPromptID *string // nil=don't change, ""=clear, "uuid"=set
-	Temperature    *float64
-	TopP           *float64
-	TopK           *int
+	ID                 string
+	Name               *string
+	ProviderID         *string
+	ModelID            *string
+	SystemPromptID     *string // nil=don't change, ""=clear, "uuid"=set
+	TemperatureEnabled *bool
+	Temperature        *float64
+	TopPEnabled        *bool
+	TopP               *float64
+	TopKEnabled        *bool
+	TopK               *int
 }
 
 type UpdateAgentResult struct {
@@ -63,11 +66,20 @@ func (c *UpdateAgentCommand) Execute(ctx context.Context, params UpdateAgentPara
 		}
 		a.SystemPromptID = *params.SystemPromptID
 	}
+	if params.TemperatureEnabled != nil {
+		a.TemperatureEnabled = *params.TemperatureEnabled
+	}
 	if params.Temperature != nil {
 		a.Temperature = *params.Temperature
 	}
+	if params.TopPEnabled != nil {
+		a.TopPEnabled = *params.TopPEnabled
+	}
 	if params.TopP != nil {
 		a.TopP = *params.TopP
+	}
+	if params.TopKEnabled != nil {
+		a.TopKEnabled = *params.TopKEnabled
 	}
 	if params.TopK != nil {
 		a.TopK = *params.TopK

@@ -27,7 +27,8 @@ func NewAgentRepository(db *sql.DB) *AgentRepository {
 
 const listQuery = `
 SELECT a.id, a.name, a.provider_id, a.model_id, a.system_prompt_id,
-       a.temperature, a.top_p, a.top_k, a.created_at, a.updated_at,
+       a.temperature_enabled, a.temperature, a.top_p_enabled, a.top_p,
+       a.top_k_enabled, a.top_k, a.created_at, a.updated_at,
        COALESCE(p.name, '') AS provider_name,
        COALESCE(p.provider_type, '') AS provider_type,
        COALESCE(pr.name, '') AS system_prompt_name
@@ -38,7 +39,8 @@ ORDER BY a.created_at DESC LIMIT ? OFFSET ?`
 
 const getByIDQuery = `
 SELECT a.id, a.name, a.provider_id, a.model_id, a.system_prompt_id,
-       a.temperature, a.top_p, a.top_k, a.created_at, a.updated_at,
+       a.temperature_enabled, a.temperature, a.top_p_enabled, a.top_p,
+       a.top_k_enabled, a.top_k, a.created_at, a.updated_at,
        COALESCE(p.name, '') AS provider_name,
        COALESCE(p.provider_type, '') AS provider_type,
        COALESCE(pr.name, '') AS system_prompt_name
@@ -93,10 +95,13 @@ func (r *AgentRepository) Create(ctx context.Context, a *agent.Agent) error {
 	a.UpdatedAt = now
 
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO agents (id, name, provider_id, model_id, system_prompt_id, temperature, top_p, top_k, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO agents (id, name, provider_id, model_id, system_prompt_id,
+		 temperature_enabled, temperature, top_p_enabled, top_p, top_k_enabled, top_k,
+		 created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		a.ID, a.Name, a.ProviderID, a.ModelID, nullString(a.SystemPromptID),
-		a.Temperature, a.TopP, a.TopK, a.CreatedAt, a.UpdatedAt)
+		a.TemperatureEnabled, a.Temperature, a.TopPEnabled, a.TopP, a.TopKEnabled, a.TopK,
+		a.CreatedAt, a.UpdatedAt)
 	if err != nil {
 		return apperrors.NewAppErrorf(apperrors.Internal, "creating agent: %v", err)
 	}
@@ -108,9 +113,11 @@ func (r *AgentRepository) Update(ctx context.Context, a *agent.Agent) error {
 
 	result, err := r.db.ExecContext(ctx,
 		`UPDATE agents SET name = ?, provider_id = ?, model_id = ?, system_prompt_id = ?,
-		 temperature = ?, top_p = ?, top_k = ?, updated_at = ? WHERE id = ?`,
+		 temperature_enabled = ?, temperature = ?, top_p_enabled = ?, top_p = ?,
+		 top_k_enabled = ?, top_k = ?, updated_at = ? WHERE id = ?`,
 		a.Name, a.ProviderID, a.ModelID, nullString(a.SystemPromptID),
-		a.Temperature, a.TopP, a.TopK, a.UpdatedAt, a.ID)
+		a.TemperatureEnabled, a.Temperature, a.TopPEnabled, a.TopP,
+		a.TopKEnabled, a.TopK, a.UpdatedAt, a.ID)
 	if err != nil {
 		return apperrors.NewAppErrorf(apperrors.Internal, "updating agent: %v", err)
 	}
@@ -146,7 +153,8 @@ func scanAgent(rows *sql.Rows) (*agent.Agent, error) {
 	var systemPromptID sql.NullString
 	if err := rows.Scan(
 		&a.ID, &a.Name, &a.ProviderID, &a.ModelID, &systemPromptID,
-		&a.Temperature, &a.TopP, &a.TopK, &a.CreatedAt, &a.UpdatedAt,
+		&a.TemperatureEnabled, &a.Temperature, &a.TopPEnabled, &a.TopP,
+		&a.TopKEnabled, &a.TopK, &a.CreatedAt, &a.UpdatedAt,
 		&a.ProviderName, &a.ProviderType, &a.SystemPromptName,
 	); err != nil {
 		return nil, apperrors.NewAppErrorf(apperrors.Internal, "scanning agent: %v", err)
@@ -162,7 +170,8 @@ func scanAgentRow(row *sql.Row) (*agent.Agent, error) {
 	var systemPromptID sql.NullString
 	if err := row.Scan(
 		&a.ID, &a.Name, &a.ProviderID, &a.ModelID, &systemPromptID,
-		&a.Temperature, &a.TopP, &a.TopK, &a.CreatedAt, &a.UpdatedAt,
+		&a.TemperatureEnabled, &a.Temperature, &a.TopPEnabled, &a.TopP,
+		&a.TopKEnabled, &a.TopK, &a.CreatedAt, &a.UpdatedAt,
 		&a.ProviderName, &a.ProviderType, &a.SystemPromptName,
 	); err != nil {
 		return nil, err // caller handles sql.ErrNoRows

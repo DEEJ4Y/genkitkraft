@@ -10,8 +10,11 @@ interface ChatConfig {
   providerId?: string
   modelId?: string
   systemPromptId?: string
+  temperatureEnabled?: boolean
   temperature?: number
+  topPEnabled?: boolean
   topP?: number
+  topKEnabled?: boolean
   topK?: number
 }
 
@@ -71,8 +74,11 @@ export function usePlaygroundChat({ agentId, sessionId, config, onSessionTitleUp
       if (config?.providerId) body.providerId = config.providerId
       if (config?.modelId) body.modelId = config.modelId
       if (config?.systemPromptId) body.systemPromptId = config.systemPromptId
+      if (config?.temperatureEnabled !== undefined) body.temperatureEnabled = config.temperatureEnabled
       if (config?.temperature !== undefined) body.temperature = config.temperature
+      if (config?.topPEnabled !== undefined) body.topPEnabled = config.topPEnabled
       if (config?.topP !== undefined) body.topP = config.topP
+      if (config?.topKEnabled !== undefined) body.topKEnabled = config.topKEnabled
       if (config?.topK !== undefined) body.topK = config.topK
 
       const res = await fetch(`/api/v1/agents/${agentId}/playground/chat`, {

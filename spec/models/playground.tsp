@@ -71,11 +71,20 @@ model PlaygroundChatRequest {
   /** Optional system prompt override for testing. */
   systemPromptId?: string;
 
+  /** Optional temperature enabled override for testing. */
+  temperatureEnabled?: boolean;
+
   /** Optional temperature override for testing. */
   temperature?: float32;
 
+  /** Optional top-p enabled override for testing. */
+  topPEnabled?: boolean;
+
   /** Optional top-p override for testing. */
   topP?: float32;
+
+  /** Optional top-k enabled override for testing. */
+  topKEnabled?: boolean;
 
   /** Optional top-k override for testing. */
   topK?: int32;

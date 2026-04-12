@@ -11,13 +11,16 @@ import (
 )
 
 type CreateAgentParams struct {
-	Name           string
-	ProviderID     string
-	ModelID        string
-	SystemPromptID string
-	Temperature    *float64
-	TopP           *float64
-	TopK           *int
+	Name               string
+	ProviderID         string
+	ModelID            string
+	SystemPromptID     string
+	TemperatureEnabled *bool
+	Temperature        *float64
+	TopPEnabled        *bool
+	TopP               *float64
+	TopKEnabled        *bool
+	TopK               *int
 }
 
 type CreateAgentResult struct {
@@ -61,23 +64,38 @@ func (c *CreateAgentCommand) Execute(ctx context.Context, params CreateAgentPara
 	if params.Temperature != nil {
 		temperature = *params.Temperature
 	}
+	temperatureEnabled := false
+	if params.TemperatureEnabled != nil {
+		temperatureEnabled = *params.TemperatureEnabled
+	}
 	topP := agent.DefaultTopP
 	if params.TopP != nil {
 		topP = *params.TopP
+	}
+	topPEnabled := false
+	if params.TopPEnabled != nil {
+		topPEnabled = *params.TopPEnabled
 	}
 	topK := agent.DefaultTopK
 	if params.TopK != nil {
 		topK = *params.TopK
 	}
+	topKEnabled := false
+	if params.TopKEnabled != nil {
+		topKEnabled = *params.TopKEnabled
+	}
 
 	a := &agent.Agent{
-		Name:           params.Name,
-		ProviderID:     params.ProviderID,
-		ModelID:        params.ModelID,
-		SystemPromptID: params.SystemPromptID,
-		Temperature:    temperature,
-		TopP:           topP,
-		TopK:           topK,
+		Name:               params.Name,
+		ProviderID:         params.ProviderID,
+		ModelID:            params.ModelID,
+		SystemPromptID:     params.SystemPromptID,
+		TemperatureEnabled: temperatureEnabled,
+		Temperature:        temperature,
+		TopPEnabled:        topPEnabled,
+		TopP:               topP,
+		TopKEnabled:        topKEnabled,
+		TopK:               topK,
 	}
 
 	if err := c.repo.Create(ctx, a); err != nil {

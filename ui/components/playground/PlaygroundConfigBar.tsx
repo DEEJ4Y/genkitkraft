@@ -8,6 +8,7 @@ import {
   NumberInput,
   Select,
   Slider,
+  Switch,
   Text,
 } from '@mantine/core'
 import { IconAdjustments, IconDeviceFloppy } from '@tabler/icons-react'
@@ -19,12 +20,19 @@ import type { components } from '../../lib/api/schema'
 type AgentResponse = components['schemas']['Models.AgentResponse']
 type ProviderResponse = components['schemas']['Models.ProviderResponse']
 
+const DEFAULT_TEMPERATURE = 0.95
+const DEFAULT_TOP_P = 0.95
+const DEFAULT_TOP_K = 40
+
 export interface PlaygroundConfig {
   providerId: string
   modelId: string
   systemPromptId: string
+  temperatureEnabled: boolean
   temperature: number
+  topPEnabled: boolean
   topP: number
+  topKEnabled: boolean
   topK: number
 }
 
@@ -84,8 +92,11 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent }: 
     config.providerId !== agent.providerId ||
     config.modelId !== agent.modelId ||
     config.systemPromptId !== (agent.systemPromptId ?? '') ||
+    config.temperatureEnabled !== agent.temperatureEnabled ||
     config.temperature !== agent.temperature ||
+    config.topPEnabled !== agent.topPEnabled ||
     config.topP !== agent.topP ||
+    config.topKEnabled !== agent.topKEnabled ||
     config.topK !== agent.topK
 
   function handleProviderChange(val: string | null) {
@@ -157,7 +168,23 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent }: 
           </Group>
           <Group grow gap="md" mt="sm" align="flex-start">
             <div>
-              <Text size="xs" fw={500} mb={2}>Temperature ({config.temperature.toFixed(2)})</Text>
+              <Group gap="xs" mb={2}>
+                <Switch
+                  size="xs"
+                  checked={config.temperatureEnabled}
+                  onChange={(e) => {
+                    const enabled = e.currentTarget.checked
+                    onChange({
+                      ...config,
+                      temperatureEnabled: enabled,
+                      temperature: enabled && !config.temperatureEnabled ? DEFAULT_TEMPERATURE : config.temperature,
+                    })
+                  }}
+                />
+                <Text size="xs" fw={500} c={config.temperatureEnabled ? undefined : 'dimmed'}>
+                  Temperature {config.temperatureEnabled ? `(${config.temperature.toFixed(2)})` : '(off)'}
+                </Text>
+              </Group>
               <Slider
                 value={config.temperature}
                 onChange={(val) => onChange({ ...config, temperature: val })}
@@ -166,10 +193,27 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent }: 
                 step={0.05}
                 size="xs"
                 label={(v) => v.toFixed(2)}
+                disabled={!config.temperatureEnabled}
               />
             </div>
             <div>
-              <Text size="xs" fw={500} mb={2}>Top P ({config.topP.toFixed(2)})</Text>
+              <Group gap="xs" mb={2}>
+                <Switch
+                  size="xs"
+                  checked={config.topPEnabled}
+                  onChange={(e) => {
+                    const enabled = e.currentTarget.checked
+                    onChange({
+                      ...config,
+                      topPEnabled: enabled,
+                      topP: enabled && !config.topPEnabled ? DEFAULT_TOP_P : config.topP,
+                    })
+                  }}
+                />
+                <Text size="xs" fw={500} c={config.topPEnabled ? undefined : 'dimmed'}>
+                  Top P {config.topPEnabled ? `(${config.topP.toFixed(2)})` : '(off)'}
+                </Text>
+              </Group>
               <Slider
                 value={config.topP}
                 onChange={(val) => onChange({ ...config, topP: val })}
@@ -178,16 +222,34 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent }: 
                 step={0.05}
                 size="xs"
                 label={(v) => v.toFixed(2)}
+                disabled={!config.topPEnabled}
               />
             </div>
             <div>
-              <Text size="xs" fw={500} mb={2}>Top K</Text>
+              <Group gap="xs" mb={2}>
+                <Switch
+                  size="xs"
+                  checked={config.topKEnabled}
+                  onChange={(e) => {
+                    const enabled = e.currentTarget.checked
+                    onChange({
+                      ...config,
+                      topKEnabled: enabled,
+                      topK: enabled && !config.topKEnabled ? DEFAULT_TOP_K : config.topK,
+                    })
+                  }}
+                />
+                <Text size="xs" fw={500} c={config.topKEnabled ? undefined : 'dimmed'}>
+                  Top K {config.topKEnabled ? '' : '(off)'}
+                </Text>
+              </Group>
               <NumberInput
                 value={config.topK}
-                onChange={(val) => onChange({ ...config, topK: typeof val === 'number' ? val : 40 })}
+                onChange={(val) => onChange({ ...config, topK: typeof val === 'number' ? val : DEFAULT_TOP_K })}
                 min={1}
                 max={500}
                 size="xs"
+                disabled={!config.topKEnabled}
               />
             </div>
           </Group>

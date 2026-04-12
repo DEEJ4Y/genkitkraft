@@ -14,12 +14,15 @@ import (
 type ResolvePlaygroundConfigParams struct {
 	AgentID string
 	// Optional overrides — empty/zero means use agent defaults
-	ProviderID     string
-	ModelID        string
-	SystemPromptID *string // nil = use agent default, pointer to empty = clear prompt
-	Temperature    *float64
-	TopP           *float64
-	TopK           *int
+	ProviderID         string
+	ModelID            string
+	SystemPromptID     *string // nil = use agent default, pointer to empty = clear prompt
+	TemperatureEnabled *bool
+	Temperature        *float64
+	TopPEnabled        *bool
+	TopP               *float64
+	TopKEnabled        *bool
+	TopK               *int
 }
 
 type ResolvePlaygroundConfigResult struct {
@@ -67,13 +70,25 @@ func (q *ResolvePlaygroundConfigQuery) Execute(ctx context.Context, params Resol
 	if params.Temperature != nil {
 		temperature = *params.Temperature
 	}
+	temperatureEnabled := a.TemperatureEnabled
+	if params.TemperatureEnabled != nil {
+		temperatureEnabled = *params.TemperatureEnabled
+	}
 	topP := a.TopP
 	if params.TopP != nil {
 		topP = *params.TopP
 	}
+	topPEnabled := a.TopPEnabled
+	if params.TopPEnabled != nil {
+		topPEnabled = *params.TopPEnabled
+	}
 	topK := a.TopK
 	if params.TopK != nil {
 		topK = *params.TopK
+	}
+	topKEnabled := a.TopKEnabled
+	if params.TopKEnabled != nil {
+		topKEnabled = *params.TopKEnabled
 	}
 
 	// Determine system prompt ID
@@ -109,15 +124,18 @@ func (q *ResolvePlaygroundConfigQuery) Execute(ctx context.Context, params Resol
 	}
 
 	chatReq := chatprovider.ChatRequest{
-		ProviderType: string(p.ProviderType),
-		APIKey:       apiKey,
-		BaseURL:      p.BaseURL,
-		Config:       p.RawConfig,
-		ModelID:      modelID,
-		SystemPrompt: systemPrompt,
-		Temperature:  temperature,
-		TopP:         topP,
-		TopK:         topK,
+		ProviderType:       string(p.ProviderType),
+		APIKey:             apiKey,
+		BaseURL:            p.BaseURL,
+		Config:             p.RawConfig,
+		ModelID:            modelID,
+		SystemPrompt:       systemPrompt,
+		TemperatureEnabled: temperatureEnabled,
+		Temperature:        temperature,
+		TopPEnabled:        topPEnabled,
+		TopP:               topP,
+		TopKEnabled:        topKEnabled,
+		TopK:               topK,
 	}
 
 	return ResolvePlaygroundConfigResult{ChatRequest: chatReq}, nil

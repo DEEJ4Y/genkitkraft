@@ -217,17 +217,20 @@ func toProviderTypeListResponse(result queries.ListProviderTypesResult) gen.Mode
 
 func toAgentResponse(a *agent.Agent) gen.ModelsAgentResponse {
 	resp := gen.ModelsAgentResponse{
-		Id:           a.ID,
-		Name:         a.Name,
-		ProviderId:   a.ProviderID,
-		ProviderName: a.ProviderName,
-		ProviderType: gen.ModelsProviderType(a.ProviderType),
-		ModelId:      a.ModelID,
-		Temperature:  float32(a.Temperature),
-		TopP:         float32(a.TopP),
-		TopK:         int32(a.TopK),
-		CreatedAt:    a.CreatedAt,
-		UpdatedAt:    a.UpdatedAt,
+		Id:                 a.ID,
+		Name:               a.Name,
+		ProviderId:         a.ProviderID,
+		ProviderName:       a.ProviderName,
+		ProviderType:       gen.ModelsProviderType(a.ProviderType),
+		ModelId:            a.ModelID,
+		TemperatureEnabled: a.TemperatureEnabled,
+		Temperature:        float32(a.Temperature),
+		TopPEnabled:        a.TopPEnabled,
+		TopP:               float32(a.TopP),
+		TopKEnabled:        a.TopKEnabled,
+		TopK:               int32(a.TopK),
+		CreatedAt:          a.CreatedAt,
+		UpdatedAt:          a.UpdatedAt,
 	}
 	if a.SystemPromptID != "" {
 		resp.SystemPromptId = &a.SystemPromptID
@@ -260,14 +263,17 @@ func toCreateAgentParams(req gen.ModelsCreateAgentRequest) commands.CreateAgentP
 	if req.SystemPromptId != nil {
 		params.SystemPromptID = *req.SystemPromptId
 	}
+	params.TemperatureEnabled = req.TemperatureEnabled
 	if req.Temperature != nil {
 		t := float64(*req.Temperature)
 		params.Temperature = &t
 	}
+	params.TopPEnabled = req.TopPEnabled
 	if req.TopP != nil {
 		t := float64(*req.TopP)
 		params.TopP = &t
 	}
+	params.TopKEnabled = req.TopKEnabled
 	if req.TopK != nil {
 		t := int(*req.TopK)
 		params.TopK = &t
@@ -283,14 +289,17 @@ func toUpdateAgentParams(id string, req gen.ModelsUpdateAgentRequest) commands.U
 	params.ProviderID = req.ProviderId
 	params.ModelID = req.ModelId
 	params.SystemPromptID = req.SystemPromptId
+	params.TemperatureEnabled = req.TemperatureEnabled
 	if req.Temperature != nil {
 		t := float64(*req.Temperature)
 		params.Temperature = &t
 	}
+	params.TopPEnabled = req.TopPEnabled
 	if req.TopP != nil {
 		t := float64(*req.TopP)
 		params.TopP = &t
 	}
+	params.TopKEnabled = req.TopKEnabled
 	if req.TopK != nil {
 		t := int(*req.TopK)
 		params.TopK = &t

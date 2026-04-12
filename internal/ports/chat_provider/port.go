@@ -13,16 +13,19 @@ type ChatMessage struct {
 
 // ChatRequest contains all information needed to make a chat completion request.
 type ChatRequest struct {
-	ProviderType string
-	APIKey       string
-	BaseURL      string
-	Config       json.RawMessage // Provider-specific config
-	ModelID      string
-	SystemPrompt string
-	Messages     []ChatMessage
-	Temperature  float64
-	TopP         float64
-	TopK         int
+	ProviderType       string
+	APIKey             string
+	BaseURL            string
+	Config             json.RawMessage // Provider-specific config
+	ModelID            string
+	SystemPrompt       string
+	Messages           []ChatMessage
+	TemperatureEnabled bool
+	Temperature        float64
+	TopPEnabled        bool
+	TopP               float64
+	TopKEnabled        bool
+	TopK               int
 }
 
 // ChatProvider defines the contract for streaming chat completions from LLM providers.

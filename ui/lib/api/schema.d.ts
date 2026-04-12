@@ -446,16 +446,22 @@ export interface components {
             systemPromptId?: string;
             /** @description Resolved name of the system prompt, if any. */
             systemPromptName?: string;
+            /** @description Whether temperature sampling is enabled. */
+            temperatureEnabled: boolean;
             /**
              * Format: float
              * @description Sampling temperature.
              */
             temperature: number;
+            /** @description Whether nucleus sampling (top-p) is enabled. */
+            topPEnabled: boolean;
             /**
              * Format: float
              * @description Nucleus sampling (top-p).
              */
             topP: number;
+            /** @description Whether top-k sampling is enabled. */
+            topKEnabled: boolean;
             /**
              * Format: int32
              * @description Top-k sampling.
@@ -522,16 +528,22 @@ export interface components {
             modelId: string;
             /** @description ID of an existing system prompt (optional). */
             systemPromptId?: string;
+            /** @description Whether temperature sampling is enabled (default false). */
+            temperatureEnabled?: boolean;
             /**
              * Format: float
              * @description Sampling temperature (default 0.95).
              */
             temperature?: number;
+            /** @description Whether nucleus sampling (top-p) is enabled (default false). */
+            topPEnabled?: boolean;
             /**
              * Format: float
              * @description Nucleus sampling top-p (default 0.95).
              */
             topP?: number;
+            /** @description Whether top-k sampling is enabled (default false). */
+            topKEnabled?: boolean;
             /**
              * Format: int32
              * @description Top-k sampling (default 40).
@@ -630,16 +642,22 @@ export interface components {
             modelId?: string;
             /** @description Optional system prompt override for testing. */
             systemPromptId?: string;
+            /** @description Optional temperature enabled override for testing. */
+            temperatureEnabled?: boolean;
             /**
              * Format: float
              * @description Optional temperature override for testing.
              */
             temperature?: number;
+            /** @description Optional top-p enabled override for testing. */
+            topPEnabled?: boolean;
             /**
              * Format: float
              * @description Optional top-p override for testing.
              */
             topP?: number;
+            /** @description Optional top-k enabled override for testing. */
+            topKEnabled?: boolean;
             /**
              * Format: int32
              * @description Optional top-k override for testing.
@@ -815,16 +833,22 @@ export interface components {
             modelId?: string;
             /** @description Updated system prompt ID (empty string to clear). */
             systemPromptId?: string;
+            /** @description Updated temperature enabled flag. */
+            temperatureEnabled?: boolean;
             /**
              * Format: float
              * @description Updated sampling temperature.
              */
             temperature?: number;
+            /** @description Updated top-p enabled flag. */
+            topPEnabled?: boolean;
             /**
              * Format: float
              * @description Updated nucleus sampling top-p.
              */
             topP?: number;
+            /** @description Updated top-k enabled flag. */
+            topKEnabled?: boolean;
             /**
              * Format: int32
              * @description Updated top-k sampling.

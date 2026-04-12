@@ -424,13 +424,22 @@ func (h *Handler) PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId
 		t := float64(*req.Temperature)
 		configParams.Temperature = &t
 	}
+	if req.TemperatureEnabled != nil {
+		configParams.TemperatureEnabled = req.TemperatureEnabled
+	}
 	if req.TopP != nil {
 		t := float64(*req.TopP)
 		configParams.TopP = &t
 	}
+	if req.TopPEnabled != nil {
+		configParams.TopPEnabled = req.TopPEnabled
+	}
 	if req.TopK != nil {
 		t := int(*req.TopK)
 		configParams.TopK = &t
+	}
+	if req.TopKEnabled != nil {
+		configParams.TopKEnabled = req.TopKEnabled
 	}
 
 	configResult, err := h.playgroundApp.Queries.ResolveConfig.Execute(r.Context(), configParams)

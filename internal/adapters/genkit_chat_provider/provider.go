@@ -132,15 +132,15 @@ func buildGoogleConfig(req chatprovider.ChatRequest) *genai.GenerateContentConfi
 	cfg := &genai.GenerateContentConfig{}
 	hasConfig := false
 
-	if req.Temperature > 0 {
+	if req.TemperatureEnabled {
 		cfg.Temperature = genai.Ptr(float32(req.Temperature))
 		hasConfig = true
 	}
-	if req.TopP > 0 {
+	if req.TopPEnabled {
 		cfg.TopP = genai.Ptr(float32(req.TopP))
 		hasConfig = true
 	}
-	if req.TopK > 0 {
+	if req.TopKEnabled {
 		cfg.TopK = genai.Ptr(float32(req.TopK))
 		hasConfig = true
 	}
@@ -157,15 +157,15 @@ func buildAnthropicConfig(req chatprovider.ChatRequest) *anthropicsdk.MessageNew
 	}
 	hasConfig := true // Always set max_tokens for Anthropic.
 
-	if req.Temperature > 0 {
+	if req.TemperatureEnabled {
 		cfg.Temperature = anthropicsdk.Float(req.Temperature)
 		hasConfig = true
 	}
-	if req.TopP > 0 {
+	if req.TopPEnabled {
 		cfg.TopP = anthropicsdk.Float(req.TopP)
 		hasConfig = true
 	}
-	if req.TopK > 0 {
+	if req.TopKEnabled {
 		cfg.TopK = anthropicsdk.Int(int64(req.TopK))
 		hasConfig = true
 	}
@@ -180,15 +180,15 @@ func buildOllamaConfig(req chatprovider.ChatRequest) *ollama.GenerateContentConf
 	cfg := &ollama.GenerateContentConfig{}
 	hasConfig := false
 
-	if req.Temperature > 0 {
+	if req.TemperatureEnabled {
 		cfg.Temperature = &req.Temperature
 		hasConfig = true
 	}
-	if req.TopP > 0 {
+	if req.TopPEnabled {
 		cfg.TopP = &req.TopP
 		hasConfig = true
 	}
-	if req.TopK > 0 {
+	if req.TopKEnabled {
 		cfg.TopK = &req.TopK
 		hasConfig = true
 	}

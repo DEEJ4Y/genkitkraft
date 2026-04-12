@@ -26,11 +26,20 @@ model AgentResponse {
   /** Resolved name of the system prompt, if any. */
   systemPromptName?: string;
 
+  /** Whether temperature sampling is enabled. */
+  temperatureEnabled: boolean;
+
   /** Sampling temperature. */
   temperature: float32;
 
+  /** Whether nucleus sampling (top-p) is enabled. */
+  topPEnabled: boolean;
+
   /** Nucleus sampling (top-p). */
   topP: float32;
+
+  /** Whether top-k sampling is enabled. */
+  topKEnabled: boolean;
 
   /** Top-k sampling. */
   topK: int32;
@@ -56,11 +65,20 @@ model CreateAgentRequest {
   /** ID of an existing system prompt (optional). */
   systemPromptId?: string;
 
+  /** Whether temperature sampling is enabled (default false). */
+  temperatureEnabled?: boolean;
+
   /** Sampling temperature (default 0.95). */
   temperature?: float32;
 
+  /** Whether nucleus sampling (top-p) is enabled (default false). */
+  topPEnabled?: boolean;
+
   /** Nucleus sampling top-p (default 0.95). */
   topP?: float32;
+
+  /** Whether top-k sampling is enabled (default false). */
+  topKEnabled?: boolean;
 
   /** Top-k sampling (default 40). */
   topK?: int32;
@@ -80,11 +98,20 @@ model UpdateAgentRequest {
   /** Updated system prompt ID (empty string to clear). */
   systemPromptId?: string;
 
+  /** Updated temperature enabled flag. */
+  temperatureEnabled?: boolean;
+
   /** Updated sampling temperature. */
   temperature?: float32;
 
+  /** Updated top-p enabled flag. */
+  topPEnabled?: boolean;
+
   /** Updated nucleus sampling top-p. */
   topP?: float32;
+
+  /** Updated top-k enabled flag. */
+  topKEnabled?: boolean;
 
   /** Updated top-k sampling. */
   topK?: int32;

@@ -744,8 +744,11 @@ components:
         - providerName
         - providerType
         - modelId
+        - temperatureEnabled
         - temperature
+        - topPEnabled
         - topP
+        - topKEnabled
         - topK
         - createdAt
         - updatedAt
@@ -775,14 +778,23 @@ components:
         systemPromptName:
           type: string
           description: Resolved name of the system prompt, if any.
+        temperatureEnabled:
+          type: boolean
+          description: Whether temperature sampling is enabled.
         temperature:
           type: number
           format: float
           description: Sampling temperature.
+        topPEnabled:
+          type: boolean
+          description: Whether nucleus sampling (top-p) is enabled.
         topP:
           type: number
           format: float
           description: Nucleus sampling (top-p).
+        topKEnabled:
+          type: boolean
+          description: Whether top-k sampling is enabled.
         topK:
           type: integer
           format: int32
@@ -886,14 +898,23 @@ components:
         systemPromptId:
           type: string
           description: ID of an existing system prompt (optional).
+        temperatureEnabled:
+          type: boolean
+          description: Whether temperature sampling is enabled (default false).
         temperature:
           type: number
           format: float
           description: Sampling temperature (default 0.95).
+        topPEnabled:
+          type: boolean
+          description: Whether nucleus sampling (top-p) is enabled (default false).
         topP:
           type: number
           format: float
           description: Nucleus sampling top-p (default 0.95).
+        topKEnabled:
+          type: boolean
+          description: Whether top-k sampling is enabled (default false).
         topK:
           type: integer
           format: int32
@@ -1055,14 +1076,23 @@ components:
         systemPromptId:
           type: string
           description: Optional system prompt override for testing.
+        temperatureEnabled:
+          type: boolean
+          description: Optional temperature enabled override for testing.
         temperature:
           type: number
           format: float
           description: Optional temperature override for testing.
+        topPEnabled:
+          type: boolean
+          description: Optional top-p enabled override for testing.
         topP:
           type: number
           format: float
           description: Optional top-p override for testing.
+        topKEnabled:
+          type: boolean
+          description: Optional top-k enabled override for testing.
         topK:
           type: integer
           format: int32
@@ -1349,14 +1379,23 @@ components:
         systemPromptId:
           type: string
           description: Updated system prompt ID (empty string to clear).
+        temperatureEnabled:
+          type: boolean
+          description: Updated temperature enabled flag.
         temperature:
           type: number
           format: float
           description: Updated sampling temperature.
+        topPEnabled:
+          type: boolean
+          description: Updated top-p enabled flag.
         topP:
           type: number
           format: float
           description: Updated nucleus sampling top-p.
+        topKEnabled:
+          type: boolean
+          description: Updated top-k enabled flag.
         topK:
           type: integer
           format: int32
