@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { AppShell, NavLink, Title, Text, Button } from '@mantine/core'
-import { IconHome2, IconFileText, IconSettings, IconLogout } from '@tabler/icons-react'
+import { IconHome2, IconRobot, IconFileText, IconSettings, IconLogout } from '@tabler/icons-react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../lib/auth'
 
@@ -23,6 +23,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
             leftSection={<IconHome2 size={18} />}
             active={router.pathname === '/'}
             onClick={() => router.push('/')}
+          />
+          <NavLink
+            label="Agents"
+            leftSection={<IconRobot size={18} />}
+            active={router.pathname === '/agents'}
+            onClick={() => router.push('/agents')}
           />
           <NavLink
             label="Prompts"

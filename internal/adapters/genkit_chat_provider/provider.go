@@ -1,0 +1,224 @@
+package genkitchatprovider
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/firebase/genkit/go/ai"
+	"github.com/firebase/genkit/go/genkit"
+	"github.com/firebase/genkit/go/plugins/ollama"
+	"github.com/openai/openai-go"
+	"google.golang.org/genai"
+
+	anthropicsdk "github.com/anthropics/anthropic-sdk-go"
+
+	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
+	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
+)
+
+// Compile-time check that ChatProvider implements the port interface.
+var _ chatprovider.ChatProvider = (*ChatProvider)(nil)
+
+// ChatProvider implements chatprovider.ChatProvider using the Genkit Go SDK.
+type ChatProvider struct{}
+
+// NewChatProvider creates a new Genkit-based chat provider.
+func NewChatProvider() *ChatProvider {
+	return &ChatProvider{}
+}
+
+func (cp *ChatProvider) ChatStream(ctx context.Context, req chatprovider.ChatRequest) (<-chan string, <-chan error) {
+	tokenCh := make(chan string, 64)
+	errCh := make(chan error, 1)
+
+	go func() {
+		defer close(tokenCh)
+		defer close(errCh)
+
+		if err := cp.doStream(ctx, req, tokenCh); err != nil {
+			errCh <- err
+		}
+	}()
+
+	return tokenCh, errCh
+}
+
+func (cp *ChatProvider) doStream(ctx context.Context, req chatprovider.ChatRequest, tokenCh chan<- string) error {
+	result, err := buildPlugin(req)
+	if err != nil {
+		return err
+	}
+
+	g := genkit.Init(ctx, genkit.WithPlugins(result.plugin))
+
+	model := result.getModel(g)
+
+	// Build generate options.
+	opts := []ai.GenerateOption{
+		ai.WithModel(model),
+	}
+
+	if req.SystemPrompt != "" {
+		opts = append(opts, ai.WithSystem(req.SystemPrompt))
+	}
+
+	// Convert conversation history to Genkit messages.
+	if len(req.Messages) > 0 {
+		messages := buildMessages(req.Messages)
+		opts = append(opts, ai.WithMessages(messages...))
+	}
+
+	// Build provider-specific config.
+	if cfg := buildConfig(req); cfg != nil {
+		opts = append(opts, ai.WithConfig(cfg))
+	}
+
+	// Stream the response.
+	stream := genkit.GenerateStream(ctx, g, opts...)
+	for chunk, err := range stream {
+		if err != nil {
+			return fmt.Errorf("stream error: %w", err)
+		}
+		if chunk.Done {
+			break
+		}
+		text := chunk.Chunk.Text()
+		if text != "" {
+			select {
+			case tokenCh <- text:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+	}
+
+	return nil
+}
+
+// buildMessages converts ChatMessage slice to Genkit Message slice.
+func buildMessages(messages []chatprovider.ChatMessage) []*ai.Message {
+	result := make([]*ai.Message, 0, len(messages))
+	for _, m := range messages {
+		switch m.Role {
+		case "user":
+			result = append(result, ai.NewUserTextMessage(m.Content))
+		case "assistant":
+			result = append(result, ai.NewModelTextMessage(m.Content))
+		case "system":
+			result = append(result, ai.NewSystemTextMessage(m.Content))
+		}
+	}
+	return result
+}
+
+// buildConfig creates the provider-specific generation config based on the provider type.
+func buildConfig(req chatprovider.ChatRequest) any {
+	pt := provider.ProviderType(req.ProviderType)
+
+	switch pt {
+	case provider.GoogleAI, provider.VertexAI:
+		return buildGoogleConfig(req)
+	case provider.Anthropic:
+		return buildAnthropicConfig(req)
+	case provider.Ollama:
+		return buildOllamaConfig(req)
+	default:
+		// OpenAI and compatible providers: genkit handles default config.
+		// Only pass config if we have parameters to set.
+		return buildOpenAICompatibleConfig(req)
+	}
+}
+
+func buildGoogleConfig(req chatprovider.ChatRequest) *genai.GenerateContentConfig {
+	cfg := &genai.GenerateContentConfig{}
+	hasConfig := false
+
+	if req.TemperatureEnabled {
+		cfg.Temperature = genai.Ptr(float32(req.Temperature))
+		hasConfig = true
+	}
+	if req.TopPEnabled {
+		cfg.TopP = genai.Ptr(float32(req.TopP))
+		hasConfig = true
+	}
+	if req.TopKEnabled {
+		cfg.TopK = genai.Ptr(float32(req.TopK))
+		hasConfig = true
+	}
+
+	if !hasConfig {
+		return nil
+	}
+	return cfg
+}
+
+func buildAnthropicConfig(req chatprovider.ChatRequest) *anthropicsdk.MessageNewParams {
+	cfg := &anthropicsdk.MessageNewParams{
+		MaxTokens: 4096,
+	}
+	hasConfig := true // Always set max_tokens for Anthropic.
+
+	if req.TemperatureEnabled {
+		cfg.Temperature = anthropicsdk.Float(req.Temperature)
+		hasConfig = true
+	}
+	if req.TopPEnabled {
+		cfg.TopP = anthropicsdk.Float(req.TopP)
+		hasConfig = true
+	}
+	if req.TopKEnabled {
+		cfg.TopK = anthropicsdk.Int(int64(req.TopK))
+		hasConfig = true
+	}
+
+	if !hasConfig {
+		return nil
+	}
+	return cfg
+}
+
+func buildOllamaConfig(req chatprovider.ChatRequest) *ollama.GenerateContentConfig {
+	cfg := &ollama.GenerateContentConfig{}
+	hasConfig := false
+
+	if req.TemperatureEnabled {
+		cfg.Temperature = &req.Temperature
+		hasConfig = true
+	}
+	if req.TopPEnabled {
+		cfg.TopP = &req.TopP
+		hasConfig = true
+	}
+	if req.TopKEnabled {
+		cfg.TopK = &req.TopK
+		hasConfig = true
+	}
+
+	if !hasConfig {
+		return nil
+	}
+	return cfg
+}
+
+// buildOpenAICompatibleConfig builds an openai.ChatCompletionNewParams with
+// temperature and topP when enabled. The OpenAI API does not support topK,
+// so that parameter is intentionally skipped.
+func buildOpenAICompatibleConfig(req chatprovider.ChatRequest) any {
+	cfg := &openai.ChatCompletionNewParams{}
+	hasConfig := false
+
+	if req.TemperatureEnabled {
+		cfg.Temperature = openai.Float(req.Temperature)
+		hasConfig = true
+	}
+	if req.TopPEnabled {
+		cfg.TopP = openai.Float(req.TopP)
+		hasConfig = true
+	}
+	// Note: topK is not supported by the OpenAI API and is intentionally skipped.
+
+	if !hasConfig {
+		return nil
+	}
+	return cfg
+}

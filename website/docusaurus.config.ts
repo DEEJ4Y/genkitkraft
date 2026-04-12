@@ -66,12 +66,12 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
+          title: 'Documentation',
           items: [
-            {
-              label: 'Getting Started',
-              to: '/docs',
-            },
+            { label: 'Getting Started', to: '/docs/getting-started/installation' },
+            { label: 'Guides', to: '/docs/guides/providers' },
+            { label: 'Configuration', to: '/docs/configuration/environment-variables' },
+            { label: 'API Reference', to: '/docs/api/overview' },
           ],
         },
         {
@@ -89,6 +89,7 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
+      additionalLanguages: ['bash', 'yaml', 'go', 'docker'],
     },
   } satisfies Preset.ThemeConfig,
 };

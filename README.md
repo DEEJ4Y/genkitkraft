@@ -4,7 +4,7 @@ Self-hostable platform for configuring and running LLM agents. Built on [Google 
 
 ## Features
 
-- [ ] **Any LLM provider**: Google AI, OpenAI, Anthropic, Vertex AI, Bedrock, Azure, xAI, DeepSeek, Ollama
+- [x] **Any LLM provider**: Google AI, OpenAI, Anthropic, Vertex AI, Bedrock, Azure, xAI, DeepSeek, Ollama
 - [ ] **Agent builder UI**: Create agents with system prompts, model selection, temperature, and tool config
 - [ ] **MCP tool support**: Connect tools via MCP servers (stdio and SSE transports)
 - [ ] **Smart tool selection**: Three tool modes (manual, auto-search, hybrid) to avoid context pollution

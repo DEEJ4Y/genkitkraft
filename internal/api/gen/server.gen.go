@@ -26,6 +26,36 @@ type ServerInterface interface {
 	// Auth status
 	// (GET /api/auth/status)
 	GetAuthStatus(w http.ResponseWriter, r *http.Request)
+	// List agents
+	// (GET /api/v1/agents)
+	ListAgents(w http.ResponseWriter, r *http.Request, params ListAgentsParams)
+	// Create agent
+	// (POST /api/v1/agents)
+	CreateAgent(w http.ResponseWriter, r *http.Request)
+	// Playground chat
+	// (POST /api/v1/agents/{agentId}/playground/chat)
+	PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId string)
+	// List playground sessions
+	// (GET /api/v1/agents/{agentId}/playground/sessions)
+	ListPlaygroundSessions(w http.ResponseWriter, r *http.Request, agentId string)
+	// Create playground session
+	// (POST /api/v1/agents/{agentId}/playground/sessions)
+	CreatePlaygroundSession(w http.ResponseWriter, r *http.Request, agentId string)
+	// Delete playground session
+	// (DELETE /api/v1/agents/{agentId}/playground/sessions/{sessionId})
+	DeletePlaygroundSession(w http.ResponseWriter, r *http.Request, agentId string, sessionId string)
+	// List playground messages
+	// (GET /api/v1/agents/{agentId}/playground/sessions/{sessionId}/messages)
+	ListPlaygroundMessages(w http.ResponseWriter, r *http.Request, agentId string, sessionId string)
+	// Delete agent
+	// (DELETE /api/v1/agents/{id})
+	DeleteAgent(w http.ResponseWriter, r *http.Request, id string)
+	// Get agent
+	// (GET /api/v1/agents/{id})
+	GetAgent(w http.ResponseWriter, r *http.Request, id string)
+	// Update agent
+	// (PUT /api/v1/agents/{id})
+	UpdateAgent(w http.ResponseWriter, r *http.Request, id string)
 	// List prompts
 	// (GET /api/v1/prompts)
 	ListPrompts(w http.ResponseWriter, r *http.Request, params ListPromptsParams)
@@ -126,6 +156,273 @@ func (siw *ServerInterfaceWrapper) GetAuthStatus(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAuthStatus(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAgents operation middleware
+func (siw *ServerInterfaceWrapper) ListAgents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAgentsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAgents(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateAgent operation middleware
+func (siw *ServerInterfaceWrapper) CreateAgent(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateAgent(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PlaygroundChat operation middleware
+func (siw *ServerInterfaceWrapper) PlaygroundChat(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PlaygroundChat(w, r, agentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPlaygroundSessions operation middleware
+func (siw *ServerInterfaceWrapper) ListPlaygroundSessions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPlaygroundSessions(w, r, agentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreatePlaygroundSession operation middleware
+func (siw *ServerInterfaceWrapper) CreatePlaygroundSession(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreatePlaygroundSession(w, r, agentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeletePlaygroundSession operation middleware
+func (siw *ServerInterfaceWrapper) DeletePlaygroundSession(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeletePlaygroundSession(w, r, agentId, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPlaygroundMessages operation middleware
+func (siw *ServerInterfaceWrapper) ListPlaygroundMessages(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPlaygroundMessages(w, r, agentId, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteAgent operation middleware
+func (siw *ServerInterfaceWrapper) DeleteAgent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteAgent(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAgent operation middleware
+func (siw *ServerInterfaceWrapper) GetAgent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAgent(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAgent operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAgent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAgent(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -553,6 +850,16 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("POST "+options.BaseURL+"/api/auth/logout", wrapper.Logout)
 	m.HandleFunc("GET "+options.BaseURL+"/api/auth/me", wrapper.GetMe)
 	m.HandleFunc("GET "+options.BaseURL+"/api/auth/status", wrapper.GetAuthStatus)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents", wrapper.ListAgents)
+	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents", wrapper.CreateAgent)
+	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/playground/chat", wrapper.PlaygroundChat)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions", wrapper.ListPlaygroundSessions)
+	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions", wrapper.CreatePlaygroundSession)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions/{sessionId}", wrapper.DeletePlaygroundSession)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions/{sessionId}/messages", wrapper.ListPlaygroundMessages)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/agents/{id}", wrapper.DeleteAgent)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{id}", wrapper.GetAgent)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/v1/agents/{id}", wrapper.UpdateAgent)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/prompts", wrapper.ListPrompts)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/prompts", wrapper.CreatePrompt)
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/prompts/{id}", wrapper.DeletePrompt)

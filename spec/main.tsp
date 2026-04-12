@@ -3,6 +3,8 @@ import "./routes/health.tsp";
 import "./routes/auth.tsp";
 import "./routes/providers.tsp";
 import "./routes/prompts.tsp";
+import "./routes/agents.tsp";
+import "./routes/playground.tsp";
 
 using TypeSpec.Http;
 
