@@ -155,7 +155,7 @@ paths:
     post:
       operationId: playgroundChat
       summary: Playground chat
-      description: Send a message and receive a streaming response (SSE).
+      description: 'Send a message. Streams the response as SSE by default. Set `stream: false` in the request body for a single JSON response.'
       parameters:
         - name: agentId
           in: path
@@ -1097,6 +1097,9 @@ components:
           type: integer
           format: int32
           description: Optional top-k override for testing.
+        stream:
+          type: boolean
+          description: Whether to stream the response (SSE). Defaults to true. Set to false for a single JSON response.
       description: Request to send a chat message in the playground.
     Models.PlaygroundMessageListResponse:
       type: object

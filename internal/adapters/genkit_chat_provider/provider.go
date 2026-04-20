@@ -43,6 +43,40 @@ func (cp *ChatProvider) ChatStream(ctx context.Context, req chatprovider.ChatReq
 	return tokenCh, errCh
 }
 
+func (cp *ChatProvider) Chat(ctx context.Context, req chatprovider.ChatRequest) (string, error) {
+	result, err := buildPlugin(req)
+	if err != nil {
+		return "", err
+	}
+
+	g := genkit.Init(ctx, genkit.WithPlugins(result.plugin))
+	model := result.getModel(g)
+
+	opts := []ai.GenerateOption{
+		ai.WithModel(model),
+	}
+
+	if req.SystemPrompt != "" {
+		opts = append(opts, ai.WithSystem(req.SystemPrompt))
+	}
+
+	if len(req.Messages) > 0 {
+		messages := buildMessages(req.Messages)
+		opts = append(opts, ai.WithMessages(messages...))
+	}
+
+	if cfg := buildConfig(req); cfg != nil {
+		opts = append(opts, ai.WithConfig(cfg))
+	}
+
+	resp, err := genkit.Generate(ctx, g, opts...)
+	if err != nil {
+		return "", fmt.Errorf("generate error: %w", err)
+	}
+
+	return resp.Text(), nil
+}
+
 func (cp *ChatProvider) doStream(ctx context.Context, req chatprovider.ChatRequest, tokenCh chan<- string) error {
 	result, err := buildPlugin(req)
 	if err != nil {

@@ -467,7 +467,35 @@ func (h *Handler) PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId
 	chatReq := configResult.ChatRequest
 	chatReq.Messages = chatMessages
 
-	// Stream response via SSE
+	// Non-streaming path: return a single JSON response
+	if req.Stream != nil && !*req.Stream {
+		content, err := h.chatProvider.Chat(r.Context(), chatReq)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+
+		if content != "" {
+			result, saveErr := h.playgroundApp.Commands.SaveMessage.Execute(r.Context(), commands.SavePlaygroundMessageParams{
+				SessionID: req.SessionId,
+				Role:      "assistant",
+				Content:   content,
+			})
+			if saveErr == nil {
+				writeJSON(w, http.StatusOK, toPlaygroundMessageResponse(result.Message))
+				return
+			}
+		}
+
+		writeJSON(w, http.StatusOK, gen.ModelsPlaygroundMessageResponse{
+			SessionId: req.SessionId,
+			Role:      gen.Assistant,
+			Content:   content,
+		})
+		return
+	}
+
+	// Streaming path: SSE response
 	tokenCh, errCh := h.chatProvider.ChatStream(r.Context(), chatReq)
 
 	w.Header().Set("Content-Type", "text/event-stream")

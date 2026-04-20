@@ -21,11 +21,12 @@ interface ChatConfig {
 interface UsePlaygroundChatOptions {
   agentId: string
   sessionId: string | null
+  streaming?: boolean
   config?: ChatConfig
   onSessionTitleUpdate?: () => void
 }
 
-export function usePlaygroundChat({ agentId, sessionId, config, onSessionTitleUpdate }: UsePlaygroundChatOptions) {
+export function usePlaygroundChat({ agentId, sessionId, streaming = true, config, onSessionTitleUpdate }: UsePlaygroundChatOptions) {
   const [messages, setMessages] = useState<Message[]>([])
   const [streamingContent, setStreamingContent] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
@@ -70,6 +71,7 @@ export function usePlaygroundChat({ agentId, sessionId, config, onSessionTitleUp
       const body: any = {
         sessionId,
         content,
+        stream: streaming,
       }
       if (config?.providerId) body.providerId = config.providerId
       if (config?.modelId) body.modelId = config.modelId
@@ -94,42 +96,54 @@ export function usePlaygroundChat({ agentId, sessionId, config, onSessionTitleUp
         throw new Error(errData?.error || `Request failed with status ${res.status}`)
       }
 
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let fullContent = ''
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-
-        // Process complete SSE lines
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? '' // Keep incomplete line in buffer
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const data = line.slice(6)
-
-          if (data === '[DONE]') continue
-          if (data.startsWith('[ERROR]')) {
-            setError(data.slice(8))
-            continue
-          }
-
-          fullContent += data
-          setStreamingContent(fullContent)
+      if (!streaming) {
+        // Non-streaming: parse single JSON response
+        const data = await res.json()
+        if (data.content) {
+          setMessages((prev) => [
+            ...prev,
+            { id: data.id || `assistant-${Date.now()}`, role: 'assistant', content: data.content },
+          ])
         }
-      }
+      } else {
+        // Streaming: parse SSE
+        const reader = res.body!.getReader()
+        const decoder = new TextDecoder()
+        let fullContent = ''
+        let buffer = ''
 
-      // Add assistant message
-      if (fullContent) {
-        setMessages((prev) => [
-          ...prev,
-          { id: `assistant-${Date.now()}`, role: 'assistant', content: fullContent },
-        ])
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+
+          // Process complete SSE lines
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? '' // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const data = line.slice(6)
+
+            if (data === '[DONE]') continue
+            if (data.startsWith('[ERROR]')) {
+              setError(data.slice(8))
+              continue
+            }
+
+            fullContent += data
+            setStreamingContent(fullContent)
+          }
+        }
+
+        // Add assistant message
+        if (fullContent) {
+          setMessages((prev) => [
+            ...prev,
+            { id: `assistant-${Date.now()}`, role: 'assistant', content: fullContent },
+          ])
+        }
       }
 
       // Trigger session title refresh on first message
@@ -145,7 +159,7 @@ export function usePlaygroundChat({ agentId, sessionId, config, onSessionTitleUp
       setStreamingContent('')
       abortRef.current = null
     }
-  }, [agentId, sessionId, isStreaming, messages.length, config, onSessionTitleUpdate])
+  }, [agentId, sessionId, isStreaming, messages.length, streaming, config, onSessionTitleUpdate])
 
   const stopStreaming = useCallback(() => {
     abortRef.current?.abort()

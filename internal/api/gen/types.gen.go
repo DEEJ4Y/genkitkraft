@@ -248,6 +248,9 @@ type ModelsPlaygroundChatRequest struct {
 	// SessionId The session to send the message in.
 	SessionId string `json:"sessionId"`
 
+	// Stream Whether to stream the response (SSE). Defaults to true. Set to false for a single JSON response.
+	Stream *bool `json:"stream,omitempty"`
+
 	// SystemPromptId Optional system prompt override for testing.
 	SystemPromptId *string `json:"systemPromptId,omitempty"`
 

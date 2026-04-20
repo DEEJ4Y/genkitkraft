@@ -119,7 +119,7 @@ export interface paths {
         put?: never;
         /**
          * Playground chat
-         * @description Send a message and receive a streaming response (SSE).
+         * @description Send a message. Streams the response as SSE by default. Set `stream: false` in the request body for a single JSON response.
          */
         post: operations["playgroundChat"];
         delete?: never;
@@ -663,6 +663,8 @@ export interface components {
              * @description Optional top-k override for testing.
              */
             topK?: number;
+            /** @description Whether to stream the response (SSE). Defaults to true. Set to false for a single JSON response. */
+            stream?: boolean;
         };
         /** @description List of messages in a session. */
         "Models.PlaygroundMessageListResponse": {
