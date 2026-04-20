@@ -431,3 +431,12 @@ func hasSystemMessage(messages []gen.ModelsDeployChatMessage) bool {
 	}
 	return false
 }
+
+func toDeploySessionResponse(s *playground.Session) gen.ModelsDeploySessionResponse {
+	return gen.ModelsDeploySessionResponse{
+		Id:        s.ID,
+		AgentId:   s.AgentID,
+		Title:     s.Title,
+		CreatedAt: s.CreatedAt,
+	}
+}

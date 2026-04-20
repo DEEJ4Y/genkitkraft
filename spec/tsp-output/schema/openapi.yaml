@@ -196,6 +196,162 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Models.DeployChatCompletionsRequest'
+  /api/v1/agents/{agentId}/deploy/sessions:
+    post:
+      operationId: createDeploySession
+      summary: Create deploy session
+      description: Create a new stateful chat session for the given agent.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.DeploySessionResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Deploy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.CreateDeploySessionRequest'
+  /api/v1/agents/{agentId}/deploy/sessions/{sessionId}:
+    get:
+      operationId: getDeploySession
+      summary: Get deploy session
+      description: Get a deploy session by ID.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.DeploySessionResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Deploy
+    delete:
+      operationId: deleteDeploySession
+      summary: Delete deploy session
+      description: Delete a deploy session and all its messages.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Deploy
+  /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions:
+    post:
+      operationId: deploySessionChatCompletions
+      summary: Deploy session chat completions
+      description: Stateful OpenAI-compatible chat completions endpoint. Only the last user message is used; full history is loaded from the session.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.DeployChatCompletionResponse'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Deploy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.DeployChatCompletionsRequest'
   /api/v1/agents/{agentId}/playground/chat:
     post:
       operationId: playgroundChat
@@ -965,6 +1121,13 @@ components:
           format: int32
           description: Top-k sampling (default 40).
       description: Request to create a new agent.
+    Models.CreateDeploySessionRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Optional title for the session.
+      description: Request to create a new deploy session.
     Models.CreatePlaygroundSessionRequest:
       type: object
       properties:
@@ -1119,6 +1282,28 @@ components:
           type: string
           description: The content of the message.
       description: A message in an OpenAI-compatible chat completions request.
+    Models.DeploySessionResponse:
+      type: object
+      required:
+        - id
+        - agent_id
+        - title
+        - created_at
+      properties:
+        id:
+          type: string
+          description: Unique session ID.
+        agent_id:
+          type: string
+          description: ID of the agent this session belongs to.
+        title:
+          type: string
+          description: Session title.
+        created_at:
+          type: string
+          format: date-time
+          description: When this session was created (ISO 8601).
+      description: A deploy session for stateful chat with an agent.
     Models.ErrorResponse:
       type: object
       required:

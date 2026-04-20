@@ -65,3 +65,24 @@ model DeployChatCompletionResponse {
   /** Token usage statistics. May be zero if the provider does not report usage. */
   usage: DeployChatCompletionUsage;
 }
+
+/** Request to create a new deploy session. */
+model CreateDeploySessionRequest {
+  /** Optional title for the session. */
+  title?: string;
+}
+
+/** A deploy session for stateful chat with an agent. */
+model DeploySessionResponse {
+  /** Unique session ID. */
+  id: string;
+
+  /** ID of the agent this session belongs to. */
+  agent_id: string;
+
+  /** Session title. */
+  title: string;
+
+  /** When this session was created (ISO 8601). */
+  created_at: utcDateTime;
+}

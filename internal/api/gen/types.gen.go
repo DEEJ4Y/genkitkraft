@@ -164,6 +164,12 @@ type ModelsCreateAgentRequest struct {
 	TopPEnabled *bool `json:"topPEnabled,omitempty"`
 }
 
+// ModelsCreateDeploySessionRequest Request to create a new deploy session.
+type ModelsCreateDeploySessionRequest struct {
+	// Title Optional title for the session.
+	Title *string `json:"title,omitempty"`
+}
+
 // ModelsCreatePlaygroundSessionRequest Request to create a new playground session.
 type ModelsCreatePlaygroundSessionRequest struct {
 	// Title Optional title for the session.
@@ -265,6 +271,21 @@ type ModelsDeployChatMessage struct {
 
 // ModelsDeployChatMessageRole The role of the message author.
 type ModelsDeployChatMessageRole string
+
+// ModelsDeploySessionResponse A deploy session for stateful chat with an agent.
+type ModelsDeploySessionResponse struct {
+	// AgentId ID of the agent this session belongs to.
+	AgentId string `json:"agent_id"`
+
+	// CreatedAt When this session was created (ISO 8601).
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id Unique session ID.
+	Id string `json:"id"`
+
+	// Title Session title.
+	Title string `json:"title"`
+}
 
 // ModelsErrorResponse Standard error response.
 type ModelsErrorResponse struct {
@@ -597,6 +618,12 @@ type CreateAgentJSONRequestBody = ModelsCreateAgentRequest
 
 // DeployChatCompletionsJSONRequestBody defines body for DeployChatCompletions for application/json ContentType.
 type DeployChatCompletionsJSONRequestBody = ModelsDeployChatCompletionsRequest
+
+// CreateDeploySessionJSONRequestBody defines body for CreateDeploySession for application/json ContentType.
+type CreateDeploySessionJSONRequestBody = ModelsCreateDeploySessionRequest
+
+// DeploySessionChatCompletionsJSONRequestBody defines body for DeploySessionChatCompletions for application/json ContentType.
+type DeploySessionChatCompletionsJSONRequestBody = ModelsDeployChatCompletionsRequest
 
 // PlaygroundChatJSONRequestBody defines body for PlaygroundChat for application/json ContentType.
 type PlaygroundChatJSONRequestBody = ModelsPlaygroundChatRequest

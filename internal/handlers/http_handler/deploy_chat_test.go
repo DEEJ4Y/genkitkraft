@@ -105,6 +105,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	createSession := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)
 	deleteSession := commands.NewDeletePlaygroundSessionCommand(playgroundRepo)
 	listSessions := queries.NewListPlaygroundSessionsQuery(playgroundRepo)
+	getSession := queries.NewGetPlaygroundSessionQuery(playgroundRepo)
 	listMessages := queries.NewListPlaygroundMessagesQuery(playgroundRepo)
 
 	playgroundApp := &app.PlaygroundApp{
@@ -115,6 +116,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 		},
 		Queries: app.PlaygroundQueries{
 			ListSessions:  listSessions,
+			GetSession:    getSession,
 			ListMessages:  listMessages,
 			ResolveConfig: resolveConfig,
 		},

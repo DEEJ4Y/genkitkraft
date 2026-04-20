@@ -1,6 +1,7 @@
 package httphandler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -642,6 +643,252 @@ func (h *Handler) DeployChatCompletions(w http.ResponseWriter, r *http.Request, 
 		fmt.Fprintf(w, "data: %s\n\n", errData)
 		flusher.Flush()
 		return
+	}
+
+	// Final chunk with finish_reason
+	stopReason := "stop"
+	finishChunk := deployChatCompletionChunk{
+		ID:      completionID,
+		Object:  "chat.completion.chunk",
+		Created: created,
+		Model:   model,
+		Choices: []deployChatCompletionChunkChoice{
+			{
+				Index:        0,
+				Delta:        deployChatDelta{},
+				FinishReason: &stopReason,
+			},
+		},
+	}
+	finishData, _ := json.Marshal(finishChunk)
+	fmt.Fprintf(w, "data: %s\n\n", finishData)
+	flusher.Flush()
+
+	fmt.Fprintf(w, "data: [DONE]\n\n")
+	flusher.Flush()
+}
+
+func (h *Handler) CreateDeploySession(w http.ResponseWriter, r *http.Request, agentId string) {
+	var req gen.ModelsCreateDeploySessionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	params := commands.CreatePlaygroundSessionParams{
+		AgentID: agentId,
+	}
+	if req.Title != nil {
+		params.Title = *req.Title
+	}
+
+	result, err := h.playgroundApp.Commands.CreateSession.Execute(r.Context(), params)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toDeploySessionResponse(result.Session))
+}
+
+func (h *Handler) GetDeploySession(w http.ResponseWriter, r *http.Request, agentId string, sessionId string) {
+	result, err := h.playgroundApp.Queries.GetSession.Execute(r.Context(), queries.GetPlaygroundSessionParams{
+		SessionID: sessionId,
+		AgentID:   agentId,
+	})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toDeploySessionResponse(result.Session))
+}
+
+func (h *Handler) DeleteDeploySession(w http.ResponseWriter, r *http.Request, agentId string, sessionId string) {
+	err := h.playgroundApp.Commands.DeleteSession.Execute(r.Context(), commands.DeletePlaygroundSessionParams{
+		ID:      sessionId,
+		AgentID: agentId,
+	})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) DeploySessionChatCompletions(w http.ResponseWriter, r *http.Request, agentId string, sessionId string) {
+	var req gen.ModelsDeployChatCompletionsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	if len(req.Messages) == 0 {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "messages array must not be empty"))
+		return
+	}
+
+	if hasSystemMessage(req.Messages) {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "system messages are not allowed; the agent's system prompt is applied server-side"))
+		return
+	}
+
+	lastMsg := req.Messages[len(req.Messages)-1]
+	if lastMsg.Role != gen.ModelsDeployChatMessageRoleUser {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "the last message must have role 'user'"))
+		return
+	}
+
+	// Validate session belongs to agent before saving
+	_, err := h.playgroundApp.Queries.GetSession.Execute(r.Context(), queries.GetPlaygroundSessionParams{
+		SessionID: sessionId,
+		AgentID:   agentId,
+	})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	// Save the user message
+	_, err = h.playgroundApp.Commands.SaveMessage.Execute(r.Context(), commands.SavePlaygroundMessageParams{
+		SessionID: sessionId,
+		Role:      "user",
+		Content:   lastMsg.Content,
+	})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	// Load full conversation history (includes the just-saved user message)
+	messagesResult, err := h.playgroundApp.Queries.ListMessages.Execute(r.Context(), queries.ListPlaygroundMessagesParams{
+		SessionID: sessionId,
+		AgentID:   agentId,
+	})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	// Resolve agent config
+	configResult, err := h.playgroundApp.Queries.ResolveConfig.Execute(r.Context(), queries.ResolvePlaygroundConfigParams{
+		AgentID: agentId,
+	})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	// Build chat request with full history
+	chatMessages := make([]chatprovider.ChatMessage, 0, len(messagesResult.Messages))
+	for _, m := range messagesResult.Messages {
+		chatMessages = append(chatMessages, chatprovider.ChatMessage{
+			Role:    m.Role,
+			Content: m.Content,
+		})
+	}
+
+	chatReq := configResult.ChatRequest
+	chatReq.Messages = chatMessages
+
+	completionID := "chatcmpl-" + uuid.New().String()
+	created := time.Now().Unix()
+	model := chatReq.ModelID
+
+	// Non-streaming response
+	if req.Stream == nil || !*req.Stream {
+		content, err := h.chatProvider.Chat(r.Context(), chatReq)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+
+		// Save assistant reply — fail the request if persistence fails
+		_, err = h.playgroundApp.Commands.SaveMessage.Execute(r.Context(), commands.SavePlaygroundMessageParams{
+			SessionID: sessionId,
+			Role:      "assistant",
+			Content:   content,
+		})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, toOpenAIChatCompletion(completionID, model, content, created))
+		return
+	}
+
+	// Streaming response
+	tokenCh, errCh := h.chatProvider.ChatStream(r.Context(), chatReq)
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeAppError(w, errors.NewAppError(errors.Internal, "streaming not supported"))
+		return
+	}
+
+	// Initial chunk with role
+	roleChunk := deployChatCompletionChunk{
+		ID:      completionID,
+		Object:  "chat.completion.chunk",
+		Created: created,
+		Model:   model,
+		Choices: []deployChatCompletionChunkChoice{
+			{
+				Index: 0,
+				Delta: deployChatDelta{Role: strPtr("assistant")},
+			},
+		},
+	}
+	roleData, _ := json.Marshal(roleChunk)
+	fmt.Fprintf(w, "data: %s\n\n", roleData)
+	flusher.Flush()
+
+	// Content chunks
+	var fullResponse strings.Builder
+	for token := range tokenCh {
+		fullResponse.WriteString(token)
+		chunk := deployChatCompletionChunk{
+			ID:      completionID,
+			Object:  "chat.completion.chunk",
+			Created: created,
+			Model:   model,
+			Choices: []deployChatCompletionChunkChoice{
+				{
+					Index: 0,
+					Delta: deployChatDelta{Content: &token},
+				},
+			},
+		}
+		data, _ := json.Marshal(chunk)
+		fmt.Fprintf(w, "data: %s\n\n", data)
+		flusher.Flush()
+	}
+
+	if streamErr := <-errCh; streamErr != nil {
+		errData, _ := json.Marshal(map[string]interface{}{
+			"error": map[string]string{
+				"message": streamErr.Error(),
+				"type":    "server_error",
+			},
+		})
+		fmt.Fprintf(w, "data: %s\n\n", errData)
+		flusher.Flush()
+		return
+	}
+
+	// Save assistant reply using a detached context so client disconnect doesn't cancel the save
+	if fullResponse.Len() > 0 {
+		saveCtx := context.WithoutCancel(r.Context())
+		_, _ = h.playgroundApp.Commands.SaveMessage.Execute(saveCtx, commands.SavePlaygroundMessageParams{
+			SessionID: sessionId,
+			Role:      "assistant",
+			Content:   fullResponse.String(),
+		})
 	}
 
 	// Final chunk with finish_reason
