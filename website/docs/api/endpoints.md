@@ -120,6 +120,14 @@ Request:
 ```
 Responses: 201 (created)
 
+## Deploy (Chat Completions)
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/v1/agents/{agentId}/deploy/chat/completions` | OpenAI-compatible chat completions (non-streaming and streaming) |
+
+See the full [Deploy API documentation](./deploy) for request/response format, authentication, and examples.
+
 ## Playground
 
 | Method | Path | Description |

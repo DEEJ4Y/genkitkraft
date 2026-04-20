@@ -108,6 +108,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agents/{agentId}/deploy/chat/completions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deploy chat completions
+         * @description Stateless OpenAI-compatible chat completions endpoint. The caller provides the full message history on every request. The agent's configured system prompt is injected server-side.
+         */
+        post: operations["deployChatCompletions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agents/{agentId}/playground/chat": {
         parameters: {
             query?: never;
@@ -579,6 +599,73 @@ export interface components {
         };
         /** @description DeepSeek provider config (no extra fields needed). */
         "Models.DeepSeekProviderConfig": Record<string, never>;
+        /** @description A choice in an OpenAI chat completion response. */
+        "Models.DeployChatCompletionChoice": {
+            /**
+             * Format: int32
+             * @description The index of this choice in the choices array.
+             */
+            index: number;
+            /** @description The assistant's response message. */
+            message: components["schemas"]["Models.DeployChatMessage"];
+            /** @description The reason the model stopped generating. */
+            finish_reason: string;
+        };
+        /** @description OpenAI-compatible chat completion response. */
+        "Models.DeployChatCompletionResponse": {
+            /** @description Unique completion identifier. */
+            id: string;
+            /** @description Object type, always "chat.completion". */
+            object: string;
+            /**
+             * Format: int64
+             * @description Unix timestamp of when the completion was created.
+             */
+            created: number;
+            /** @description The model used for the completion. */
+            model: string;
+            /** @description The list of completion choices. */
+            choices: components["schemas"]["Models.DeployChatCompletionChoice"][];
+            /** @description Token usage statistics. May be zero if the provider does not report usage. */
+            usage: components["schemas"]["Models.DeployChatCompletionUsage"];
+        };
+        /** @description Token usage statistics. */
+        "Models.DeployChatCompletionUsage": {
+            /**
+             * Format: int32
+             * @description Number of tokens in the prompt.
+             */
+            prompt_tokens: number;
+            /**
+             * Format: int32
+             * @description Number of tokens in the completion.
+             */
+            completion_tokens: number;
+            /**
+             * Format: int32
+             * @description Total number of tokens used.
+             */
+            total_tokens: number;
+        };
+        /** @description OpenAI-compatible chat completions request body. */
+        "Models.DeployChatCompletionsRequest": {
+            /** @description Model identifier. Accepted but ignored — the agent's configured model is used. */
+            model?: string;
+            /** @description The conversation messages. The agent's system prompt is injected server-side; callers should not send a system message. */
+            messages: components["schemas"]["Models.DeployChatMessage"][];
+            /** @description Whether to stream the response as SSE. Defaults to false. */
+            stream?: boolean;
+        };
+        /** @description A message in an OpenAI-compatible chat completions request. */
+        "Models.DeployChatMessage": {
+            /**
+             * @description The role of the message author.
+             * @enum {string}
+             */
+            role: "user" | "assistant" | "system";
+            /** @description The content of the message. */
+            content: string;
+        };
         /** @description Standard error response. */
         "Models.ErrorResponse": {
             /** @description Human-readable error description. */
@@ -1060,6 +1147,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Models.AgentResponse"];
+                };
+            };
+        };
+    };
+    deployChatCompletions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.DeployChatCompletionsRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.DeployChatCompletionResponse"];
+                };
+            };
+            /** @description The server could not understand the request due to invalid syntax. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description Access is unauthorized. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
                 };
             };
         };

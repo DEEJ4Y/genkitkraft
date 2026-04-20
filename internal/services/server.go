@@ -249,7 +249,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/", spaHandler())
 
 	// Wrap with auth middleware
-	handler := interceptors.AuthMiddleware(s.authApp)(mux)
+	handler := interceptors.DeployAuthMiddleware(s.cfg.Deploy.APIKeys)(interceptors.AuthMiddleware(s.authApp)(mux))
 
 	addr := ":" + s.cfg.Server.Port
 	log.Printf("Server listening on %s", addr)

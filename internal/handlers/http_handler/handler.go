@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/DEEJ4Y/genkitkraft/internal/api/gen"
 	"github.com/DEEJ4Y/genkitkraft/internal/app"
@@ -489,7 +492,7 @@ func (h *Handler) PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId
 
 		writeJSON(w, http.StatusOK, gen.ModelsPlaygroundMessageResponse{
 			SessionId: req.SessionId,
-			Role:      gen.Assistant,
+			Role:      gen.ModelsPlaygroundMessageResponseRoleAssistant,
 			Content:   content,
 		})
 		return
@@ -534,4 +537,136 @@ func (h *Handler) PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId
 			Content:   fullResponse.String(),
 		})
 	}
+}
+
+func (h *Handler) DeployChatCompletions(w http.ResponseWriter, r *http.Request, agentId string) {
+	var req gen.ModelsDeployChatCompletionsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	if len(req.Messages) == 0 {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "messages array must not be empty"))
+		return
+	}
+
+	if hasSystemMessage(req.Messages) {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "system messages are not allowed; the agent's system prompt is applied server-side"))
+		return
+	}
+
+	// Resolve agent config (provider, model, system prompt, etc.)
+	configResult, err := h.playgroundApp.Queries.ResolveConfig.Execute(r.Context(), queries.ResolvePlaygroundConfigParams{
+		AgentID: agentId,
+	})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	chatReq := configResult.ChatRequest
+	chatReq.Messages = toDeployChatMessages(req.Messages)
+
+	completionID := "chatcmpl-" + uuid.New().String()
+	created := time.Now().Unix()
+	model := chatReq.ModelID
+
+	// Non-streaming response
+	if req.Stream == nil || !*req.Stream {
+		content, err := h.chatProvider.Chat(r.Context(), chatReq)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, toOpenAIChatCompletion(completionID, model, content, created))
+		return
+	}
+
+	// Streaming response: do all validation above this point
+	tokenCh, errCh := h.chatProvider.ChatStream(r.Context(), chatReq)
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeAppError(w, errors.NewAppError(errors.Internal, "streaming not supported"))
+		return
+	}
+
+	// Initial chunk with role
+	roleChunk := deployChatCompletionChunk{
+		ID:      completionID,
+		Object:  "chat.completion.chunk",
+		Created: created,
+		Model:   model,
+		Choices: []deployChatCompletionChunkChoice{
+			{
+				Index: 0,
+				Delta: deployChatDelta{Role: strPtr("assistant")},
+			},
+		},
+	}
+	roleData, _ := json.Marshal(roleChunk)
+	fmt.Fprintf(w, "data: %s\n\n", roleData)
+	flusher.Flush()
+
+	// Content chunks
+	for token := range tokenCh {
+		chunk := deployChatCompletionChunk{
+			ID:      completionID,
+			Object:  "chat.completion.chunk",
+			Created: created,
+			Model:   model,
+			Choices: []deployChatCompletionChunkChoice{
+				{
+					Index: 0,
+					Delta: deployChatDelta{Content: &token},
+				},
+			},
+		}
+		data, _ := json.Marshal(chunk)
+		fmt.Fprintf(w, "data: %s\n\n", data)
+		flusher.Flush()
+	}
+
+	if streamErr := <-errCh; streamErr != nil {
+		errData, _ := json.Marshal(map[string]interface{}{
+			"error": map[string]string{
+				"message": streamErr.Error(),
+				"type":    "server_error",
+			},
+		})
+		fmt.Fprintf(w, "data: %s\n\n", errData)
+		flusher.Flush()
+		return
+	}
+
+	// Final chunk with finish_reason
+	stopReason := "stop"
+	finishChunk := deployChatCompletionChunk{
+		ID:      completionID,
+		Object:  "chat.completion.chunk",
+		Created: created,
+		Model:   model,
+		Choices: []deployChatCompletionChunkChoice{
+			{
+				Index:        0,
+				Delta:        deployChatDelta{},
+				FinishReason: &stopReason,
+			},
+		},
+	}
+	finishData, _ := json.Marshal(finishChunk)
+	fmt.Fprintf(w, "data: %s\n\n", finishData)
+	flusher.Flush()
+
+	fmt.Fprintf(w, "data: [DONE]\n\n")
+	flusher.Flush()
+}
+
+func strPtr(s string) *string {
+	return &s
 }

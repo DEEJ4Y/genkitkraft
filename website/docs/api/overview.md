@@ -30,38 +30,40 @@ curl http://localhost:8080/api/v1/agents -b cookies.txt
 
 When auth is disabled, no authentication is needed.
 
-## OpenAI-Compatible API (Work In Progress)
+## OpenAI-Compatible Deploy API
 
 GenKitKraft exposes configured agents through an OpenAI-compatible chat completions endpoint. This allows you to use GenKitKraft as a drop-in replacement in applications that support the OpenAI API format.
 
-The agent name is used as the model identifier in OpenAI-compatible requests.
+Each agent has its own deploy endpoint using the agent's UUID:
 
 ```bash
-curl http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:8080/api/v1/agents/{agentId}/deploy/chat/completions \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
-    "model": "my-agent-name",
     "messages": [
       {"role": "user", "content": "Hello!"}
     ]
   }'
 ```
 
-This works with any OpenAI-compatible client library (Python openai, Node.js openai, etc.):
+This works with any OpenAI-compatible client library (Python `openai`, Node.js `openai`, etc.):
 
 ```python
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="http://localhost:8080/v1",
-    api_key="not-needed"  # unless auth is enabled
+    base_url="http://localhost:8080/api/v1/agents/{agentId}/deploy",
+    api_key="my-secret-key",
 )
 
 response = client.chat.completions.create(
-    model="my-agent-name",
+    model="any",  # model is determined by the agent config
     messages=[{"role": "user", "content": "Hello!"}]
 )
 ```
+
+For the full reference including streaming, authentication setup, and more examples, see the [Deploy API documentation](./deploy).
 
 ## Response Format
 

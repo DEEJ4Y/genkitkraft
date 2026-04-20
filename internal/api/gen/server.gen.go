@@ -32,6 +32,9 @@ type ServerInterface interface {
 	// Create agent
 	// (POST /api/v1/agents)
 	CreateAgent(w http.ResponseWriter, r *http.Request)
+	// Deploy chat completions
+	// (POST /api/v1/agents/{agentId}/deploy/chat/completions)
+	DeployChatCompletions(w http.ResponseWriter, r *http.Request, agentId string)
 	// Playground chat
 	// (POST /api/v1/agents/{agentId}/playground/chat)
 	PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId string)
@@ -205,6 +208,31 @@ func (siw *ServerInterfaceWrapper) CreateAgent(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateAgent(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeployChatCompletions operation middleware
+func (siw *ServerInterfaceWrapper) DeployChatCompletions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeployChatCompletions(w, r, agentId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -852,6 +880,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("GET "+options.BaseURL+"/api/auth/status", wrapper.GetAuthStatus)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents", wrapper.ListAgents)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents", wrapper.CreateAgent)
+	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/chat/completions", wrapper.DeployChatCompletions)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/playground/chat", wrapper.PlaygroundChat)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions", wrapper.ListPlaygroundSessions)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions", wrapper.CreatePlaygroundSession)

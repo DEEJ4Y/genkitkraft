@@ -13,6 +13,7 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/playground"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/prompt"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
+	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
 )
 
 func toLoginParams(req gen.ModelsLoginRequest, clientIP string) commands.LoginParams {
@@ -362,4 +363,71 @@ func toPlaygroundMessageListResponse(result queries.ListPlaygroundMessagesResult
 // Each line in an SSE data field must be prefixed with "data: ".
 func escapeSSEData(s string) string {
 	return strings.ReplaceAll(s, "\n", "\ndata: ")
+}
+
+// Deploy endpoint type conversion helpers
+
+func toDeployChatMessages(messages []gen.ModelsDeployChatMessage) []chatprovider.ChatMessage {
+	out := make([]chatprovider.ChatMessage, 0, len(messages))
+	for _, m := range messages {
+		out = append(out, chatprovider.ChatMessage{
+			Role:    string(m.Role),
+			Content: m.Content,
+		})
+	}
+	return out
+}
+
+func toOpenAIChatCompletion(id, model, content string, created int64) gen.ModelsDeployChatCompletionResponse {
+	return gen.ModelsDeployChatCompletionResponse{
+		Id:      id,
+		Object:  "chat.completion",
+		Created: created,
+		Model:   model,
+		Choices: []gen.ModelsDeployChatCompletionChoice{
+			{
+				Index: 0,
+				Message: gen.ModelsDeployChatMessage{
+					Role:    gen.ModelsDeployChatMessageRoleAssistant,
+					Content: content,
+				},
+				FinishReason: "stop",
+			},
+		},
+		Usage: gen.ModelsDeployChatCompletionUsage{
+			PromptTokens:     0,
+			CompletionTokens: 0,
+			TotalTokens:      0,
+		},
+	}
+}
+
+// SSE streaming chunk types (not in generated types since SSE isn't modeled in TypeSpec)
+
+type deployChatCompletionChunk struct {
+	ID      string                              `json:"id"`
+	Object  string                              `json:"object"`
+	Created int64                               `json:"created"`
+	Model   string                              `json:"model"`
+	Choices []deployChatCompletionChunkChoice    `json:"choices"`
+}
+
+type deployChatCompletionChunkChoice struct {
+	Index        int             `json:"index"`
+	Delta        deployChatDelta `json:"delta"`
+	FinishReason *string         `json:"finish_reason"`
+}
+
+type deployChatDelta struct {
+	Role    *string `json:"role,omitempty"`
+	Content *string `json:"content,omitempty"`
+}
+
+func hasSystemMessage(messages []gen.ModelsDeployChatMessage) bool {
+	for _, m := range messages {
+		if m.Role == gen.ModelsDeployChatMessageRoleSystem {
+			return true
+		}
+	}
+	return false
 }

@@ -44,6 +44,12 @@ func AuthMiddleware(authApp *app.AuthApp) func(http.Handler) http.Handler {
 				return
 			}
 
+			// Deploy endpoints use their own API key auth via DeployAuthMiddleware
+			if isDeployPath(r.URL.Path) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			if !strings.HasPrefix(r.URL.Path, "/api/") {
 				next.ServeHTTP(w, r)
 				return
