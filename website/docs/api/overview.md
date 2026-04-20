@@ -34,7 +34,9 @@ When auth is disabled, no authentication is needed.
 
 GenKitKraft exposes configured agents through an OpenAI-compatible chat completions endpoint. This allows you to use GenKitKraft as a drop-in replacement in applications that support the OpenAI API format.
 
-Each agent has its own deploy endpoint using the agent's UUID:
+You can choose between **stateless** (provide full history each request) or **stateful** (server manages conversation history per session):
+
+### Stateless
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/agents/{agentId}/deploy/chat/completions \
@@ -47,7 +49,26 @@ curl -X POST http://localhost:8080/api/v1/agents/{agentId}/deploy/chat/completio
   }'
 ```
 
-This works with any OpenAI-compatible client library (Python `openai`, Node.js `openai`, etc.):
+### Stateful (Sessions)
+
+```bash
+# Create a session
+curl -X POST http://localhost:8080/api/v1/agents/{agentId}/deploy/sessions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+# Returns {"id": "session-uuid", ...}
+
+# Chat — only send the new message; history is managed server-side
+curl -X POST http://localhost:8080/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+Both modes work with any OpenAI-compatible client library (Python `openai`, Node.js `openai`, etc.):
 
 ```python
 from openai import OpenAI

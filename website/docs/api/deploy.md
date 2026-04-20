@@ -4,19 +4,11 @@ sidebar_position: 3
 
 # Deploy API (Chat Completions)
 
-GenKitKraft exposes your configured agents through an OpenAI-compatible chat completions endpoint. This allows you to integrate your agents into any application that supports the OpenAI API format.
-
-## Endpoint
-
-```
-POST /api/v1/agents/{agentId}/deploy/chat/completions
-```
-
-- **`agentId`** — The UUID of the agent to use. You can find this in the **Deploy** tab of the agent edit screen.
+GenKitKraft exposes your configured agents through an OpenAI-compatible chat completions endpoint. You can use the **stateless** endpoint (provide full message history each request) or the **stateful** session-based endpoint (server manages conversation history).
 
 ## Authentication
 
-The deploy endpoint uses API key authentication via the `Authorization` header, separate from the session-based auth used by the management UI.
+The deploy endpoints use API key authentication via the `Authorization` header, separate from the session-based auth used by the management UI.
 
 ### Setting Up an API Key
 
@@ -26,7 +18,7 @@ Set the `PUBLIC_API_KEY` environment variable before starting GenKitKraft:
 export PUBLIC_API_KEY=my-secret-key
 ```
 
-If `PUBLIC_API_KEY` is not set, the deploy endpoint is publicly accessible (no authentication required).
+If `PUBLIC_API_KEY` is not set, all deploy endpoints are publicly accessible (no authentication required).
 
 ### Using the API Key
 
@@ -38,6 +30,20 @@ curl http://localhost:8080/api/v1/agents/{agentId}/deploy/chat/completions \
   -H "Content-Type: application/json" \
   -d '{ ... }'
 ```
+
+---
+
+## Stateless Chat Completions
+
+The caller provides the full message history on every request.
+
+### Endpoint
+
+```
+POST /api/v1/agents/{agentId}/deploy/chat/completions
+```
+
+- **`agentId`** — The UUID of the agent to use. You can find this in the **Deploy** tab of the agent edit screen.
 
 ## Request Format
 
@@ -108,7 +114,7 @@ data: {"id":"chatcmpl-abc123","object":"chat.completion.chunk","created":1700000
 data: [DONE]
 ```
 
-## Examples
+## Stateless Examples
 
 ### curl (non-streaming)
 
@@ -215,4 +221,194 @@ Example error response:
     "code": "invalid_request"
   }
 }
+```
+
+---
+
+## Stateful Chat (Sessions)
+
+The stateful API manages conversation history server-side. You create a session once, then send only the new user message on each turn — the server loads and persists history automatically.
+
+### Session Lifecycle
+
+#### Create a Session
+
+```
+POST /api/v1/agents/{agentId}/deploy/sessions
+```
+
+Request body (title is optional):
+
+```json
+{
+  "title": "My conversation"
+}
+```
+
+Response (201):
+
+```json
+{
+  "id": "session-uuid",
+  "agent_id": "agent-uuid",
+  "title": "My conversation",
+  "created_at": "2026-04-20T12:00:00Z"
+}
+```
+
+#### Get a Session
+
+```
+GET /api/v1/agents/{agentId}/deploy/sessions/{sessionId}
+```
+
+Response (200):
+
+```json
+{
+  "id": "session-uuid",
+  "agent_id": "agent-uuid",
+  "title": "My conversation",
+  "created_at": "2026-04-20T12:00:00Z"
+}
+```
+
+#### Delete a Session
+
+```
+DELETE /api/v1/agents/{agentId}/deploy/sessions/{sessionId}
+```
+
+Response: `204 No Content`. Deletes the session and all its messages.
+
+### Stateful Chat Completions
+
+```
+POST /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions
+```
+
+The request and response formats are identical to the [stateless endpoint](#request-format). The key difference:
+
+- Only the **last user message** in the `messages` array is used. Full conversation history is loaded from the session automatically.
+- The last message **must** have `role: "user"`.
+- The user message and assistant response are both persisted to the session.
+
+```json
+{
+  "messages": [
+    { "role": "user", "content": "Tell me a joke" }
+  ],
+  "stream": false
+}
+```
+
+:::tip
+You only need to send a single message per request. The server handles the full history.
+:::
+
+### Stateful Examples
+
+#### curl — Full session flow
+
+```bash
+# 1. Create a session
+SESSION=$(curl -s -X POST \
+  http://localhost:8080/api/v1/agents/{agentId}/deploy/sessions \
+  -H "Authorization: Bearer my-secret-key" \
+  -H "Content-Type: application/json" \
+  -d '{}' | jq -r '.id')
+
+# 2. Chat (first turn)
+curl -X POST \
+  http://localhost:8080/api/v1/agents/{agentId}/deploy/sessions/$SESSION/chat/completions \
+  -H "Authorization: Bearer my-secret-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [{"role": "user", "content": "Hello! What can you do?"}],
+    "stream": false
+  }'
+
+# 3. Chat (second turn — history is automatic)
+curl -X POST \
+  http://localhost:8080/api/v1/agents/{agentId}/deploy/sessions/$SESSION/chat/completions \
+  -H "Authorization: Bearer my-secret-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [{"role": "user", "content": "Tell me more about the first thing you mentioned."}],
+    "stream": false
+  }'
+
+# 4. Delete when done
+curl -X DELETE \
+  http://localhost:8080/api/v1/agents/{agentId}/deploy/sessions/$SESSION \
+  -H "Authorization: Bearer my-secret-key"
+```
+
+#### Python (OpenAI SDK + sessions)
+
+```python
+import requests
+from openai import OpenAI
+
+BASE = "http://localhost:8080/api/v1/agents/{agentId}/deploy"
+HEADERS = {"Authorization": "Bearer my-secret-key"}
+
+# Create session
+session = requests.post(f"{BASE}/sessions", headers=HEADERS, json={}).json()
+session_id = session["id"]
+
+# Use OpenAI SDK for chat
+client = OpenAI(
+    base_url=f"{BASE}/sessions/{session_id}",
+    api_key="my-secret-key",
+)
+
+# Each call only needs the new message — history is managed server-side
+response = client.chat.completions.create(
+    model="any",
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+print(response.choices[0].message.content)
+
+# Follow-up (server remembers previous turns)
+response = client.chat.completions.create(
+    model="any",
+    messages=[{"role": "user", "content": "Can you elaborate?"}],
+)
+print(response.choices[0].message.content)
+```
+
+#### Node.js (OpenAI SDK + sessions)
+
+```javascript
+import OpenAI from "openai";
+
+const BASE = "http://localhost:8080/api/v1/agents/{agentId}/deploy";
+const API_KEY = "my-secret-key";
+
+// Create session
+const session = await fetch(`${BASE}/sessions`, {
+  method: "POST",
+  headers: { Authorization: `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+  body: JSON.stringify({}),
+}).then((r) => r.json());
+
+// Use OpenAI SDK for chat
+const client = new OpenAI({
+  baseURL: `${BASE}/sessions/${session.id}`,
+  apiKey: API_KEY,
+});
+
+const response = await client.chat.completions.create({
+  model: "any",
+  messages: [{ role: "user", content: "Hello!" }],
+});
+console.log(response.choices[0].message.content);
+
+// Follow-up (server remembers previous turns)
+const followUp = await client.chat.completions.create({
+  model: "any",
+  messages: [{ role: "user", content: "Can you elaborate?" }],
+});
+console.log(followUp.choices[0].message.content);
 ```
