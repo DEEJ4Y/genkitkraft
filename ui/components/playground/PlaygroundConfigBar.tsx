@@ -38,6 +38,7 @@ export interface PlaygroundConfig {
   topP: number
   topKEnabled: boolean
   topK: number
+  streaming: boolean
 }
 
 interface PlaygroundConfigBarProps {
@@ -104,7 +105,8 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent }: 
     config.topPEnabled !== agent.topPEnabled ||
     config.topP !== agent.topP ||
     config.topKEnabled !== agent.topKEnabled ||
-    config.topK !== agent.topK
+    config.topK !== agent.topK ||
+    !config.streaming
 
   function handleProviderChange(val: string | null) {
     setModelSearch('')
@@ -287,6 +289,8 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent }: 
                 disabled={!config.topPEnabled}
               />
             </div>
+          </Group>
+          <Group grow gap="md" mt="sm" align="flex-start">
             <div>
               <Group gap="xs" mb={2}>
                 <Switch
@@ -313,6 +317,21 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent }: 
                 size="xs"
                 disabled={!config.topKEnabled}
               />
+            </div>
+            <div>
+              <Group gap="xs" mb={2}>
+                <Switch
+                  size="xs"
+                  checked={config.streaming}
+                  onChange={(e) => onChange({ ...config, streaming: e.currentTarget.checked })}
+                />
+                <Text size="xs" fw={500} c={config.streaming ? undefined : 'dimmed'}>
+                  Streaming {config.streaming ? '(on)' : '(off)'}
+                </Text>
+              </Group>
+              <Text size="xs" c="dimmed">
+                Disable for providers that don&apos;t support streaming.
+              </Text>
             </div>
           </Group>
         </Box>

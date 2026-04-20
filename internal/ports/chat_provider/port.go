@@ -28,10 +28,14 @@ type ChatRequest struct {
 	TopK               int
 }
 
-// ChatProvider defines the contract for streaming chat completions from LLM providers.
+// ChatProvider defines the contract for chat completions from LLM providers.
 type ChatProvider interface {
 	// ChatStream sends messages and streams the response token by token via the channel.
 	// The string channel receives content deltas. It is closed when the response is complete.
 	// The error channel receives at most one error, then is closed.
 	ChatStream(ctx context.Context, req ChatRequest) (<-chan string, <-chan error)
+
+	// Chat sends messages and returns the full response as a single string.
+	// Use this for providers that do not support streaming.
+	Chat(ctx context.Context, req ChatRequest) (string, error)
 }

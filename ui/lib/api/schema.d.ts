@@ -108,6 +108,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agents/{agentId}/deploy/chat/completions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deploy chat completions
+         * @description Stateless OpenAI-compatible chat completions endpoint. The caller provides the full message history on every request. The agent's configured system prompt is injected server-side.
+         */
+        post: operations["deployChatCompletions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agentId}/deploy/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create deploy session
+         * @description Create a new stateful chat session for the given agent.
+         */
+        post: operations["createDeploySession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agentId}/deploy/sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get deploy session
+         * @description Get a deploy session by ID.
+         */
+        get: operations["getDeploySession"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete deploy session
+         * @description Delete a deploy session and all its messages.
+         */
+        delete: operations["deleteDeploySession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deploy session chat completions
+         * @description Stateful OpenAI-compatible chat completions endpoint. Only the last user message is used; full history is loaded from the session.
+         */
+        post: operations["deploySessionChatCompletions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agents/{agentId}/playground/chat": {
         parameters: {
             query?: never;
@@ -119,7 +203,7 @@ export interface paths {
         put?: never;
         /**
          * Playground chat
-         * @description Send a message and receive a streaming response (SSE).
+         * @description Send a message. Streams the response as SSE by default. Set `stream: false` in the request body for a single JSON response.
          */
         post: operations["playgroundChat"];
         delete?: never;
@@ -550,6 +634,11 @@ export interface components {
              */
             topK?: number;
         };
+        /** @description Request to create a new deploy session. */
+        "Models.CreateDeploySessionRequest": {
+            /** @description Optional title for the session. */
+            title?: string;
+        };
         /** @description Request to create a new playground session. */
         "Models.CreatePlaygroundSessionRequest": {
             /** @description Optional title for the session. */
@@ -579,6 +668,87 @@ export interface components {
         };
         /** @description DeepSeek provider config (no extra fields needed). */
         "Models.DeepSeekProviderConfig": Record<string, never>;
+        /** @description A choice in an OpenAI chat completion response. */
+        "Models.DeployChatCompletionChoice": {
+            /**
+             * Format: int32
+             * @description The index of this choice in the choices array.
+             */
+            index: number;
+            /** @description The assistant's response message. */
+            message: components["schemas"]["Models.DeployChatMessage"];
+            /** @description The reason the model stopped generating. */
+            finish_reason: string;
+        };
+        /** @description OpenAI-compatible chat completion response. */
+        "Models.DeployChatCompletionResponse": {
+            /** @description Unique completion identifier. */
+            id: string;
+            /** @description Object type, always "chat.completion". */
+            object: string;
+            /**
+             * Format: int64
+             * @description Unix timestamp of when the completion was created.
+             */
+            created: number;
+            /** @description The model used for the completion. */
+            model: string;
+            /** @description The list of completion choices. */
+            choices: components["schemas"]["Models.DeployChatCompletionChoice"][];
+            /** @description Token usage statistics. May be zero if the provider does not report usage. */
+            usage: components["schemas"]["Models.DeployChatCompletionUsage"];
+        };
+        /** @description Token usage statistics. */
+        "Models.DeployChatCompletionUsage": {
+            /**
+             * Format: int32
+             * @description Number of tokens in the prompt.
+             */
+            prompt_tokens: number;
+            /**
+             * Format: int32
+             * @description Number of tokens in the completion.
+             */
+            completion_tokens: number;
+            /**
+             * Format: int32
+             * @description Total number of tokens used.
+             */
+            total_tokens: number;
+        };
+        /** @description OpenAI-compatible chat completions request body. */
+        "Models.DeployChatCompletionsRequest": {
+            /** @description Model identifier. Accepted but ignored — the agent's configured model is used. */
+            model?: string;
+            /** @description The conversation messages. The agent's system prompt is injected server-side; callers should not send a system message. */
+            messages: components["schemas"]["Models.DeployChatMessage"][];
+            /** @description Whether to stream the response as SSE. Defaults to false. */
+            stream?: boolean;
+        };
+        /** @description A message in an OpenAI-compatible chat completions request. */
+        "Models.DeployChatMessage": {
+            /**
+             * @description The role of the message author.
+             * @enum {string}
+             */
+            role: "user" | "assistant" | "system";
+            /** @description The content of the message. */
+            content: string;
+        };
+        /** @description A deploy session for stateful chat with an agent. */
+        "Models.DeploySessionResponse": {
+            /** @description Unique session ID. */
+            id: string;
+            /** @description ID of the agent this session belongs to. */
+            agent_id: string;
+            /** @description Session title. */
+            title: string;
+            /**
+             * Format: date-time
+             * @description When this session was created (ISO 8601).
+             */
+            created_at: string;
+        };
         /** @description Standard error response. */
         "Models.ErrorResponse": {
             /** @description Human-readable error description. */
@@ -663,6 +833,8 @@ export interface components {
              * @description Optional top-k override for testing.
              */
             topK?: number;
+            /** @description Whether to stream the response (SSE). Defaults to true. Set to false for a single JSON response. */
+            stream?: boolean;
         };
         /** @description List of messages in a session. */
         "Models.PlaygroundMessageListResponse": {
@@ -1058,6 +1230,237 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Models.AgentResponse"];
+                };
+            };
+        };
+    };
+    deployChatCompletions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.DeployChatCompletionsRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.DeployChatCompletionResponse"];
+                };
+            };
+            /** @description The server could not understand the request due to invalid syntax. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description Access is unauthorized. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    createDeploySession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.CreateDeploySessionRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded and a new resource has been created as a result. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.DeploySessionResponse"];
+                };
+            };
+            /** @description Access is unauthorized. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    getDeploySession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.DeploySessionResponse"];
+                };
+            };
+            /** @description Access is unauthorized. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteDeploySession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Access is unauthorized. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    deploySessionChatCompletions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.DeployChatCompletionsRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.DeployChatCompletionResponse"];
+                };
+            };
+            /** @description The server could not understand the request due to invalid syntax. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description Access is unauthorized. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
                 };
             };
         };

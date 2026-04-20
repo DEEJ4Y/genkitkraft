@@ -30,38 +30,61 @@ curl http://localhost:8080/api/v1/agents -b cookies.txt
 
 When auth is disabled, no authentication is needed.
 
-## OpenAI-Compatible API (Work In Progress)
+## OpenAI-Compatible Deploy API
 
 GenKitKraft exposes configured agents through an OpenAI-compatible chat completions endpoint. This allows you to use GenKitKraft as a drop-in replacement in applications that support the OpenAI API format.
 
-The agent name is used as the model identifier in OpenAI-compatible requests.
+You can choose between **stateless** (provide full history each request) or **stateful** (server manages conversation history per session):
+
+### Stateless
 
 ```bash
-curl http://localhost:8080/v1/chat/completions \
+curl -X POST http://localhost:8080/api/v1/agents/{agentId}/deploy/chat/completions \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
-    "model": "my-agent-name",
     "messages": [
       {"role": "user", "content": "Hello!"}
     ]
   }'
 ```
 
-This works with any OpenAI-compatible client library (Python openai, Node.js openai, etc.):
+### Stateful (Sessions)
+
+```bash
+# Create a session
+curl -X POST http://localhost:8080/api/v1/agents/{agentId}/deploy/sessions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+# Returns {"id": "session-uuid", ...}
+
+# Chat — only send the new message; history is managed server-side
+curl -X POST http://localhost:8080/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+Both modes work with any OpenAI-compatible client library (Python `openai`, Node.js `openai`, etc.):
 
 ```python
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="http://localhost:8080/v1",
-    api_key="not-needed"  # unless auth is enabled
+    base_url="http://localhost:8080/api/v1/agents/{agentId}/deploy",
+    api_key="my-secret-key",
 )
 
 response = client.chat.completions.create(
-    model="my-agent-name",
+    model="any",  # model is determined by the agent config
     messages=[{"role": "user", "content": "Hello!"}]
 )
 ```
+
+For the full reference including streaming, authentication setup, and more examples, see the [Deploy API documentation](./deploy).
 
 ## Response Format
 

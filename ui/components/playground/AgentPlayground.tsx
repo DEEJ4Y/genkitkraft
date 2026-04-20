@@ -32,6 +32,7 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
     topP: agent.topP,
     topKEnabled: agent.topKEnabled,
     topK: agent.topK,
+    streaming: true,
   })
 
   const sessionsQueryKey = ['get', `/api/v1/agents/${agent.id}/playground/sessions`]
@@ -57,6 +58,7 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
   const chat = usePlaygroundChat({
     agentId: agent.id,
     sessionId: activeSessionId,
+    streaming: config.streaming,
     config: {
       providerId: config.providerId !== agent.providerId ? config.providerId : undefined,
       modelId: config.modelId !== agent.modelId ? config.modelId : undefined,

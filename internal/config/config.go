@@ -10,6 +10,7 @@ type Config struct {
 	Auth       AuthConfig
 	Database   DatabaseConfig
 	Encryption EncryptionConfig
+	Deploy     DeployConfig
 }
 
 type DatabaseConfig struct {
@@ -22,6 +23,10 @@ type EncryptionConfig struct {
 
 type ServerConfig struct {
 	Port string
+}
+
+type DeployConfig struct {
+	APIKeys map[string]struct{}
 }
 
 type AuthCredential struct {
@@ -45,6 +50,7 @@ func Load() Config {
 		Encryption: EncryptionConfig{
 			Key: os.Getenv("ENCRYPTION_KEY"),
 		},
+		Deploy: loadDeployConfig(),
 	}
 }
 
@@ -81,4 +87,19 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func loadDeployConfig() DeployConfig {
+	raw := os.Getenv("PUBLIC_API_KEY")
+	keys := make(map[string]struct{})
+	if raw == "" {
+		return DeployConfig{APIKeys: keys}
+	}
+	for _, k := range strings.Split(raw, ",") {
+		k = strings.TrimSpace(k)
+		if k != "" {
+			keys[k] = struct{}{}
+		}
+	}
+	return DeployConfig{APIKeys: keys}
 }

@@ -7,6 +7,13 @@ import (
 	"time"
 )
 
+// Defines values for ModelsDeployChatMessageRole.
+const (
+	ModelsDeployChatMessageRoleAssistant ModelsDeployChatMessageRole = "assistant"
+	ModelsDeployChatMessageRoleSystem    ModelsDeployChatMessageRole = "system"
+	ModelsDeployChatMessageRoleUser      ModelsDeployChatMessageRole = "user"
+)
+
 // Defines values for ModelsHealthStatus.
 const (
 	Down ModelsHealthStatus = "down"
@@ -15,8 +22,8 @@ const (
 
 // Defines values for ModelsPlaygroundMessageResponseRole.
 const (
-	Assistant ModelsPlaygroundMessageResponseRole = "assistant"
-	User      ModelsPlaygroundMessageResponseRole = "user"
+	ModelsPlaygroundMessageResponseRoleAssistant ModelsPlaygroundMessageResponseRole = "assistant"
+	ModelsPlaygroundMessageResponseRoleUser      ModelsPlaygroundMessageResponseRole = "user"
 )
 
 // Defines values for ModelsProviderType.
@@ -157,6 +164,12 @@ type ModelsCreateAgentRequest struct {
 	TopPEnabled *bool `json:"topPEnabled,omitempty"`
 }
 
+// ModelsCreateDeploySessionRequest Request to create a new deploy session.
+type ModelsCreateDeploySessionRequest struct {
+	// Title Optional title for the session.
+	Title *string `json:"title,omitempty"`
+}
+
 // ModelsCreatePlaygroundSessionRequest Request to create a new playground session.
 type ModelsCreatePlaygroundSessionRequest struct {
 	// Title Optional title for the session.
@@ -188,6 +201,90 @@ type ModelsCreateProviderRequest struct {
 
 	// ProviderType The provider type.
 	ProviderType ModelsProviderType `json:"providerType"`
+}
+
+// ModelsDeployChatCompletionChoice A choice in an OpenAI chat completion response.
+type ModelsDeployChatCompletionChoice struct {
+	// FinishReason The reason the model stopped generating.
+	FinishReason string `json:"finish_reason"`
+
+	// Index The index of this choice in the choices array.
+	Index int32 `json:"index"`
+
+	// Message The assistant's response message.
+	Message ModelsDeployChatMessage `json:"message"`
+}
+
+// ModelsDeployChatCompletionResponse OpenAI-compatible chat completion response.
+type ModelsDeployChatCompletionResponse struct {
+	// Choices The list of completion choices.
+	Choices []ModelsDeployChatCompletionChoice `json:"choices"`
+
+	// Created Unix timestamp of when the completion was created.
+	Created int64 `json:"created"`
+
+	// Id Unique completion identifier.
+	Id string `json:"id"`
+
+	// Model The model used for the completion.
+	Model string `json:"model"`
+
+	// Object Object type, always "chat.completion".
+	Object string `json:"object"`
+
+	// Usage Token usage statistics. May be zero if the provider does not report usage.
+	Usage ModelsDeployChatCompletionUsage `json:"usage"`
+}
+
+// ModelsDeployChatCompletionUsage Token usage statistics.
+type ModelsDeployChatCompletionUsage struct {
+	// CompletionTokens Number of tokens in the completion.
+	CompletionTokens int32 `json:"completion_tokens"`
+
+	// PromptTokens Number of tokens in the prompt.
+	PromptTokens int32 `json:"prompt_tokens"`
+
+	// TotalTokens Total number of tokens used.
+	TotalTokens int32 `json:"total_tokens"`
+}
+
+// ModelsDeployChatCompletionsRequest OpenAI-compatible chat completions request body.
+type ModelsDeployChatCompletionsRequest struct {
+	// Messages The conversation messages. The agent's system prompt is injected server-side; callers should not send a system message.
+	Messages []ModelsDeployChatMessage `json:"messages"`
+
+	// Model Model identifier. Accepted but ignored — the agent's configured model is used.
+	Model *string `json:"model,omitempty"`
+
+	// Stream Whether to stream the response as SSE. Defaults to false.
+	Stream *bool `json:"stream,omitempty"`
+}
+
+// ModelsDeployChatMessage A message in an OpenAI-compatible chat completions request.
+type ModelsDeployChatMessage struct {
+	// Content The content of the message.
+	Content string `json:"content"`
+
+	// Role The role of the message author.
+	Role ModelsDeployChatMessageRole `json:"role"`
+}
+
+// ModelsDeployChatMessageRole The role of the message author.
+type ModelsDeployChatMessageRole string
+
+// ModelsDeploySessionResponse A deploy session for stateful chat with an agent.
+type ModelsDeploySessionResponse struct {
+	// AgentId ID of the agent this session belongs to.
+	AgentId string `json:"agent_id"`
+
+	// CreatedAt When this session was created (ISO 8601).
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id Unique session ID.
+	Id string `json:"id"`
+
+	// Title Session title.
+	Title string `json:"title"`
 }
 
 // ModelsErrorResponse Standard error response.
@@ -247,6 +344,9 @@ type ModelsPlaygroundChatRequest struct {
 
 	// SessionId The session to send the message in.
 	SessionId string `json:"sessionId"`
+
+	// Stream Whether to stream the response (SSE). Defaults to true. Set to false for a single JSON response.
+	Stream *bool `json:"stream,omitempty"`
 
 	// SystemPromptId Optional system prompt override for testing.
 	SystemPromptId *string `json:"systemPromptId,omitempty"`
@@ -515,6 +615,15 @@ type LoginJSONRequestBody = ModelsLoginRequest
 
 // CreateAgentJSONRequestBody defines body for CreateAgent for application/json ContentType.
 type CreateAgentJSONRequestBody = ModelsCreateAgentRequest
+
+// DeployChatCompletionsJSONRequestBody defines body for DeployChatCompletions for application/json ContentType.
+type DeployChatCompletionsJSONRequestBody = ModelsDeployChatCompletionsRequest
+
+// CreateDeploySessionJSONRequestBody defines body for CreateDeploySession for application/json ContentType.
+type CreateDeploySessionJSONRequestBody = ModelsCreateDeploySessionRequest
+
+// DeploySessionChatCompletionsJSONRequestBody defines body for DeploySessionChatCompletions for application/json ContentType.
+type DeploySessionChatCompletionsJSONRequestBody = ModelsDeployChatCompletionsRequest
 
 // PlaygroundChatJSONRequestBody defines body for PlaygroundChat for application/json ContentType.
 type PlaygroundChatJSONRequestBody = ModelsPlaygroundChatRequest

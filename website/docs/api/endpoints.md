@@ -120,6 +120,18 @@ Request:
 ```
 Responses: 201 (created)
 
+## Deploy (Chat Completions)
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/v1/agents/{agentId}/deploy/chat/completions` | Stateless chat completions (caller provides full history) |
+| POST | `/api/v1/agents/{agentId}/deploy/sessions` | Create a new stateful chat session |
+| GET | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}` | Get session metadata |
+| DELETE | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}` | Delete a session and all its messages |
+| POST | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions` | Stateful chat completions (server manages history) |
+
+See the full [Deploy API documentation](./deploy) for request/response format, authentication, and examples.
+
 ## Playground
 
 | Method | Path | Description |

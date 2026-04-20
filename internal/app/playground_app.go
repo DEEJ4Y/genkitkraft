@@ -20,6 +20,7 @@ type PlaygroundCommands struct {
 
 type PlaygroundQueries struct {
 	ListSessions  executors.ExecutorWithReturn[queries.ListPlaygroundSessionsParams, queries.ListPlaygroundSessionsResult]
+	GetSession    executors.ExecutorWithReturn[queries.GetPlaygroundSessionParams, queries.GetPlaygroundSessionResult]
 	ListMessages  executors.ExecutorWithReturn[queries.ListPlaygroundMessagesParams, queries.ListPlaygroundMessagesResult]
 	ResolveConfig executors.ExecutorWithReturn[queries.ResolvePlaygroundConfigParams, queries.ResolvePlaygroundConfigResult]
 }

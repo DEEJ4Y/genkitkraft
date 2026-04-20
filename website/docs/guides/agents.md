@@ -39,4 +39,4 @@ Agents are the core concept in GenKitKraft — they combine a provider, model, a
 After creating an agent, you can:
 
 - **Test it interactively** in the [Playground](./playground).
-- **Call it programmatically** via the [OpenAI-compatible API](../api/overview).
+- **Deploy it** via the OpenAI-compatible API. Open the **Deploy** tab in the agent edit screen to find your agent ID, the full endpoint URL, and a ready-to-use curl command. See the [Deploy API documentation](../api/deploy) for the full reference.

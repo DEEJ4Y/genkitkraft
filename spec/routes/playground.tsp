@@ -55,7 +55,7 @@ namespace Playground {
     @body body: ErrorResponse;
   };
 
-  /** Send a message and receive a streaming response (SSE). */
+  /** Send a message. Streams the response as SSE by default. Set `stream: false` in the request body for a single JSON response. */
   @post
   @route("/api/v1/agents/{agentId}/playground/chat")
   @summary("Playground chat")

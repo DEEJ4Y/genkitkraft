@@ -204,6 +204,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 
 	// Create playground queries
 	listSessionsQuery := queries.NewListPlaygroundSessionsQuery(playgroundRepo)
+	getSessionQuery := queries.NewGetPlaygroundSessionQuery(playgroundRepo)
 	listMessagesQuery := queries.NewListPlaygroundMessagesQuery(playgroundRepo)
 	resolveConfigQuery := queries.NewResolvePlaygroundConfigQuery(agentRepo, providerRepo, promptRepo, enc)
 
@@ -216,6 +217,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 		},
 		Queries: app.PlaygroundQueries{
 			ListSessions:  decorators.ApplyLogging(listSessionsQuery, "ListPlaygroundSessions", logger),
+			GetSession:    decorators.ApplyLogging(getSessionQuery, "GetPlaygroundSession", logger),
 			ListMessages:  decorators.ApplyLogging(listMessagesQuery, "ListPlaygroundMessages", logger),
 			ResolveConfig: decorators.ApplyLogging(resolveConfigQuery, "ResolvePlaygroundConfig", logger),
 		},
@@ -249,7 +251,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/", spaHandler())
 
 	// Wrap with auth middleware
-	handler := interceptors.AuthMiddleware(s.authApp)(mux)
+	handler := interceptors.DeployAuthMiddleware(s.cfg.Deploy.APIKeys)(interceptors.AuthMiddleware(s.authApp)(mux))
 
 	addr := ":" + s.cfg.Server.Port
 	log.Printf("Server listening on %s", addr)
