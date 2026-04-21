@@ -10,6 +10,7 @@ tags:
   - name: Agents
   - name: Playground
   - name: Deploy
+  - name: HttpTools
 paths:
   /api/auth/login:
     post:
@@ -577,6 +578,135 @@ paths:
                 $ref: '#/components/schemas/Models.ErrorResponse'
       tags:
         - Agents
+  /api/v1/http-tools:
+    get:
+      operationId: listHttpTools
+      summary: List HTTP tools
+      description: List all HTTP tools with pagination.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 20
+          explode: false
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.HttpToolListResponse'
+      tags:
+        - HttpTools
+    post:
+      operationId: createHttpTool
+      summary: Create HTTP tool
+      description: Create a new HTTP tool.
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.HttpToolResponse'
+      tags:
+        - HttpTools
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.CreateHttpToolRequest'
+  /api/v1/http-tools/{id}:
+    get:
+      operationId: getHttpTool
+      summary: Get HTTP tool
+      description: Get a single HTTP tool by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.HttpToolResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - HttpTools
+    put:
+      operationId: updateHttpTool
+      summary: Update HTTP tool
+      description: Update an existing HTTP tool.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.HttpToolResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - HttpTools
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.UpdateHttpToolRequest'
+    delete:
+      operationId: deleteHttpTool
+      summary: Delete HTTP tool
+      description: Delete an HTTP tool.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - HttpTools
   /api/v1/prompts:
     get:
       operationId: listPrompts
@@ -1128,6 +1258,38 @@ components:
           type: string
           description: Optional title for the session.
       description: Request to create a new deploy session.
+    Models.CreateHttpToolRequest:
+      type: object
+      required:
+        - name
+        - method
+        - url
+      properties:
+        name:
+          type: string
+          description: Display name for this tool.
+        description:
+          type: string
+          description: Description of what this tool does.
+        method:
+          allOf:
+            - $ref: '#/components/schemas/Models.HttpMethod'
+          description: HTTP method to use.
+        url:
+          type: string
+          description: URL of the API endpoint. Supports Go template expressions.
+        headers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.HttpToolHeader'
+          description: HTTP headers to include.
+        bodyTemplate:
+          type: string
+          description: Request body template. Supports Go template expressions.
+        inputSchema:
+          type: string
+          description: JSON Schema describing the input parameters for LLM function calling.
+      description: Request to create a new HTTP tool.
     Models.CreatePlaygroundSessionRequest:
       type: object
       properties:
@@ -1336,6 +1498,106 @@ components:
         - up
         - down
       description: Status of a health check probe.
+    Models.HttpMethod:
+      type: string
+      enum:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
+        - HEAD
+        - OPTIONS
+      description: HTTP method for an HTTP tool.
+    Models.HttpToolHeader:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          description: Header name (e.g. Content-Type, Authorization).
+        value:
+          type: string
+          description: Header value. Supports Go template expressions (e.g. Bearer {{.token}}).
+      description: A key-value pair representing an HTTP header. Values may contain Go template expressions.
+    Models.HttpToolListResponse:
+      type: object
+      required:
+        - httpTools
+        - total
+        - limit
+        - offset
+      properties:
+        httpTools:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.HttpToolResponse'
+          description: Array of HTTP tools.
+        total:
+          type: integer
+          format: int32
+          description: Total number of HTTP tools.
+        limit:
+          type: integer
+          format: int32
+          description: Number of HTTP tools per page.
+        offset:
+          type: integer
+          format: int32
+          description: Number of HTTP tools skipped.
+      description: Paginated list of HTTP tools.
+    Models.HttpToolResponse:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - method
+        - url
+        - headers
+        - bodyTemplate
+        - inputSchema
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Unique HTTP tool ID.
+        name:
+          type: string
+          description: Display name for this tool. The LLM uses this as the function name.
+        description:
+          type: string
+          description: Description of what this tool does. The LLM uses this to decide when to call the tool.
+        method:
+          allOf:
+            - $ref: '#/components/schemas/Models.HttpMethod'
+          description: HTTP method to use when calling the endpoint.
+        url:
+          type: string
+          description: URL of the API endpoint. Supports Go template expressions (e.g. https://api.example.com/{{.resource}}).
+        headers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.HttpToolHeader'
+          description: HTTP headers to include in the request.
+        bodyTemplate:
+          type: string
+          description: Request body template. Supports Go template expressions.
+        inputSchema:
+          type: string
+          description: JSON Schema describing the input parameters the LLM must provide when calling this tool.
+        createdAt:
+          type: string
+          format: date-time
+          description: When this tool was created.
+        updatedAt:
+          type: string
+          format: date-time
+          description: When this tool was last updated.
+      description: An HTTP tool that can be attached to agents for LLM function calling.
     Models.LoginRequest:
       type: object
       required:
@@ -1740,6 +2002,34 @@ components:
           format: int32
           description: Updated top-k sampling.
       description: Request to update an existing agent.
+    Models.UpdateHttpToolRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Updated display name.
+        description:
+          type: string
+          description: Updated description.
+        method:
+          allOf:
+            - $ref: '#/components/schemas/Models.HttpMethod'
+          description: Updated HTTP method.
+        url:
+          type: string
+          description: Updated URL. Supports Go template expressions.
+        headers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.HttpToolHeader'
+          description: Updated HTTP headers.
+        bodyTemplate:
+          type: string
+          description: Updated request body template.
+        inputSchema:
+          type: string
+          description: Updated JSON Schema for input parameters.
+      description: Request to update an existing HTTP tool.
     Models.UpdatePromptRequest:
       type: object
       properties:

@@ -19,6 +19,7 @@ import (
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
 	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
 	sqliteagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent"
+	sqlitehttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_http_tool"
 	sqliteplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_playground"
 	sqliteprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_prompt"
 	sqliteprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_provider"
@@ -44,6 +45,7 @@ type Server struct {
 	promptApp     *app.PromptApp
 	agentApp      *app.AgentApp
 	playgroundApp *app.PlaygroundApp
+	httpToolApp   *app.HttpToolApp
 	chatProvider  chatprovider.ChatProvider
 	sessionStore  session.Store
 	db            *sql.DB
@@ -171,6 +173,31 @@ func NewServer(cfg config.Config) (*Server, error) {
 	// Create agent adapters
 	agentRepo := sqliteagent.NewAgentRepository(db)
 
+	// Create HTTP tool adapters
+	httpToolRepo := sqlitehttptool.NewHttpToolRepository(db)
+
+	// Create HTTP tool commands
+	createHttpToolCmd := commands.NewCreateHttpToolCommand(httpToolRepo)
+	updateHttpToolCmd := commands.NewUpdateHttpToolCommand(httpToolRepo)
+	deleteHttpToolCmd := commands.NewDeleteHttpToolCommand(httpToolRepo)
+
+	// Create HTTP tool queries
+	listHttpToolsQuery := queries.NewListHttpToolsQuery(httpToolRepo)
+	getHttpToolQuery := queries.NewGetHttpToolQuery(httpToolRepo)
+
+	// Build HTTP tool application
+	httpToolApp := &app.HttpToolApp{
+		Commands: app.HttpToolCommands{
+			CreateHttpTool: decorators.ApplyLogging(createHttpToolCmd, "CreateHttpTool", logger),
+			UpdateHttpTool: decorators.ApplyLogging(updateHttpToolCmd, "UpdateHttpTool", logger),
+			DeleteHttpTool: decorators.ApplyLoggingExecutor(deleteHttpToolCmd, "DeleteHttpTool", logger),
+		},
+		Queries: app.HttpToolQueries{
+			ListHttpTools: decorators.ApplyLogging(listHttpToolsQuery, "ListHttpTools", logger),
+			GetHttpTool:   decorators.ApplyLogging(getHttpToolQuery, "GetHttpTool", logger),
+		},
+	}
+
 	// Create agent commands
 	createAgentCmd := commands.NewCreateAgentCommand(agentRepo, providerRepo, promptRepo)
 	updateAgentCmd := commands.NewUpdateAgentCommand(agentRepo, providerRepo, promptRepo)
@@ -230,6 +257,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 		promptApp:     promptApp,
 		agentApp:      agentApp,
 		playgroundApp: playgroundApp,
+		httpToolApp:   httpToolApp,
 		chatProvider:  chatProvider,
 		sessionStore:  sessionStore,
 		db:            db,
@@ -244,7 +272,7 @@ func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
 	// Register all API routes via generated handler
-	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp, s.promptApp, s.agentApp, s.playgroundApp, s.chatProvider)
+	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp, s.promptApp, s.agentApp, s.playgroundApp, s.httpToolApp, s.chatProvider)
 	gen.HandlerFromMux(apiHandler, mux)
 
 	// SPA fallback: serve embedded UI or fallback to index.html

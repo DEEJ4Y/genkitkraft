@@ -6,6 +6,7 @@ import "./routes/prompts.tsp";
 import "./routes/agents.tsp";
 import "./routes/playground.tsp";
 import "./routes/deploy.tsp";
+import "./routes/http_tools.tsp";
 
 using TypeSpec.Http;
 

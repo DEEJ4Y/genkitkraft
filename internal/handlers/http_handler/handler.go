@@ -31,11 +31,12 @@ type Handler struct {
 	promptApp     *app.PromptApp
 	agentApp      *app.AgentApp
 	playgroundApp *app.PlaygroundApp
+	httpToolApp   *app.HttpToolApp
 	chatProvider  chatprovider.ChatProvider
 }
 
-func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp, promptApp *app.PromptApp, agentApp *app.AgentApp, playgroundApp *app.PlaygroundApp, chatProvider chatprovider.ChatProvider) *Handler {
-	return &Handler{authApp: authApp, providerApp: providerApp, promptApp: promptApp, agentApp: agentApp, playgroundApp: playgroundApp, chatProvider: chatProvider}
+func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp, promptApp *app.PromptApp, agentApp *app.AgentApp, playgroundApp *app.PlaygroundApp, httpToolApp *app.HttpToolApp, chatProvider chatprovider.ChatProvider) *Handler {
+	return &Handler{authApp: authApp, providerApp: providerApp, promptApp: promptApp, agentApp: agentApp, playgroundApp: playgroundApp, httpToolApp: httpToolApp, chatProvider: chatProvider}
 }
 
 func (h *Handler) GetAuthStatus(w http.ResponseWriter, r *http.Request) {
@@ -265,6 +266,68 @@ func (h *Handler) UpdatePrompt(w http.ResponseWriter, r *http.Request, id string
 
 func (h *Handler) DeletePrompt(w http.ResponseWriter, r *http.Request, id string) {
 	err := h.promptApp.Commands.DeletePrompt.Execute(r.Context(), commands.DeletePromptParams{ID: id})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) ListHttpTools(w http.ResponseWriter, r *http.Request, params gen.ListHttpToolsParams) {
+	qParams := toListHttpToolsParams(params)
+	result, err := h.httpToolApp.Queries.ListHttpTools.Execute(r.Context(), qParams)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toHttpToolListResponse(result, qParams.Limit, qParams.Offset))
+}
+
+func (h *Handler) CreateHttpTool(w http.ResponseWriter, r *http.Request) {
+	var req gen.ModelsCreateHttpToolRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	params := toCreateHttpToolParams(req)
+	result, err := h.httpToolApp.Commands.CreateHttpTool.Execute(r.Context(), params)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toHttpToolResponse(result.HttpTool))
+}
+
+func (h *Handler) GetHttpTool(w http.ResponseWriter, r *http.Request, id string) {
+	result, err := h.httpToolApp.Queries.GetHttpTool.Execute(r.Context(), queries.GetHttpToolParams{ID: id})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toHttpToolResponse(result.HttpTool))
+}
+
+func (h *Handler) UpdateHttpTool(w http.ResponseWriter, r *http.Request, id string) {
+	var req gen.ModelsUpdateHttpToolRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	params := toUpdateHttpToolParams(id, req)
+	result, err := h.httpToolApp.Commands.UpdateHttpTool.Execute(r.Context(), params)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toHttpToolResponse(result.HttpTool))
+}
+
+func (h *Handler) DeleteHttpTool(w http.ResponseWriter, r *http.Request, id string) {
+	err := h.httpToolApp.Commands.DeleteHttpTool.Execute(r.Context(), commands.DeleteHttpToolParams{ID: id})
 	if err != nil {
 		writeAppError(w, err)
 		return

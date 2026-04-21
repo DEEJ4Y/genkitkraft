@@ -304,6 +304,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/http-tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List HTTP tools
+         * @description List all HTTP tools with pagination.
+         */
+        get: operations["listHttpTools"];
+        put?: never;
+        /**
+         * Create HTTP tool
+         * @description Create a new HTTP tool.
+         */
+        post: operations["createHttpTool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/http-tools/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get HTTP tool
+         * @description Get a single HTTP tool by ID.
+         */
+        get: operations["getHttpTool"];
+        /**
+         * Update HTTP tool
+         * @description Update an existing HTTP tool.
+         */
+        put: operations["updateHttpTool"];
+        post?: never;
+        /**
+         * Delete HTTP tool
+         * @description Delete an HTTP tool.
+         */
+        delete: operations["deleteHttpTool"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/prompts": {
         parameters: {
             query?: never;
@@ -639,6 +691,23 @@ export interface components {
             /** @description Optional title for the session. */
             title?: string;
         };
+        /** @description Request to create a new HTTP tool. */
+        "Models.CreateHttpToolRequest": {
+            /** @description Display name for this tool. */
+            name: string;
+            /** @description Description of what this tool does. */
+            description?: string;
+            /** @description HTTP method to use. */
+            method: components["schemas"]["Models.HttpMethod"];
+            /** @description URL of the API endpoint. Supports Go template expressions. */
+            url: string;
+            /** @description HTTP headers to include. */
+            headers?: components["schemas"]["Models.HttpToolHeader"][];
+            /** @description Request body template. Supports Go template expressions. */
+            bodyTemplate?: string;
+            /** @description JSON Schema describing the input parameters for LLM function calling. */
+            inputSchema?: string;
+        };
         /** @description Request to create a new playground session. */
         "Models.CreatePlaygroundSessionRequest": {
             /** @description Optional title for the session. */
@@ -768,6 +837,67 @@ export interface components {
          * @enum {string}
          */
         "Models.HealthStatus": "up" | "down";
+        /**
+         * @description HTTP method for an HTTP tool.
+         * @enum {string}
+         */
+        "Models.HttpMethod": "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
+        /** @description A key-value pair representing an HTTP header. Values may contain Go template expressions. */
+        "Models.HttpToolHeader": {
+            /** @description Header name (e.g. Content-Type, Authorization). */
+            name: string;
+            /** @description Header value. Supports Go template expressions (e.g. Bearer {{.token}}). */
+            value: string;
+        };
+        /** @description Paginated list of HTTP tools. */
+        "Models.HttpToolListResponse": {
+            /** @description Array of HTTP tools. */
+            httpTools: components["schemas"]["Models.HttpToolResponse"][];
+            /**
+             * Format: int32
+             * @description Total number of HTTP tools.
+             */
+            total: number;
+            /**
+             * Format: int32
+             * @description Number of HTTP tools per page.
+             */
+            limit: number;
+            /**
+             * Format: int32
+             * @description Number of HTTP tools skipped.
+             */
+            offset: number;
+        };
+        /** @description An HTTP tool that can be attached to agents for LLM function calling. */
+        "Models.HttpToolResponse": {
+            /** @description Unique HTTP tool ID. */
+            id: string;
+            /** @description Display name for this tool. The LLM uses this as the function name. */
+            name: string;
+            /** @description Description of what this tool does. The LLM uses this to decide when to call the tool. */
+            description: string;
+            /** @description HTTP method to use when calling the endpoint. */
+            method: components["schemas"]["Models.HttpMethod"];
+            /** @description URL of the API endpoint. Supports Go template expressions (e.g. https://api.example.com/{{.resource}}). */
+            url: string;
+            /** @description HTTP headers to include in the request. */
+            headers: components["schemas"]["Models.HttpToolHeader"][];
+            /** @description Request body template. Supports Go template expressions. */
+            bodyTemplate: string;
+            /** @description JSON Schema describing the input parameters the LLM must provide when calling this tool. */
+            inputSchema: string;
+            /**
+             * Format: date-time
+             * @description When this tool was created.
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description When this tool was last updated.
+             */
+            updatedAt: string;
+        };
         /** @description Request body for the login endpoint. */
         "Models.LoginRequest": {
             /** @description Username to authenticate with. */
@@ -1026,6 +1156,23 @@ export interface components {
              * @description Updated top-k sampling.
              */
             topK?: number;
+        };
+        /** @description Request to update an existing HTTP tool. */
+        "Models.UpdateHttpToolRequest": {
+            /** @description Updated display name. */
+            name?: string;
+            /** @description Updated description. */
+            description?: string;
+            /** @description Updated HTTP method. */
+            method?: components["schemas"]["Models.HttpMethod"];
+            /** @description Updated URL. Supports Go template expressions. */
+            url?: string;
+            /** @description Updated HTTP headers. */
+            headers?: components["schemas"]["Models.HttpToolHeader"][];
+            /** @description Updated request body template. */
+            bodyTemplate?: string;
+            /** @description Updated JSON Schema for input parameters. */
+            inputSchema?: string;
         };
         /** @description Request to update an existing prompt. */
         "Models.UpdatePromptRequest": {
@@ -1695,6 +1842,148 @@ export interface operations {
         };
     };
     deleteAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    listHttpTools: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.HttpToolListResponse"];
+                };
+            };
+        };
+    };
+    createHttpTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.CreateHttpToolRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded and a new resource has been created as a result. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.HttpToolResponse"];
+                };
+            };
+        };
+    };
+    getHttpTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.HttpToolResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateHttpTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.UpdateHttpToolRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.HttpToolResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteHttpTool: {
         parameters: {
             query?: never;
             header?: never;

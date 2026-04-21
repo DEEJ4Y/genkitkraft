@@ -20,6 +20,17 @@ const (
 	Up   ModelsHealthStatus = "up"
 )
 
+// Defines values for ModelsHttpMethod.
+const (
+	DELETE  ModelsHttpMethod = "DELETE"
+	GET     ModelsHttpMethod = "GET"
+	HEAD    ModelsHttpMethod = "HEAD"
+	OPTIONS ModelsHttpMethod = "OPTIONS"
+	PATCH   ModelsHttpMethod = "PATCH"
+	POST    ModelsHttpMethod = "POST"
+	PUT     ModelsHttpMethod = "PUT"
+)
+
 // Defines values for ModelsPlaygroundMessageResponseRole.
 const (
 	ModelsPlaygroundMessageResponseRoleAssistant ModelsPlaygroundMessageResponseRole = "assistant"
@@ -170,6 +181,30 @@ type ModelsCreateDeploySessionRequest struct {
 	Title *string `json:"title,omitempty"`
 }
 
+// ModelsCreateHttpToolRequest Request to create a new HTTP tool.
+type ModelsCreateHttpToolRequest struct {
+	// BodyTemplate Request body template. Supports Go template expressions.
+	BodyTemplate *string `json:"bodyTemplate,omitempty"`
+
+	// Description Description of what this tool does.
+	Description *string `json:"description,omitempty"`
+
+	// Headers HTTP headers to include.
+	Headers *[]ModelsHttpToolHeader `json:"headers,omitempty"`
+
+	// InputSchema JSON Schema describing the input parameters for LLM function calling.
+	InputSchema *string `json:"inputSchema,omitempty"`
+
+	// Method HTTP method to use.
+	Method ModelsHttpMethod `json:"method"`
+
+	// Name Display name for this tool.
+	Name string `json:"name"`
+
+	// Url URL of the API endpoint. Supports Go template expressions.
+	Url string `json:"url"`
+}
+
 // ModelsCreatePlaygroundSessionRequest Request to create a new playground session.
 type ModelsCreatePlaygroundSessionRequest struct {
 	// Title Optional title for the session.
@@ -304,6 +339,66 @@ type ModelsHealthCheckResponse struct {
 
 // ModelsHealthStatus Status of a health check probe.
 type ModelsHealthStatus string
+
+// ModelsHttpMethod HTTP method for an HTTP tool.
+type ModelsHttpMethod string
+
+// ModelsHttpToolHeader A key-value pair representing an HTTP header. Values may contain Go template expressions.
+type ModelsHttpToolHeader struct {
+	// Name Header name (e.g. Content-Type, Authorization).
+	Name string `json:"name"`
+
+	// Value Header value. Supports Go template expressions (e.g. Bearer {{.token}}).
+	Value string `json:"value"`
+}
+
+// ModelsHttpToolListResponse Paginated list of HTTP tools.
+type ModelsHttpToolListResponse struct {
+	// HttpTools Array of HTTP tools.
+	HttpTools []ModelsHttpToolResponse `json:"httpTools"`
+
+	// Limit Number of HTTP tools per page.
+	Limit int32 `json:"limit"`
+
+	// Offset Number of HTTP tools skipped.
+	Offset int32 `json:"offset"`
+
+	// Total Total number of HTTP tools.
+	Total int32 `json:"total"`
+}
+
+// ModelsHttpToolResponse An HTTP tool that can be attached to agents for LLM function calling.
+type ModelsHttpToolResponse struct {
+	// BodyTemplate Request body template. Supports Go template expressions.
+	BodyTemplate string `json:"bodyTemplate"`
+
+	// CreatedAt When this tool was created.
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Description Description of what this tool does. The LLM uses this to decide when to call the tool.
+	Description string `json:"description"`
+
+	// Headers HTTP headers to include in the request.
+	Headers []ModelsHttpToolHeader `json:"headers"`
+
+	// Id Unique HTTP tool ID.
+	Id string `json:"id"`
+
+	// InputSchema JSON Schema describing the input parameters the LLM must provide when calling this tool.
+	InputSchema string `json:"inputSchema"`
+
+	// Method HTTP method to use when calling the endpoint.
+	Method ModelsHttpMethod `json:"method"`
+
+	// Name Display name for this tool. The LLM uses this as the function name.
+	Name string `json:"name"`
+
+	// UpdatedAt When this tool was last updated.
+	UpdatedAt time.Time `json:"updatedAt"`
+
+	// Url URL of the API endpoint. Supports Go template expressions (e.g. https://api.example.com/{{.resource}}).
+	Url string `json:"url"`
+}
 
 // ModelsLoginRequest Request body for the login endpoint.
 type ModelsLoginRequest struct {
@@ -571,6 +666,30 @@ type ModelsUpdateAgentRequest struct {
 	TopPEnabled *bool `json:"topPEnabled,omitempty"`
 }
 
+// ModelsUpdateHttpToolRequest Request to update an existing HTTP tool.
+type ModelsUpdateHttpToolRequest struct {
+	// BodyTemplate Updated request body template.
+	BodyTemplate *string `json:"bodyTemplate,omitempty"`
+
+	// Description Updated description.
+	Description *string `json:"description,omitempty"`
+
+	// Headers Updated HTTP headers.
+	Headers *[]ModelsHttpToolHeader `json:"headers,omitempty"`
+
+	// InputSchema Updated JSON Schema for input parameters.
+	InputSchema *string `json:"inputSchema,omitempty"`
+
+	// Method Updated HTTP method.
+	Method *ModelsHttpMethod `json:"method,omitempty"`
+
+	// Name Updated display name.
+	Name *string `json:"name,omitempty"`
+
+	// Url Updated URL. Supports Go template expressions.
+	Url *string `json:"url,omitempty"`
+}
+
 // ModelsUpdatePromptRequest Request to update an existing prompt.
 type ModelsUpdatePromptRequest struct {
 	// Content Updated prompt content in markdown format.
@@ -604,6 +723,12 @@ type ListAgentsParams struct {
 	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
+// ListHttpToolsParams defines parameters for ListHttpTools.
+type ListHttpToolsParams struct {
+	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // ListPromptsParams defines parameters for ListPrompts.
 type ListPromptsParams struct {
 	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
@@ -633,6 +758,12 @@ type CreatePlaygroundSessionJSONRequestBody = ModelsCreatePlaygroundSessionReque
 
 // UpdateAgentJSONRequestBody defines body for UpdateAgent for application/json ContentType.
 type UpdateAgentJSONRequestBody = ModelsUpdateAgentRequest
+
+// CreateHttpToolJSONRequestBody defines body for CreateHttpTool for application/json ContentType.
+type CreateHttpToolJSONRequestBody = ModelsCreateHttpToolRequest
+
+// UpdateHttpToolJSONRequestBody defines body for UpdateHttpTool for application/json ContentType.
+type UpdateHttpToolJSONRequestBody = ModelsUpdateHttpToolRequest
 
 // CreatePromptJSONRequestBody defines body for CreatePrompt for application/json ContentType.
 type CreatePromptJSONRequestBody = ModelsCreatePromptRequest

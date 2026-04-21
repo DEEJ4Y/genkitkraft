@@ -127,7 +127,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 		StreamTokens: []string{"Hello", " from", " mock", "!"},
 	}
 
-	handler := httphandler.NewHandler(nil, nil, nil, nil, playgroundApp, mockCP)
+	handler := httphandler.NewHandler(nil, nil, nil, nil, playgroundApp, nil, mockCP)
 
 	mux := http.NewServeMux()
 	gen.HandlerFromMux(handler, mux)

@@ -71,6 +71,21 @@ type ServerInterface interface {
 	// Update agent
 	// (PUT /api/v1/agents/{id})
 	UpdateAgent(w http.ResponseWriter, r *http.Request, id string)
+	// List HTTP tools
+	// (GET /api/v1/http-tools)
+	ListHttpTools(w http.ResponseWriter, r *http.Request, params ListHttpToolsParams)
+	// Create HTTP tool
+	// (POST /api/v1/http-tools)
+	CreateHttpTool(w http.ResponseWriter, r *http.Request)
+	// Delete HTTP tool
+	// (DELETE /api/v1/http-tools/{id})
+	DeleteHttpTool(w http.ResponseWriter, r *http.Request, id string)
+	// Get HTTP tool
+	// (GET /api/v1/http-tools/{id})
+	GetHttpTool(w http.ResponseWriter, r *http.Request, id string)
+	// Update HTTP tool
+	// (PUT /api/v1/http-tools/{id})
+	UpdateHttpTool(w http.ResponseWriter, r *http.Request, id string)
 	// List prompts
 	// (GET /api/v1/prompts)
 	ListPrompts(w http.ResponseWriter, r *http.Request, params ListPromptsParams)
@@ -599,6 +614,130 @@ func (siw *ServerInterfaceWrapper) UpdateAgent(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// ListHttpTools operation middleware
+func (siw *ServerInterfaceWrapper) ListHttpTools(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListHttpToolsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListHttpTools(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateHttpTool operation middleware
+func (siw *ServerInterfaceWrapper) CreateHttpTool(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateHttpTool(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteHttpTool operation middleware
+func (siw *ServerInterfaceWrapper) DeleteHttpTool(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteHttpTool(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetHttpTool operation middleware
+func (siw *ServerInterfaceWrapper) GetHttpTool(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetHttpTool(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateHttpTool operation middleware
+func (siw *ServerInterfaceWrapper) UpdateHttpTool(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateHttpTool(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListPrompts operation middleware
 func (siw *ServerInterfaceWrapper) ListPrompts(w http.ResponseWriter, r *http.Request) {
 
@@ -1032,6 +1171,11 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/agents/{id}", wrapper.DeleteAgent)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{id}", wrapper.GetAgent)
 	m.HandleFunc("PUT "+options.BaseURL+"/api/v1/agents/{id}", wrapper.UpdateAgent)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/http-tools", wrapper.ListHttpTools)
+	m.HandleFunc("POST "+options.BaseURL+"/api/v1/http-tools", wrapper.CreateHttpTool)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/http-tools/{id}", wrapper.DeleteHttpTool)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/http-tools/{id}", wrapper.GetHttpTool)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/v1/http-tools/{id}", wrapper.UpdateHttpTool)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/prompts", wrapper.ListPrompts)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/prompts", wrapper.CreatePrompt)
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/prompts/{id}", wrapper.DeletePrompt)
