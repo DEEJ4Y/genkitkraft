@@ -91,4 +91,10 @@ model PlaygroundChatRequest {
 
   /** Whether to stream the response (SSE). Defaults to true. Set to false for a single JSON response. */
   stream?: boolean;
+
+  /** Optional HTTP tool ID overrides for testing. When provided, overrides the agent's saved HTTP tools. */
+  httpToolIds?: string[];
+
+  /** Optional MCP server tool overrides for testing. When provided, overrides the agent's saved MCP server tools. */
+  mcpServers?: PlaygroundMcpServerToolOverride[];
 }

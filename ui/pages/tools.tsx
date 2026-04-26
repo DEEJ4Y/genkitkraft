@@ -16,9 +16,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchClient } from "../lib/api/client";
 import { HttpToolCard } from "../components/HttpToolCard";
 import { HttpToolForm } from "../components/HttpToolForm";
+import { McpServerCard } from "../components/McpServerCard";
+import { McpServerForm } from "../components/McpServerForm";
 import type { components } from "../lib/api/schema";
 
 type HttpToolResponse = components["schemas"]["Models.HttpToolResponse"];
+type McpServerResponse = components["schemas"]["Models.McpServerResponse"];
 
 type View =
   | { mode: "list" }
@@ -162,6 +165,150 @@ function HttpToolsTab() {
   );
 }
 
+type McpView =
+  | { mode: "list" }
+  | { mode: "create" }
+  | { mode: "edit"; serverId: string };
+
+function McpServersTab() {
+  const queryClient = useQueryClient();
+  const [view, setView] = useState<McpView>({ mode: "list" });
+  const [page, setPage] = useState(1);
+
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const serversQuery = useQuery({
+    queryKey: ["get", "/api/v1/mcp-servers", { limit: PAGE_SIZE, offset }],
+    queryFn: async () => {
+      const { data, error } = await fetchClient.GET("/api/v1/mcp-servers", {
+        params: { query: { limit: PAGE_SIZE, offset } },
+      });
+      if (error) throw new Error("Failed to fetch MCP servers");
+      return data;
+    },
+  });
+
+  const editingServerId = view.mode === "edit" ? view.serverId : null;
+
+  const editingServerQuery = useQuery({
+    queryKey: ["get", "/api/v1/mcp-servers", editingServerId],
+    queryFn: async () => {
+      if (!editingServerId) return null;
+      const { data, error } = await fetchClient.GET(
+        "/api/v1/mcp-servers/{id}",
+        {
+          params: { path: { id: editingServerId } },
+        },
+      );
+      if (error) throw new Error("Failed to fetch MCP server");
+      return data;
+    },
+    enabled: !!editingServerId,
+  });
+
+  function handleSaved() {
+    setView({ mode: "list" });
+    queryClient.invalidateQueries({ queryKey: ["get", "/api/v1/mcp-servers"] });
+  }
+
+  async function handleDelete(server: McpServerResponse) {
+    if (!confirm(`Delete "${server.name}"? This cannot be undone.`)) return;
+    await fetchClient.DELETE("/api/v1/mcp-servers/{id}", {
+      params: { path: { id: server.id } },
+    });
+    queryClient.invalidateQueries({ queryKey: ["get", "/api/v1/mcp-servers"] });
+  }
+
+  if (view.mode === "create") {
+    return (
+      <McpServerForm
+        onSaved={handleSaved}
+        onCancel={() => setView({ mode: "list" })}
+      />
+    );
+  }
+
+  if (view.mode === "edit") {
+    if (editingServerQuery.isPending) {
+      return (
+        <Center py="xl">
+          <Loader />
+        </Center>
+      );
+    }
+
+    if (editingServerQuery.error || !editingServerQuery.data) {
+      return (
+        <Alert color="red" variant="light">
+          Failed to load MCP server.
+        </Alert>
+      );
+    }
+
+    return (
+      <McpServerForm
+        server={editingServerQuery.data}
+        onSaved={handleSaved}
+        onCancel={() => setView({ mode: "list" })}
+      />
+    );
+  }
+
+  const servers = serversQuery.data?.mcpServers ?? [];
+  const total = serversQuery.data?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  return (
+    <>
+      <Group justify="space-between" align="center" mb="md">
+        <div />
+        <Button
+          leftSection={<IconPlus size={16} />}
+          onClick={() => setView({ mode: "create" })}
+        >
+          New MCP Server
+        </Button>
+      </Group>
+
+      {serversQuery.isPending && (
+        <Center py="xl">
+          <Loader />
+        </Center>
+      )}
+
+      {serversQuery.error && (
+        <Alert color="red" variant="light" mb="md">
+          Failed to load MCP servers.
+        </Alert>
+      )}
+
+      {!serversQuery.isPending && servers.length === 0 && (
+        <Text c="dimmed" ta="center" py="xl">
+          No MCP servers configured yet. Add your first MCP server to get
+          started.
+        </Text>
+      )}
+
+      <Stack gap="sm">
+        {servers.map((server) => (
+          <McpServerCard
+            key={server.id}
+            server={server}
+            onEdit={() => setView({ mode: "edit", serverId: server.id })}
+            onDelete={() => handleDelete(server)}
+          />
+        ))}
+      </Stack>
+
+      {totalPages > 1 && (
+        <Center mt="lg">
+          <Pagination total={totalPages} value={page} onChange={setPage} />
+        </Center>
+      )}
+    </>
+  );
+}
+
 export default function ToolsPage() {
   return (
     <>
@@ -176,9 +323,7 @@ export default function ToolsPage() {
       <Tabs defaultValue="http">
         <Tabs.List mb="md">
           <Tabs.Tab value="http">HTTP Tools</Tabs.Tab>
-          <Tabs.Tab value="mcp" disabled>
-            MCP Tools
-          </Tabs.Tab>
+          <Tabs.Tab value="mcp">MCP Servers</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="http">
@@ -186,9 +331,7 @@ export default function ToolsPage() {
         </Tabs.Panel>
 
         <Tabs.Panel value="mcp">
-          <Text c="dimmed" py="xl" ta="center">
-            MCP tools support coming soon.
-          </Text>
+          <McpServersTab />
         </Tabs.Panel>
       </Tabs>
     </>

@@ -31,6 +31,12 @@ const (
 	PUT     ModelsHttpMethod = "PUT"
 )
 
+// Defines values for ModelsMcpTransport.
+const (
+	Sse            ModelsMcpTransport = "sse"
+	StreamableHttp ModelsMcpTransport = "streamableHttp"
+)
+
 // Defines values for ModelsPlaygroundMessageResponseRole.
 const (
 	ModelsPlaygroundMessageResponseRoleAssistant ModelsPlaygroundMessageResponseRole = "assistant"
@@ -65,6 +71,18 @@ type ModelsAgentListResponse struct {
 
 	// Total Total number of agents.
 	Total int32 `json:"total"`
+}
+
+// ModelsAgentMcpServerToolConfig Configuration of an MCP server's tool selection for an agent.
+type ModelsAgentMcpServerToolConfig struct {
+	// McpServerId ID of the MCP server.
+	McpServerId string `json:"mcpServerId"`
+
+	// SelectAll Whether all tools from this server are selected. When true, toolNames is ignored.
+	SelectAll bool `json:"selectAll"`
+
+	// ToolNames Specific tool names selected from this server (used when selectAll is false).
+	ToolNames []string `json:"toolNames"`
 }
 
 // ModelsAgentResponse An AI agent configuration.
@@ -116,6 +134,15 @@ type ModelsAgentResponse struct {
 
 	// UpdatedAt When this agent was last updated.
 	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// ModelsAgentToolConfigResponse Response containing an agent's tool configuration.
+type ModelsAgentToolConfigResponse struct {
+	// HttpToolIds IDs of HTTP tools assigned to this agent.
+	HttpToolIds []string `json:"httpToolIds"`
+
+	// McpServers MCP server tool configurations for this agent.
+	McpServers []ModelsAgentMcpServerToolConfig `json:"mcpServers"`
 }
 
 // ModelsAuthStatusResponse Response indicating whether authentication is required.
@@ -202,6 +229,21 @@ type ModelsCreateHttpToolRequest struct {
 	Name string `json:"name"`
 
 	// Url URL of the API endpoint. Supports Go template expressions.
+	Url string `json:"url"`
+}
+
+// ModelsCreateMcpServerRequest Request to create a new MCP server configuration.
+type ModelsCreateMcpServerRequest struct {
+	// Headers HTTP headers to include when connecting.
+	Headers *[]ModelsMcpServerHeader `json:"headers,omitempty"`
+
+	// Name Display name for this MCP server.
+	Name string `json:"name"`
+
+	// Transport Transport type used to connect to the MCP server.
+	Transport ModelsMcpTransport `json:"transport"`
+
+	// Url URL of the MCP server endpoint.
 	Url string `json:"url"`
 }
 
@@ -420,6 +462,72 @@ type ModelsLogoutResponse struct {
 	Ok bool `json:"ok"`
 }
 
+// ModelsMcpServerHeader A key-value pair representing an HTTP header for MCP server connections.
+type ModelsMcpServerHeader struct {
+	// Name Header name (e.g. Authorization).
+	Name string `json:"name"`
+
+	// Value Header value. Supports Go template expressions (e.g. Bearer {{.token}}).
+	Value string `json:"value"`
+}
+
+// ModelsMcpServerListResponse Paginated list of MCP servers.
+type ModelsMcpServerListResponse struct {
+	// Limit Number of MCP servers per page.
+	Limit int32 `json:"limit"`
+
+	// McpServers Array of MCP servers.
+	McpServers []ModelsMcpServerResponse `json:"mcpServers"`
+
+	// Offset Number of MCP servers skipped.
+	Offset int32 `json:"offset"`
+
+	// Total Total number of MCP servers.
+	Total int32 `json:"total"`
+}
+
+// ModelsMcpServerResponse A remote MCP server configuration.
+type ModelsMcpServerResponse struct {
+	// CreatedAt When this MCP server was created.
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Headers HTTP headers to include when connecting to the MCP server.
+	Headers []ModelsMcpServerHeader `json:"headers"`
+
+	// Id Unique MCP server ID.
+	Id string `json:"id"`
+
+	// Name Display name for this MCP server.
+	Name string `json:"name"`
+
+	// Transport Transport type used to connect to the MCP server.
+	Transport ModelsMcpTransport `json:"transport"`
+
+	// UpdatedAt When this MCP server was last updated.
+	UpdatedAt time.Time `json:"updatedAt"`
+
+	// Url URL of the MCP server endpoint.
+	Url string `json:"url"`
+}
+
+// ModelsMcpServerToolListResponse List of tools available from an MCP server.
+type ModelsMcpServerToolListResponse struct {
+	// Tools Array of available tools.
+	Tools []ModelsMcpServerToolResponse `json:"tools"`
+}
+
+// ModelsMcpServerToolResponse A tool available from an MCP server.
+type ModelsMcpServerToolResponse struct {
+	// Description Tool description as reported by the MCP server.
+	Description string `json:"description"`
+
+	// Name Tool name as reported by the MCP server.
+	Name string `json:"name"`
+}
+
+// ModelsMcpTransport Transport type for an MCP server connection.
+type ModelsMcpTransport string
+
 // ModelsMeResponse Current authenticated user info.
 type ModelsMeResponse struct {
 	// Username Username of the currently authenticated user.
@@ -430,6 +538,12 @@ type ModelsMeResponse struct {
 type ModelsPlaygroundChatRequest struct {
 	// Content The user message content.
 	Content string `json:"content"`
+
+	// HttpToolIds Optional HTTP tool ID overrides for testing. When provided, overrides the agent's saved HTTP tools.
+	HttpToolIds *[]string `json:"httpToolIds,omitempty"`
+
+	// McpServers Optional MCP server tool overrides for testing. When provided, overrides the agent's saved MCP server tools.
+	McpServers *[]ModelsPlaygroundMcpServerToolOverride `json:"mcpServers,omitempty"`
 
 	// ModelId Optional model override for testing.
 	ModelId *string `json:"modelId,omitempty"`
@@ -463,6 +577,18 @@ type ModelsPlaygroundChatRequest struct {
 
 	// TopPEnabled Optional top-p enabled override for testing.
 	TopPEnabled *bool `json:"topPEnabled,omitempty"`
+}
+
+// ModelsPlaygroundMcpServerToolOverride MCP server tool override for playground chat.
+type ModelsPlaygroundMcpServerToolOverride struct {
+	// McpServerId ID of the MCP server.
+	McpServerId string `json:"mcpServerId"`
+
+	// SelectAll Whether all tools from this server are selected.
+	SelectAll bool `json:"selectAll"`
+
+	// ToolNames Specific tool names (used when selectAll is false).
+	ToolNames []string `json:"toolNames"`
 }
 
 // ModelsPlaygroundMessageListResponse List of messages in a session.
@@ -666,6 +792,15 @@ type ModelsUpdateAgentRequest struct {
 	TopPEnabled *bool `json:"topPEnabled,omitempty"`
 }
 
+// ModelsUpdateAgentToolConfigRequest Request to update an agent's tool configuration.
+type ModelsUpdateAgentToolConfigRequest struct {
+	// HttpToolIds IDs of HTTP tools to assign.
+	HttpToolIds []string `json:"httpToolIds"`
+
+	// McpServers MCP server tool configurations to assign.
+	McpServers []ModelsAgentMcpServerToolConfig `json:"mcpServers"`
+}
+
 // ModelsUpdateHttpToolRequest Request to update an existing HTTP tool.
 type ModelsUpdateHttpToolRequest struct {
 	// BodyTemplate Updated request body template.
@@ -687,6 +822,21 @@ type ModelsUpdateHttpToolRequest struct {
 	Name *string `json:"name,omitempty"`
 
 	// Url Updated URL. Supports Go template expressions.
+	Url *string `json:"url,omitempty"`
+}
+
+// ModelsUpdateMcpServerRequest Request to update an existing MCP server configuration.
+type ModelsUpdateMcpServerRequest struct {
+	// Headers Updated HTTP headers.
+	Headers *[]ModelsMcpServerHeader `json:"headers,omitempty"`
+
+	// Name Updated display name.
+	Name *string `json:"name,omitempty"`
+
+	// Transport Updated transport type.
+	Transport *ModelsMcpTransport `json:"transport,omitempty"`
+
+	// Url Updated URL.
 	Url *string `json:"url,omitempty"`
 }
 
@@ -729,6 +879,12 @@ type ListHttpToolsParams struct {
 	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
+// ListMcpServersParams defines parameters for ListMcpServers.
+type ListMcpServersParams struct {
+	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // ListPromptsParams defines parameters for ListPrompts.
 type ListPromptsParams struct {
 	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
@@ -756,6 +912,9 @@ type PlaygroundChatJSONRequestBody = ModelsPlaygroundChatRequest
 // CreatePlaygroundSessionJSONRequestBody defines body for CreatePlaygroundSession for application/json ContentType.
 type CreatePlaygroundSessionJSONRequestBody = ModelsCreatePlaygroundSessionRequest
 
+// UpdateAgentToolsJSONRequestBody defines body for UpdateAgentTools for application/json ContentType.
+type UpdateAgentToolsJSONRequestBody = ModelsUpdateAgentToolConfigRequest
+
 // UpdateAgentJSONRequestBody defines body for UpdateAgent for application/json ContentType.
 type UpdateAgentJSONRequestBody = ModelsUpdateAgentRequest
 
@@ -764,6 +923,12 @@ type CreateHttpToolJSONRequestBody = ModelsCreateHttpToolRequest
 
 // UpdateHttpToolJSONRequestBody defines body for UpdateHttpTool for application/json ContentType.
 type UpdateHttpToolJSONRequestBody = ModelsUpdateHttpToolRequest
+
+// CreateMcpServerJSONRequestBody defines body for CreateMcpServer for application/json ContentType.
+type CreateMcpServerJSONRequestBody = ModelsCreateMcpServerRequest
+
+// UpdateMcpServerJSONRequestBody defines body for UpdateMcpServer for application/json ContentType.
+type UpdateMcpServerJSONRequestBody = ModelsUpdateMcpServerRequest
 
 // CreatePromptJSONRequestBody defines body for CreatePrompt for application/json ContentType.
 type CreatePromptJSONRequestBody = ModelsCreatePromptRequest

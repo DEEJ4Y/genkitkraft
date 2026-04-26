@@ -62,6 +62,12 @@ type ServerInterface interface {
 	// List playground messages
 	// (GET /api/v1/agents/{agentId}/playground/sessions/{sessionId}/messages)
 	ListPlaygroundMessages(w http.ResponseWriter, r *http.Request, agentId string, sessionId string)
+	// Get agent tools
+	// (GET /api/v1/agents/{agentId}/tools)
+	GetAgentTools(w http.ResponseWriter, r *http.Request, agentId string)
+	// Update agent tools
+	// (PUT /api/v1/agents/{agentId}/tools)
+	UpdateAgentTools(w http.ResponseWriter, r *http.Request, agentId string)
 	// Delete agent
 	// (DELETE /api/v1/agents/{id})
 	DeleteAgent(w http.ResponseWriter, r *http.Request, id string)
@@ -86,6 +92,24 @@ type ServerInterface interface {
 	// Update HTTP tool
 	// (PUT /api/v1/http-tools/{id})
 	UpdateHttpTool(w http.ResponseWriter, r *http.Request, id string)
+	// List MCP servers
+	// (GET /api/v1/mcp-servers)
+	ListMcpServers(w http.ResponseWriter, r *http.Request, params ListMcpServersParams)
+	// Create MCP server
+	// (POST /api/v1/mcp-servers)
+	CreateMcpServer(w http.ResponseWriter, r *http.Request)
+	// Delete MCP server
+	// (DELETE /api/v1/mcp-servers/{id})
+	DeleteMcpServer(w http.ResponseWriter, r *http.Request, id string)
+	// Get MCP server
+	// (GET /api/v1/mcp-servers/{id})
+	GetMcpServer(w http.ResponseWriter, r *http.Request, id string)
+	// Update MCP server
+	// (PUT /api/v1/mcp-servers/{id})
+	UpdateMcpServer(w http.ResponseWriter, r *http.Request, id string)
+	// List MCP server tools
+	// (GET /api/v1/mcp-servers/{id}/tools)
+	ListMcpServerTools(w http.ResponseWriter, r *http.Request, id string)
 	// List prompts
 	// (GET /api/v1/prompts)
 	ListPrompts(w http.ResponseWriter, r *http.Request, params ListPromptsParams)
@@ -539,6 +563,56 @@ func (siw *ServerInterfaceWrapper) ListPlaygroundMessages(w http.ResponseWriter,
 	handler.ServeHTTP(w, r)
 }
 
+// GetAgentTools operation middleware
+func (siw *ServerInterfaceWrapper) GetAgentTools(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAgentTools(w, r, agentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAgentTools operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAgentTools(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAgentTools(w, r, agentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // DeleteAgent operation middleware
 func (siw *ServerInterfaceWrapper) DeleteAgent(w http.ResponseWriter, r *http.Request) {
 
@@ -729,6 +803,155 @@ func (siw *ServerInterfaceWrapper) UpdateHttpTool(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateHttpTool(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMcpServers operation middleware
+func (siw *ServerInterfaceWrapper) ListMcpServers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMcpServersParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMcpServers(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateMcpServer operation middleware
+func (siw *ServerInterfaceWrapper) CreateMcpServer(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateMcpServer(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteMcpServer operation middleware
+func (siw *ServerInterfaceWrapper) DeleteMcpServer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteMcpServer(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMcpServer operation middleware
+func (siw *ServerInterfaceWrapper) GetMcpServer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMcpServer(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateMcpServer operation middleware
+func (siw *ServerInterfaceWrapper) UpdateMcpServer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateMcpServer(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMcpServerTools operation middleware
+func (siw *ServerInterfaceWrapper) ListMcpServerTools(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMcpServerTools(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1168,6 +1391,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions", wrapper.CreatePlaygroundSession)
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions/{sessionId}", wrapper.DeletePlaygroundSession)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions/{sessionId}/messages", wrapper.ListPlaygroundMessages)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/tools", wrapper.GetAgentTools)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/v1/agents/{agentId}/tools", wrapper.UpdateAgentTools)
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/agents/{id}", wrapper.DeleteAgent)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{id}", wrapper.GetAgent)
 	m.HandleFunc("PUT "+options.BaseURL+"/api/v1/agents/{id}", wrapper.UpdateAgent)
@@ -1176,6 +1401,12 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/http-tools/{id}", wrapper.DeleteHttpTool)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/http-tools/{id}", wrapper.GetHttpTool)
 	m.HandleFunc("PUT "+options.BaseURL+"/api/v1/http-tools/{id}", wrapper.UpdateHttpTool)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/mcp-servers", wrapper.ListMcpServers)
+	m.HandleFunc("POST "+options.BaseURL+"/api/v1/mcp-servers", wrapper.CreateMcpServer)
+	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/mcp-servers/{id}", wrapper.DeleteMcpServer)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/mcp-servers/{id}", wrapper.GetMcpServer)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/v1/mcp-servers/{id}", wrapper.UpdateMcpServer)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/mcp-servers/{id}/tools", wrapper.ListMcpServerTools)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/prompts", wrapper.ListPrompts)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/prompts", wrapper.CreatePrompt)
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/prompts/{id}", wrapper.DeletePrompt)

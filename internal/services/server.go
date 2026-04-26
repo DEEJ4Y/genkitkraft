@@ -16,10 +16,13 @@ import (
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
 	genkitchatprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/genkit_chat_provider"
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
+	mcpdiscoveryadapter "github.com/DEEJ4Y/genkitkraft/internal/adapters/mcp_discovery"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
 	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
 	sqliteagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent"
+	sqliteagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent_tool"
 	sqlitehttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_http_tool"
+	sqlitemcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_mcp_server"
 	sqliteplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_playground"
 	sqliteprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_prompt"
 	sqliteprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_provider"
@@ -46,6 +49,8 @@ type Server struct {
 	agentApp      *app.AgentApp
 	playgroundApp *app.PlaygroundApp
 	httpToolApp   *app.HttpToolApp
+	mcpServerApp  *app.McpServerApp
+	agentToolApp  *app.AgentToolApp
 	chatProvider  chatprovider.ChatProvider
 	sessionStore  session.Store
 	db            *sql.DB
@@ -198,6 +203,31 @@ func NewServer(cfg config.Config) (*Server, error) {
 		},
 	}
 
+	// Create MCP server adapters
+	mcpServerRepo := sqlitemcpserver.NewMcpServerRepository(db)
+
+	// Create MCP server commands
+	createMcpServerCmd := commands.NewCreateMcpServerCommand(mcpServerRepo)
+	updateMcpServerCmd := commands.NewUpdateMcpServerCommand(mcpServerRepo)
+	deleteMcpServerCmd := commands.NewDeleteMcpServerCommand(mcpServerRepo)
+
+	// Create MCP server queries
+	listMcpServersQuery := queries.NewListMcpServersQuery(mcpServerRepo)
+	getMcpServerQuery := queries.NewGetMcpServerQuery(mcpServerRepo)
+
+	// Build MCP server application
+	mcpServerApp := &app.McpServerApp{
+		Commands: app.McpServerCommands{
+			CreateMcpServer: decorators.ApplyLogging(createMcpServerCmd, "CreateMcpServer", logger),
+			UpdateMcpServer: decorators.ApplyLogging(updateMcpServerCmd, "UpdateMcpServer", logger),
+			DeleteMcpServer: decorators.ApplyLoggingExecutor(deleteMcpServerCmd, "DeleteMcpServer", logger),
+		},
+		Queries: app.McpServerQueries{
+			ListMcpServers: decorators.ApplyLogging(listMcpServersQuery, "ListMcpServers", logger),
+			GetMcpServer:   decorators.ApplyLogging(getMcpServerQuery, "GetMcpServer", logger),
+		},
+	}
+
 	// Create agent commands
 	createAgentCmd := commands.NewCreateAgentCommand(agentRepo, providerRepo, promptRepo)
 	updateAgentCmd := commands.NewUpdateAgentCommand(agentRepo, providerRepo, promptRepo)
@@ -220,6 +250,23 @@ func NewServer(cfg config.Config) (*Server, error) {
 		},
 	}
 
+	// Create agent tool adapters
+	agentToolRepo := sqliteagenttool.NewRepository(db)
+
+	// Create agent tool commands and queries
+	updateAgentToolsCmd := commands.NewUpdateAgentToolsCommand(agentToolRepo)
+	getAgentToolsQuery := queries.NewGetAgentToolsQuery(agentToolRepo)
+
+	// Build agent tool application
+	agentToolApp := &app.AgentToolApp{
+		Commands: app.AgentToolCommands{
+			UpdateTools: decorators.ApplyLogging(updateAgentToolsCmd, "UpdateAgentTools", logger),
+		},
+		Queries: app.AgentToolQueries{
+			GetTools: decorators.ApplyLogging(getAgentToolsQuery, "GetAgentTools", logger),
+		},
+	}
+
 	// Create playground adapters
 	playgroundRepo := sqliteplayground.NewPlaygroundRepository(db)
 	chatProvider := genkitchatprovider.NewChatProvider()
@@ -233,7 +280,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 	listSessionsQuery := queries.NewListPlaygroundSessionsQuery(playgroundRepo)
 	getSessionQuery := queries.NewGetPlaygroundSessionQuery(playgroundRepo)
 	listMessagesQuery := queries.NewListPlaygroundMessagesQuery(playgroundRepo)
-	resolveConfigQuery := queries.NewResolvePlaygroundConfigQuery(agentRepo, providerRepo, promptRepo, enc)
+	resolveConfigQuery := queries.NewResolvePlaygroundConfigQuery(agentRepo, providerRepo, promptRepo, enc, agentToolRepo, httpToolRepo, mcpServerRepo)
 
 	// Build playground application
 	playgroundApp := &app.PlaygroundApp{
@@ -258,6 +305,8 @@ func NewServer(cfg config.Config) (*Server, error) {
 		agentApp:      agentApp,
 		playgroundApp: playgroundApp,
 		httpToolApp:   httpToolApp,
+		mcpServerApp:  mcpServerApp,
+		agentToolApp:  agentToolApp,
 		chatProvider:  chatProvider,
 		sessionStore:  sessionStore,
 		db:            db,
@@ -272,7 +321,8 @@ func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
 	// Register all API routes via generated handler
-	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp, s.promptApp, s.agentApp, s.playgroundApp, s.httpToolApp, s.chatProvider)
+	mcpDiscovery := mcpdiscoveryadapter.New()
+	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp, s.promptApp, s.agentApp, s.playgroundApp, s.httpToolApp, s.mcpServerApp, s.agentToolApp, s.chatProvider, mcpDiscovery)
 	gen.HandlerFromMux(apiHandler, mux)
 
 	// SPA fallback: serve embedded UI or fallback to index.html

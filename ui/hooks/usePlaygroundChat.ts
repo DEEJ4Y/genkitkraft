@@ -16,6 +16,8 @@ interface ChatConfig {
   topP?: number
   topKEnabled?: boolean
   topK?: number
+  httpToolIds?: string[]
+  mcpServers?: { mcpServerId: string; selectAll: boolean; toolNames: string[] }[]
 }
 
 interface UsePlaygroundChatOptions {
@@ -82,6 +84,8 @@ export function usePlaygroundChat({ agentId, sessionId, streaming = true, config
       if (config?.topP !== undefined) body.topP = config.topP
       if (config?.topKEnabled !== undefined) body.topKEnabled = config.topKEnabled
       if (config?.topK !== undefined) body.topK = config.topK
+      if (config?.httpToolIds) body.httpToolIds = config.httpToolIds
+      if (config?.mcpServers) body.mcpServers = config.mcpServers
 
       const res = await fetch(`/api/v1/agents/${agentId}/playground/chat`, {
         method: 'POST',

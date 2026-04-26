@@ -7,9 +7,11 @@ import { usePlaygroundChat } from '../../hooks/usePlaygroundChat'
 import { SessionSidebar } from './SessionSidebar'
 import { ChatView } from './ChatView'
 import { PlaygroundConfigBar, type PlaygroundConfig } from './PlaygroundConfigBar'
+import { PlaygroundToolsPanel, type PlaygroundToolConfig } from './PlaygroundToolsPanel'
 import { SaveConfigModal } from './SaveConfigModal'
 
 type AgentResponse = components['schemas']['Models.AgentResponse']
+type AgentToolConfigResponse = components['schemas']['Models.AgentToolConfigResponse']
 
 interface AgentPlaygroundProps {
   agent: AgentResponse
@@ -34,6 +36,41 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
     topK: agent.topK,
     streaming: true,
   })
+
+  // Load the agent's saved tool config as baseline
+  const agentToolsQuery = useQuery({
+    queryKey: ['get', `/api/v1/agents/${agent.id}/tools`],
+    queryFn: async () => {
+      const { data, error } = await fetchClient.GET('/api/v1/agents/{agentId}/tools', {
+        params: { path: { agentId: agent.id } },
+      })
+      if (error) throw new Error('Failed to fetch agent tools')
+      return data as AgentToolConfigResponse
+    },
+  })
+
+  const savedToolConfig: PlaygroundToolConfig = {
+    httpToolIds: agentToolsQuery.data?.httpToolIds ?? [],
+    mcpServers: agentToolsQuery.data?.mcpServers ?? [],
+  }
+
+  const [toolConfig, setToolConfig] = useState<PlaygroundToolConfig>({
+    httpToolIds: [],
+    mcpServers: [],
+  })
+
+  // Sync tool config from saved agent tools when loaded
+  useEffect(() => {
+    if (agentToolsQuery.data) {
+      setToolConfig({
+        httpToolIds: agentToolsQuery.data.httpToolIds ?? [],
+        mcpServers: agentToolsQuery.data.mcpServers ?? [],
+      })
+    }
+  }, [agentToolsQuery.data])
+
+  const toolsHaveOverrides =
+    JSON.stringify(toolConfig) !== JSON.stringify(savedToolConfig)
 
   const sessionsQueryKey = ['get', `/api/v1/agents/${agent.id}/playground/sessions`]
 
@@ -69,6 +106,8 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
       topP: config.topP !== agent.topP ? config.topP : undefined,
       topKEnabled: config.topKEnabled !== agent.topKEnabled ? config.topKEnabled : undefined,
       topK: config.topK !== agent.topK ? config.topK : undefined,
+      httpToolIds: toolsHaveOverrides ? toolConfig.httpToolIds : undefined,
+      mcpServers: toolsHaveOverrides ? toolConfig.mcpServers : undefined,
     },
     onSessionTitleUpdate: handleSessionTitleUpdate,
   })
@@ -151,6 +190,20 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
         } as any,
       })
       if (error) throw new Error('Failed to save configuration to agent.')
+
+      // Also save tool config if modified
+      if (toolsHaveOverrides) {
+        const { error: toolsError } = await fetchClient.PUT('/api/v1/agents/{agentId}/tools', {
+          params: { path: { agentId: agent.id } },
+          body: {
+            httpToolIds: toolConfig.httpToolIds,
+            mcpServers: toolConfig.mcpServers,
+          } as any,
+        })
+        if (toolsError) throw new Error('Failed to save tool configuration to agent.')
+        queryClient.invalidateQueries({ queryKey: ['get', `/api/v1/agents/${agent.id}/tools`] })
+      }
+
       queryClient.invalidateQueries({ queryKey: ['get', '/api/v1/agents'] })
       setSaveModalOpen(false)
     } catch (err) {
@@ -202,6 +255,13 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
             config={config}
             onChange={setConfig}
             onSaveToAgent={handleOpenSaveModal}
+            hasToolOverrides={toolsHaveOverrides}
+          />
+          <PlaygroundToolsPanel
+            agentId={agent.id}
+            toolConfig={toolConfig}
+            onChange={setToolConfig}
+            hasOverrides={toolsHaveOverrides}
           />
           <ChatView
             messages={chat.messages}

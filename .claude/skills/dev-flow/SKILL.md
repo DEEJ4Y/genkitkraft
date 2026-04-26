@@ -132,6 +132,30 @@ var _ portpkg.SomeInterface = (*AdapterImpl)(nil)
 - **Integration tests**: Test adapters against real infra via test containers.
 - **Mocks**: Live in `resources/test/mock/`. Use compile-time interface checks.
 
+### Database Migrations (Goose)
+
+Migration files live in `internal/adapters/sqlite_db/migrations/` and use [goose](https://github.com/pressly/goose) format.
+
+**Every migration file MUST include `-- +goose Up` and `-- +goose Down` directives.** Without these, goose cannot parse the file and the server will fail to start.
+
+```sql
+-- +goose Up
+CREATE TABLE example (
+    id   TEXT PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+-- +goose Down
+DROP TABLE example;
+```
+
+**Key rules:**
+- Always start the file with `-- +goose Up`
+- Always include a `-- +goose Down` section for rollback
+- Multiple statements under a single `-- +goose Up` are fine (no need for `StatementBegin`/`StatementEnd` unless using procedural SQL)
+- Do NOT use `CREATE TABLE IF NOT EXISTS` — goose tracks applied migrations, so idempotent DDL is unnecessary
+- Naming convention: `NNN_description.sql` (e.g., `009_create_agent_tools.sql`)
+
 ## API Specification (TypeSpec)
 
 Before adding or modifying API endpoints, consult `docs/api-spec/01-typespec-guide.md` for the full TypeSpec reference.

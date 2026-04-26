@@ -3,6 +3,7 @@ import { IconArrowLeft } from '@tabler/icons-react'
 import type { components } from '../lib/api/schema'
 import { AgentDeployInfo } from './AgentDeployInfo'
 import { AgentForm } from './AgentForm'
+import { AgentToolsTab } from './AgentToolsTab'
 import { AgentPlayground } from './playground/AgentPlayground'
 
 type AgentResponse = components['schemas']['Models.AgentResponse']
@@ -33,12 +34,17 @@ export function AgentEditView({ agent, onSaved, onCancel }: AgentEditViewProps) 
       <Tabs defaultValue="config">
         <Tabs.List mb="md">
           <Tabs.Tab value="config">Configuration</Tabs.Tab>
+          <Tabs.Tab value="tools">Tools</Tabs.Tab>
           <Tabs.Tab value="playground">Playground</Tabs.Tab>
           <Tabs.Tab value="deploy">Deploy</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="config">
           <AgentForm agent={agent} onSaved={onSaved} onCancel={onCancel} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="tools">
+          <AgentToolsTab agentId={agent.id} />
         </Tabs.Panel>
 
         <Tabs.Panel value="playground">

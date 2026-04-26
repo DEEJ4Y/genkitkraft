@@ -2,14 +2,24 @@ package queries
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
 	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/encryptor"
 	agentrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_repo"
+	agenttoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_tool_repo"
+	httptoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/http_tool_repo"
+	mcpserverrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/mcp_server_repo"
 	promptrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/prompt_repo"
 	providerrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/provider_repo"
 )
+
+// ToolOverride specifies tool configuration overrides for a chat request.
+type ToolOverride struct {
+	HttpToolIDs []string
+	McpServers  []agenttoolrepo.McpServerToolConfig
+}
 
 type ResolvePlaygroundConfigParams struct {
 	AgentID string
@@ -23,6 +33,10 @@ type ResolvePlaygroundConfigParams struct {
 	TopP               *float64
 	TopKEnabled        *bool
 	TopK               *int
+	// Optional tool overrides — nil means use agent defaults
+	ToolOverride *ToolOverride
+	// IncludeTools controls whether tools are resolved. Deploy and playground set this true.
+	IncludeTools bool
 }
 
 type ResolvePlaygroundConfigResult struct {
@@ -30,10 +44,13 @@ type ResolvePlaygroundConfigResult struct {
 }
 
 type ResolvePlaygroundConfigQuery struct {
-	agentRepo    agentrepo.AgentRepository
-	providerRepo providerrepo.ProviderRepository
-	promptRepo   promptrepo.PromptRepository
-	enc          encryptor.Encryptor
+	agentRepo     agentrepo.AgentRepository
+	providerRepo  providerrepo.ProviderRepository
+	promptRepo    promptrepo.PromptRepository
+	enc           encryptor.Encryptor
+	agentToolRepo agenttoolrepo.AgentToolRepository
+	httpToolRepo  httptoolrepo.HttpToolRepository
+	mcpServerRepo mcpserverrepo.McpServerRepository
 }
 
 func NewResolvePlaygroundConfigQuery(
@@ -41,12 +58,18 @@ func NewResolvePlaygroundConfigQuery(
 	providerRepo providerrepo.ProviderRepository,
 	promptRepo promptrepo.PromptRepository,
 	enc encryptor.Encryptor,
+	agentToolRepo agenttoolrepo.AgentToolRepository,
+	httpToolRepo httptoolrepo.HttpToolRepository,
+	mcpServerRepo mcpserverrepo.McpServerRepository,
 ) *ResolvePlaygroundConfigQuery {
 	return &ResolvePlaygroundConfigQuery{
-		agentRepo:    agentRepo,
-		providerRepo: providerRepo,
-		promptRepo:   promptRepo,
-		enc:          enc,
+		agentRepo:     agentRepo,
+		providerRepo:  providerRepo,
+		promptRepo:    promptRepo,
+		enc:           enc,
+		agentToolRepo: agentToolRepo,
+		httpToolRepo:  httpToolRepo,
+		mcpServerRepo: mcpServerRepo,
 	}
 }
 
@@ -138,5 +161,76 @@ func (q *ResolvePlaygroundConfigQuery) Execute(ctx context.Context, params Resol
 		TopK:               topK,
 	}
 
+	// Resolve tools if requested
+	if params.IncludeTools {
+		if err := q.resolveTools(ctx, params, &chatReq); err != nil {
+			return ResolvePlaygroundConfigResult{}, err
+		}
+	}
+
 	return ResolvePlaygroundConfigResult{ChatRequest: chatReq}, nil
+}
+
+// resolveTools loads tool configurations and populates the ChatRequest.
+func (q *ResolvePlaygroundConfigQuery) resolveTools(ctx context.Context, params ResolvePlaygroundConfigParams, chatReq *chatprovider.ChatRequest) error {
+	var httpToolIDs []string
+	var mcpConfigs []agenttoolrepo.McpServerToolConfig
+
+	if params.ToolOverride != nil {
+		// Use override values
+		httpToolIDs = params.ToolOverride.HttpToolIDs
+		mcpConfigs = params.ToolOverride.McpServers
+	} else {
+		// Load agent's saved tool config
+		agentTools, err := q.agentToolRepo.GetByAgentID(ctx, params.AgentID)
+		if err != nil {
+			return errors.NewAppErrorf(errors.Internal, "loading agent tools: %v", err)
+		}
+		httpToolIDs = agentTools.HttpToolIDs
+		mcpConfigs = agentTools.McpServers
+	}
+
+	// Resolve HTTP tools
+	for _, toolID := range httpToolIDs {
+		tool, err := q.httpToolRepo.GetByID(ctx, toolID)
+		if err != nil {
+			continue // Skip tools that no longer exist
+		}
+		headers := make(map[string]string, len(tool.Headers))
+		for _, h := range tool.Headers {
+			headers[h.Name] = h.Value
+		}
+		chatReq.HttpTools = append(chatReq.HttpTools, chatprovider.HttpToolDefinition{
+			ID:           tool.ID,
+			Name:         tool.Name,
+			Description:  tool.Description,
+			Method:       tool.Method,
+			URL:          tool.URL,
+			Headers:      headers,
+			BodyTemplate: tool.BodyTemplate,
+			InputSchema:  json.RawMessage(tool.InputSchema),
+		})
+	}
+
+	// Resolve MCP servers
+	for _, mc := range mcpConfigs {
+		server, err := q.mcpServerRepo.GetByID(ctx, mc.McpServerID)
+		if err != nil {
+			continue // Skip servers that no longer exist
+		}
+		headers := make(map[string]string, len(server.Headers))
+		for _, h := range server.Headers {
+			headers[h.Name] = h.Value
+		}
+		chatReq.McpServers = append(chatReq.McpServers, chatprovider.McpServerConfig{
+			ServerID:  server.ID,
+			Transport: server.Transport,
+			URL:       server.URL,
+			Headers:   headers,
+			SelectAll: mc.SelectAll,
+			ToolNames: mc.ToolNames,
+		})
+	}
+
+	return nil
 }

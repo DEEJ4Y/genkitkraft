@@ -11,9 +11,11 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/agent"
 	httptool "github.com/DEEJ4Y/genkitkraft/internal/domain/http_tool"
+	mcpserver "github.com/DEEJ4Y/genkitkraft/internal/domain/mcp_server"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/playground"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/prompt"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
+	agenttoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_tool_repo"
 	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
 )
 
@@ -544,4 +546,165 @@ func toDeploySessionResponse(s *playground.Session) gen.ModelsDeploySessionRespo
 		Title:     s.Title,
 		CreatedAt: s.CreatedAt,
 	}
+}
+
+// ---- MCP Server type conversions ----
+
+func toMcpServerHeaderResponse(h mcpserver.McpServerHeader) gen.ModelsMcpServerHeader {
+	return gen.ModelsMcpServerHeader{
+		Name:  h.Name,
+		Value: h.Value,
+	}
+}
+
+func toMcpServerResponse(s *mcpserver.McpServer) gen.ModelsMcpServerResponse {
+	headers := make([]gen.ModelsMcpServerHeader, len(s.Headers))
+	for i, h := range s.Headers {
+		headers[i] = toMcpServerHeaderResponse(h)
+	}
+	return gen.ModelsMcpServerResponse{
+		Id:        s.ID,
+		Name:      s.Name,
+		Transport: gen.ModelsMcpTransport(s.Transport),
+		Url:       s.URL,
+		Headers:   headers,
+		CreatedAt: s.CreatedAt,
+		UpdatedAt: s.UpdatedAt,
+	}
+}
+
+func toMcpServerListResponse(result queries.ListMcpServersResult, limit, offset int) gen.ModelsMcpServerListResponse {
+	servers := make([]gen.ModelsMcpServerResponse, len(result.McpServers))
+	for i, s := range result.McpServers {
+		servers[i] = toMcpServerResponse(s)
+	}
+	return gen.ModelsMcpServerListResponse{
+		McpServers: servers,
+		Total:      int32(result.Total),
+		Limit:      int32(limit),
+		Offset:     int32(offset),
+	}
+}
+
+func toCreateMcpServerParams(req gen.ModelsCreateMcpServerRequest) commands.CreateMcpServerParams {
+	params := commands.CreateMcpServerParams{
+		Name:      req.Name,
+		Transport: string(req.Transport),
+		URL:       req.Url,
+	}
+	if req.Headers != nil {
+		headers := make([]mcpserver.McpServerHeader, len(*req.Headers))
+		for i, h := range *req.Headers {
+			headers[i] = mcpserver.McpServerHeader{Name: h.Name, Value: h.Value}
+		}
+		params.Headers = headers
+	}
+	return params
+}
+
+func toUpdateMcpServerParams(id string, req gen.ModelsUpdateMcpServerRequest) commands.UpdateMcpServerParams {
+	params := commands.UpdateMcpServerParams{
+		ID:  id,
+		Name: req.Name,
+		URL:  req.Url,
+	}
+	if req.Transport != nil {
+		t := string(*req.Transport)
+		params.Transport = &t
+	}
+	if req.Headers != nil {
+		headers := make([]mcpserver.McpServerHeader, len(*req.Headers))
+		for i, h := range *req.Headers {
+			headers[i] = mcpserver.McpServerHeader{Name: h.Name, Value: h.Value}
+		}
+		params.Headers = &headers
+	}
+	return params
+}
+
+func toListMcpServersParams(params gen.ListMcpServersParams) queries.ListMcpServersParams {
+	limit := 20
+	offset := 0
+	if params.Limit != nil {
+		limit = int(*params.Limit)
+	}
+	if params.Offset != nil {
+		offset = int(*params.Offset)
+	}
+	return queries.ListMcpServersParams{
+		Limit:  limit,
+		Offset: offset,
+	}
+}
+
+// --- Agent Tool Conversions ---
+
+func toAgentToolConfigResponse(config agenttoolrepo.AgentToolConfig) gen.ModelsAgentToolConfigResponse {
+	httpToolIDs := config.HttpToolIDs
+	if httpToolIDs == nil {
+		httpToolIDs = []string{}
+	}
+
+	mcpServers := make([]gen.ModelsAgentMcpServerToolConfig, 0, len(config.McpServers))
+	for _, mc := range config.McpServers {
+		toolNames := mc.ToolNames
+		if toolNames == nil {
+			toolNames = []string{}
+		}
+		mcpServers = append(mcpServers, gen.ModelsAgentMcpServerToolConfig{
+			McpServerId: mc.McpServerID,
+			SelectAll:   mc.SelectAll,
+			ToolNames:   toolNames,
+		})
+	}
+
+	return gen.ModelsAgentToolConfigResponse{
+		HttpToolIds: httpToolIDs,
+		McpServers:  mcpServers,
+	}
+}
+
+func toUpdateAgentToolsParams(agentID string, req gen.ModelsUpdateAgentToolConfigRequest) commands.UpdateAgentToolsParams {
+	mcpServers := make([]agenttoolrepo.McpServerToolConfig, 0, len(req.McpServers))
+	for _, mc := range req.McpServers {
+		toolNames := mc.ToolNames
+		if toolNames == nil {
+			toolNames = []string{}
+		}
+		mcpServers = append(mcpServers, agenttoolrepo.McpServerToolConfig{
+			McpServerID: mc.McpServerId,
+			SelectAll:   mc.SelectAll,
+			ToolNames:   toolNames,
+		})
+	}
+
+	return commands.UpdateAgentToolsParams{
+		AgentID:     agentID,
+		HttpToolIDs: req.HttpToolIds,
+		McpServers:  mcpServers,
+	}
+}
+
+func toToolOverride(httpToolIDs *[]string, mcpServers *[]gen.ModelsPlaygroundMcpServerToolOverride) *queries.ToolOverride {
+	override := &queries.ToolOverride{}
+
+	if httpToolIDs != nil {
+		override.HttpToolIDs = *httpToolIDs
+	}
+
+	if mcpServers != nil {
+		for _, mc := range *mcpServers {
+			toolNames := mc.ToolNames
+			if toolNames == nil {
+				toolNames = []string{}
+			}
+			override.McpServers = append(override.McpServers, agenttoolrepo.McpServerToolConfig{
+				McpServerID: mc.McpServerId,
+				SelectAll:   mc.SelectAll,
+				ToolNames:   toolNames,
+			})
+		}
+	}
+
+	return override
 }

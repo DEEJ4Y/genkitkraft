@@ -7,6 +7,8 @@ import "./routes/agents.tsp";
 import "./routes/playground.tsp";
 import "./routes/deploy.tsp";
 import "./routes/http_tools.tsp";
+import "./routes/mcp_servers.tsp";
+import "./routes/agent_tools.tsp";
 
 using TypeSpec.Http;
 
