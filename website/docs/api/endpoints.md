@@ -120,6 +120,79 @@ Request:
 ```
 Responses: 201 (created)
 
+## HTTP Tools
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/v1/http-tools` | List HTTP tools (supports `limit` and `offset`) |
+| POST | `/api/v1/http-tools` | Create an HTTP tool |
+| GET | `/api/v1/http-tools/{id}` | Get a specific HTTP tool |
+| PUT | `/api/v1/http-tools/{id}` | Update an HTTP tool |
+| DELETE | `/api/v1/http-tools/{id}` | Delete an HTTP tool |
+
+### POST /api/v1/http-tools
+
+Request:
+```json
+{
+  "name": "string",
+  "description": "string",
+  "method": "GET | POST | PUT | DELETE | PATCH",
+  "url": "string",
+  "headers": { "key": "value" },
+  "body": "string",
+  "inputSchema": {}
+}
+```
+Responses: 201 (created)
+
+## MCP Servers
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/v1/mcp-servers` | List MCP servers (supports `limit` and `offset`) |
+| POST | `/api/v1/mcp-servers` | Create an MCP server |
+| GET | `/api/v1/mcp-servers/{id}` | Get a specific MCP server |
+| PUT | `/api/v1/mcp-servers/{id}` | Update an MCP server |
+| DELETE | `/api/v1/mcp-servers/{id}` | Delete an MCP server |
+| GET | `/api/v1/mcp-servers/{id}/tools` | Discover tools from an MCP server |
+
+### POST /api/v1/mcp-servers
+
+Request:
+```json
+{
+  "name": "string",
+  "transport": "sse | streamable_http",
+  "url": "string",
+  "headers": { "key": "value" }
+}
+```
+Responses: 201 (created)
+
+## Agent Tools
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/v1/agents/{agentId}/tools` | Get agent's tool configuration |
+| PUT | `/api/v1/agents/{agentId}/tools` | Update agent's tool configuration |
+
+### PUT /api/v1/agents/\{agentId\}/tools
+
+Request:
+```json
+{
+  "httpToolIds": ["tool-uuid-1", "tool-uuid-2"],
+  "mcpServers": [
+    {
+      "mcpServerId": "server-uuid",
+      "toolNames": ["tool1", "tool2"]
+    }
+  ]
+}
+```
+Responses: 200 (updated)
+
 ## Deploy (Chat Completions)
 
 | Method | Path | Description |
@@ -155,7 +228,14 @@ Request:
     "temperature": 0.7,
     "topP": 0.9,
     "topK": 40
-  }
+  },
+  "httpToolIds": ["tool-uuid-1"],
+  "mcpServers": [
+    {
+      "mcpServerId": "server-uuid",
+      "toolNames": ["tool1"]
+    }
+  ]
 }
 ```
 

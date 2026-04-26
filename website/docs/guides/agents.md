@@ -29,6 +29,17 @@ Agents are the core concept in GenKitKraft — they combine a provider, model, a
 | **Top P**       | 0.0–1.0 | Controls diversity via nucleus sampling. The model considers only the smallest set of tokens whose cumulative probability exceeds this threshold.          |
 | **Top K**       | Integer | Restricts the model's choices to the K most likely tokens at each step. Lower values make output more predictable.                                         |
 
+## Configuring Tools
+
+Each agent can be assigned specific tools — HTTP tools and MCP server tools — that it can use during conversations.
+
+1. Open an agent for editing.
+2. Click the **Tools** tab.
+3. Add HTTP tools and MCP server tools as needed.
+4. Click **Save Tools** to persist the configuration.
+
+For detailed instructions on setting up tools and assigning them to agents, see the [Tools guide](./tools).
+
 ## Editing and Deleting Agents
 
 - Click the **edit** icon on an agent card to modify its configuration.

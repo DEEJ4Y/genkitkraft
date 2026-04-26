@@ -27,4 +27,4 @@ GenKitKraft is configured entirely through environment variables. For configurat
 
 ## Using the UI
 
-To learn about the UI, start with [Configuring Providers](/docs/guides/providers).
+To learn about the UI, start with [Configuring Providers](/docs/guides/providers). Once you have agents set up, see the [Tools guide](/docs/guides/tools) to connect HTTP tools and MCP servers.

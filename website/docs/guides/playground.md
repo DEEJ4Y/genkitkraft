@@ -31,6 +31,16 @@ In the playground config bar, you can temporarily override:
 
 These overrides apply only to the current playground session and don't modify the agent's saved configuration.
 
+## Tool Overrides
+
+You can temporarily override which tools the agent has access to:
+
+1. Click the **Tools** icon in the config bar (next to the configuration button).
+2. A panel shows all available HTTP tools and MCP servers with checkboxes.
+3. Check or uncheck tools to customize what the agent can use for this session.
+
+Tool overrides are temporary — they don't modify the saved agent configuration unless you explicitly save them. For more details, see the [Tools guide](./tools#playground-tool-overrides).
+
 ## Saving a Configuration
 
-If you find a combination of overrides that works well, click the **Save Config** button to save it as a new agent. This lets you quickly iterate on configurations and promote the best ones to reusable agents.
+If you find a combination of overrides that works well, click the **Save Config** button to save it as a new agent. This includes both configuration overrides (provider, model, parameters) and tool overrides. This lets you quickly iterate on configurations and promote the best ones to reusable agents.
