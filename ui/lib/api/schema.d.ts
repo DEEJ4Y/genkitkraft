@@ -276,6 +276,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agents/{agentId}/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get agent tools
+         * @description Get an agent's tool configuration.
+         */
+        get: operations["getAgentTools"];
+        /**
+         * Update agent tools
+         * @description Update an agent's tool configuration (replaces all tool assignments).
+         */
+        put: operations["updateAgentTools"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agents/{id}": {
         parameters: {
             query?: never;
@@ -299,6 +323,130 @@ export interface paths {
          * @description Delete an agent.
          */
         delete: operations["deleteAgent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/http-tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List HTTP tools
+         * @description List all HTTP tools with pagination.
+         */
+        get: operations["listHttpTools"];
+        put?: never;
+        /**
+         * Create HTTP tool
+         * @description Create a new HTTP tool.
+         */
+        post: operations["createHttpTool"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/http-tools/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get HTTP tool
+         * @description Get a single HTTP tool by ID.
+         */
+        get: operations["getHttpTool"];
+        /**
+         * Update HTTP tool
+         * @description Update an existing HTTP tool.
+         */
+        put: operations["updateHttpTool"];
+        post?: never;
+        /**
+         * Delete HTTP tool
+         * @description Delete an HTTP tool.
+         */
+        delete: operations["deleteHttpTool"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp-servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List MCP servers
+         * @description List all MCP server configurations with pagination.
+         */
+        get: operations["listMcpServers"];
+        put?: never;
+        /**
+         * Create MCP server
+         * @description Create a new MCP server configuration.
+         */
+        post: operations["createMcpServer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp-servers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get MCP server
+         * @description Get a single MCP server configuration by ID.
+         */
+        get: operations["getMcpServer"];
+        /**
+         * Update MCP server
+         * @description Update an existing MCP server configuration.
+         */
+        put: operations["updateMcpServer"];
+        post?: never;
+        /**
+         * Delete MCP server
+         * @description Delete an MCP server configuration.
+         */
+        delete: operations["deleteMcpServer"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp-servers/{id}/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List MCP server tools
+         * @description List tools available from an MCP server by connecting to it.
+         */
+        get: operations["listMcpServerTools"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -512,6 +660,15 @@ export interface components {
              */
             offset: number;
         };
+        /** @description Configuration of an MCP server's tool selection for an agent. */
+        "Models.AgentMcpServerToolConfig": {
+            /** @description ID of the MCP server. */
+            mcpServerId: string;
+            /** @description Whether all tools from this server are selected. When true, toolNames is ignored. */
+            selectAll: boolean;
+            /** @description Specific tool names selected from this server (used when selectAll is false). */
+            toolNames: string[];
+        };
         /** @description An AI agent configuration. */
         "Models.AgentResponse": {
             /** @description Unique agent ID. */
@@ -561,6 +718,13 @@ export interface components {
              * @description When this agent was last updated.
              */
             updatedAt: string;
+        };
+        /** @description Response containing an agent's tool configuration. */
+        "Models.AgentToolConfigResponse": {
+            /** @description IDs of HTTP tools assigned to this agent. */
+            httpToolIds: string[];
+            /** @description MCP server tool configurations for this agent. */
+            mcpServers: components["schemas"]["Models.AgentMcpServerToolConfig"][];
         };
         /** @description Anthropic provider config (no extra fields needed). */
         "Models.AnthropicProviderConfig": Record<string, never>;
@@ -638,6 +802,34 @@ export interface components {
         "Models.CreateDeploySessionRequest": {
             /** @description Optional title for the session. */
             title?: string;
+        };
+        /** @description Request to create a new HTTP tool. */
+        "Models.CreateHttpToolRequest": {
+            /** @description Display name for this tool. */
+            name: string;
+            /** @description Description of what this tool does. */
+            description?: string;
+            /** @description HTTP method to use. */
+            method: components["schemas"]["Models.HttpMethod"];
+            /** @description URL of the API endpoint. Supports Go template expressions. */
+            url: string;
+            /** @description HTTP headers to include. */
+            headers?: components["schemas"]["Models.HttpToolHeader"][];
+            /** @description Request body template. Supports Go template expressions. */
+            bodyTemplate?: string;
+            /** @description JSON Schema describing the input parameters for LLM function calling. */
+            inputSchema?: string;
+        };
+        /** @description Request to create a new MCP server configuration. */
+        "Models.CreateMcpServerRequest": {
+            /** @description Display name for this MCP server. */
+            name: string;
+            /** @description Transport type used to connect to the MCP server. */
+            transport: components["schemas"]["Models.McpTransport"];
+            /** @description URL of the MCP server endpoint. */
+            url: string;
+            /** @description HTTP headers to include when connecting. */
+            headers?: components["schemas"]["Models.McpServerHeader"][];
         };
         /** @description Request to create a new playground session. */
         "Models.CreatePlaygroundSessionRequest": {
@@ -768,6 +960,67 @@ export interface components {
          * @enum {string}
          */
         "Models.HealthStatus": "up" | "down";
+        /**
+         * @description HTTP method for an HTTP tool.
+         * @enum {string}
+         */
+        "Models.HttpMethod": "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
+        /** @description A key-value pair representing an HTTP header. Values may contain Go template expressions. */
+        "Models.HttpToolHeader": {
+            /** @description Header name (e.g. Content-Type, Authorization). */
+            name: string;
+            /** @description Header value. Supports Go template expressions (e.g. Bearer {{.token}}). */
+            value: string;
+        };
+        /** @description Paginated list of HTTP tools. */
+        "Models.HttpToolListResponse": {
+            /** @description Array of HTTP tools. */
+            httpTools: components["schemas"]["Models.HttpToolResponse"][];
+            /**
+             * Format: int32
+             * @description Total number of HTTP tools.
+             */
+            total: number;
+            /**
+             * Format: int32
+             * @description Number of HTTP tools per page.
+             */
+            limit: number;
+            /**
+             * Format: int32
+             * @description Number of HTTP tools skipped.
+             */
+            offset: number;
+        };
+        /** @description An HTTP tool that can be attached to agents for LLM function calling. */
+        "Models.HttpToolResponse": {
+            /** @description Unique HTTP tool ID. */
+            id: string;
+            /** @description Display name for this tool. The LLM uses this as the function name. */
+            name: string;
+            /** @description Description of what this tool does. The LLM uses this to decide when to call the tool. */
+            description: string;
+            /** @description HTTP method to use when calling the endpoint. */
+            method: components["schemas"]["Models.HttpMethod"];
+            /** @description URL of the API endpoint. Supports Go template expressions (e.g. https://api.example.com/{{.resource}}). */
+            url: string;
+            /** @description HTTP headers to include in the request. */
+            headers: components["schemas"]["Models.HttpToolHeader"][];
+            /** @description Request body template. Supports Go template expressions. */
+            bodyTemplate: string;
+            /** @description JSON Schema describing the input parameters the LLM must provide when calling this tool. */
+            inputSchema: string;
+            /**
+             * Format: date-time
+             * @description When this tool was created.
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description When this tool was last updated.
+             */
+            updatedAt: string;
+        };
         /** @description Request body for the login endpoint. */
         "Models.LoginRequest": {
             /** @description Username to authenticate with. */
@@ -784,6 +1037,73 @@ export interface components {
         "Models.LogoutResponse": {
             ok: boolean;
         };
+        /** @description A key-value pair representing an HTTP header for MCP server connections. */
+        "Models.McpServerHeader": {
+            /** @description Header name (e.g. Authorization). */
+            name: string;
+            /** @description Header value. Supports Go template expressions (e.g. Bearer {{.token}}). */
+            value: string;
+        };
+        /** @description Paginated list of MCP servers. */
+        "Models.McpServerListResponse": {
+            /** @description Array of MCP servers. */
+            mcpServers: components["schemas"]["Models.McpServerResponse"][];
+            /**
+             * Format: int32
+             * @description Total number of MCP servers.
+             */
+            total: number;
+            /**
+             * Format: int32
+             * @description Number of MCP servers per page.
+             */
+            limit: number;
+            /**
+             * Format: int32
+             * @description Number of MCP servers skipped.
+             */
+            offset: number;
+        };
+        /** @description A remote MCP server configuration. */
+        "Models.McpServerResponse": {
+            /** @description Unique MCP server ID. */
+            id: string;
+            /** @description Display name for this MCP server. */
+            name: string;
+            /** @description Transport type used to connect to the MCP server. */
+            transport: components["schemas"]["Models.McpTransport"];
+            /** @description URL of the MCP server endpoint. */
+            url: string;
+            /** @description HTTP headers to include when connecting to the MCP server. */
+            headers: components["schemas"]["Models.McpServerHeader"][];
+            /**
+             * Format: date-time
+             * @description When this MCP server was created.
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description When this MCP server was last updated.
+             */
+            updatedAt: string;
+        };
+        /** @description List of tools available from an MCP server. */
+        "Models.McpServerToolListResponse": {
+            /** @description Array of available tools. */
+            tools: components["schemas"]["Models.McpServerToolResponse"][];
+        };
+        /** @description A tool available from an MCP server. */
+        "Models.McpServerToolResponse": {
+            /** @description Tool name as reported by the MCP server. */
+            name: string;
+            /** @description Tool description as reported by the MCP server. */
+            description: string;
+        };
+        /**
+         * @description Transport type for an MCP server connection.
+         * @enum {string}
+         */
+        "Models.McpTransport": "sse" | "streamableHttp";
         /** @description Current authenticated user info. */
         "Models.MeResponse": {
             /** @description Username of the currently authenticated user. */
@@ -835,6 +1155,19 @@ export interface components {
             topK?: number;
             /** @description Whether to stream the response (SSE). Defaults to true. Set to false for a single JSON response. */
             stream?: boolean;
+            /** @description Optional HTTP tool ID overrides for testing. When provided, overrides the agent's saved HTTP tools. */
+            httpToolIds?: string[];
+            /** @description Optional MCP server tool overrides for testing. When provided, overrides the agent's saved MCP server tools. */
+            mcpServers?: components["schemas"]["Models.PlaygroundMcpServerToolOverride"][];
+        };
+        /** @description MCP server tool override for playground chat. */
+        "Models.PlaygroundMcpServerToolOverride": {
+            /** @description ID of the MCP server. */
+            mcpServerId: string;
+            /** @description Whether all tools from this server are selected. */
+            selectAll: boolean;
+            /** @description Specific tool names (used when selectAll is false). */
+            toolNames: string[];
         };
         /** @description List of messages in a session. */
         "Models.PlaygroundMessageListResponse": {
@@ -1026,6 +1359,41 @@ export interface components {
              * @description Updated top-k sampling.
              */
             topK?: number;
+        };
+        /** @description Request to update an agent's tool configuration. */
+        "Models.UpdateAgentToolConfigRequest": {
+            /** @description IDs of HTTP tools to assign. */
+            httpToolIds: string[];
+            /** @description MCP server tool configurations to assign. */
+            mcpServers: components["schemas"]["Models.AgentMcpServerToolConfig"][];
+        };
+        /** @description Request to update an existing HTTP tool. */
+        "Models.UpdateHttpToolRequest": {
+            /** @description Updated display name. */
+            name?: string;
+            /** @description Updated description. */
+            description?: string;
+            /** @description Updated HTTP method. */
+            method?: components["schemas"]["Models.HttpMethod"];
+            /** @description Updated URL. Supports Go template expressions. */
+            url?: string;
+            /** @description Updated HTTP headers. */
+            headers?: components["schemas"]["Models.HttpToolHeader"][];
+            /** @description Updated request body template. */
+            bodyTemplate?: string;
+            /** @description Updated JSON Schema for input parameters. */
+            inputSchema?: string;
+        };
+        /** @description Request to update an existing MCP server configuration. */
+        "Models.UpdateMcpServerRequest": {
+            /** @description Updated display name. */
+            name?: string;
+            /** @description Updated transport type. */
+            transport?: components["schemas"]["Models.McpTransport"];
+            /** @description Updated URL. */
+            url?: string;
+            /** @description Updated HTTP headers. */
+            headers?: components["schemas"]["Models.McpServerHeader"][];
         };
         /** @description Request to update an existing prompt. */
         "Models.UpdatePromptRequest": {
@@ -1628,6 +1996,72 @@ export interface operations {
             };
         };
     };
+    getAgentTools: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.AgentToolConfigResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateAgentTools: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.UpdateAgentToolConfigRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.AgentToolConfigResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
     getAgent: {
         parameters: {
             query?: never;
@@ -1711,6 +2145,321 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    listHttpTools: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.HttpToolListResponse"];
+                };
+            };
+        };
+    };
+    createHttpTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.CreateHttpToolRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded and a new resource has been created as a result. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.HttpToolResponse"];
+                };
+            };
+        };
+    };
+    getHttpTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.HttpToolResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateHttpTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.UpdateHttpToolRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.HttpToolResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteHttpTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMcpServers: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.McpServerListResponse"];
+                };
+            };
+        };
+    };
+    createMcpServer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.CreateMcpServerRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded and a new resource has been created as a result. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.McpServerResponse"];
+                };
+            };
+        };
+    };
+    getMcpServer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.McpServerResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateMcpServer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.UpdateMcpServerRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.McpServerResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteMcpServer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMcpServerTools: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.McpServerToolListResponse"];
+                };
             };
             /** @description The server cannot find the requested resource. */
             404: {

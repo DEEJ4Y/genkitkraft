@@ -10,6 +10,9 @@ tags:
   - name: Agents
   - name: Playground
   - name: Deploy
+  - name: HttpTools
+  - name: McpServers
+  - name: Agent Tools
 paths:
   /api/auth/login:
     post:
@@ -499,6 +502,63 @@ paths:
                 $ref: '#/components/schemas/Models.ErrorResponse'
       tags:
         - Playground
+  /api/v1/agents/{agentId}/tools:
+    get:
+      operationId: getAgentTools
+      summary: Get agent tools
+      description: Get an agent's tool configuration.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.AgentToolConfigResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Agent Tools
+    put:
+      operationId: updateAgentTools
+      summary: Update agent tools
+      description: Update an agent's tool configuration (replaces all tool assignments).
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.AgentToolConfigResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Agent Tools
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.UpdateAgentToolConfigRequest'
   /api/v1/agents/{id}:
     get:
       operationId: getAgent
@@ -577,6 +637,290 @@ paths:
                 $ref: '#/components/schemas/Models.ErrorResponse'
       tags:
         - Agents
+  /api/v1/http-tools:
+    get:
+      operationId: listHttpTools
+      summary: List HTTP tools
+      description: List all HTTP tools with pagination.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 20
+          explode: false
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.HttpToolListResponse'
+      tags:
+        - HttpTools
+    post:
+      operationId: createHttpTool
+      summary: Create HTTP tool
+      description: Create a new HTTP tool.
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.HttpToolResponse'
+      tags:
+        - HttpTools
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.CreateHttpToolRequest'
+  /api/v1/http-tools/{id}:
+    get:
+      operationId: getHttpTool
+      summary: Get HTTP tool
+      description: Get a single HTTP tool by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.HttpToolResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - HttpTools
+    put:
+      operationId: updateHttpTool
+      summary: Update HTTP tool
+      description: Update an existing HTTP tool.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.HttpToolResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - HttpTools
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.UpdateHttpToolRequest'
+    delete:
+      operationId: deleteHttpTool
+      summary: Delete HTTP tool
+      description: Delete an HTTP tool.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - HttpTools
+  /api/v1/mcp-servers:
+    get:
+      operationId: listMcpServers
+      summary: List MCP servers
+      description: List all MCP server configurations with pagination.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 20
+          explode: false
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.McpServerListResponse'
+      tags:
+        - McpServers
+    post:
+      operationId: createMcpServer
+      summary: Create MCP server
+      description: Create a new MCP server configuration.
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.McpServerResponse'
+      tags:
+        - McpServers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.CreateMcpServerRequest'
+  /api/v1/mcp-servers/{id}:
+    get:
+      operationId: getMcpServer
+      summary: Get MCP server
+      description: Get a single MCP server configuration by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.McpServerResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - McpServers
+    put:
+      operationId: updateMcpServer
+      summary: Update MCP server
+      description: Update an existing MCP server configuration.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.McpServerResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - McpServers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.UpdateMcpServerRequest'
+    delete:
+      operationId: deleteMcpServer
+      summary: Delete MCP server
+      description: Delete an MCP server configuration.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - McpServers
+  /api/v1/mcp-servers/{id}/tools:
+    get:
+      operationId: listMcpServerTools
+      summary: List MCP server tools
+      description: List tools available from an MCP server by connecting to it.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.McpServerToolListResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - McpServers
   /api/v1/prompts:
     get:
       operationId: listPrompts
@@ -936,6 +1280,25 @@ components:
           format: int32
           description: Number of agents skipped.
       description: Paginated list of agents.
+    Models.AgentMcpServerToolConfig:
+      type: object
+      required:
+        - mcpServerId
+        - selectAll
+        - toolNames
+      properties:
+        mcpServerId:
+          type: string
+          description: ID of the MCP server.
+        selectAll:
+          type: boolean
+          description: Whether all tools from this server are selected. When true, toolNames is ignored.
+        toolNames:
+          type: array
+          items:
+            type: string
+          description: Specific tool names selected from this server (used when selectAll is false).
+      description: Configuration of an MCP server's tool selection for an agent.
     Models.AgentResponse:
       type: object
       required:
@@ -1009,6 +1372,23 @@ components:
           format: date-time
           description: When this agent was last updated.
       description: An AI agent configuration.
+    Models.AgentToolConfigResponse:
+      type: object
+      required:
+        - httpToolIds
+        - mcpServers
+      properties:
+        httpToolIds:
+          type: array
+          items:
+            type: string
+          description: IDs of HTTP tools assigned to this agent.
+        mcpServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.AgentMcpServerToolConfig'
+          description: MCP server tool configurations for this agent.
+      description: Response containing an agent's tool configuration.
     Models.AnthropicProviderConfig:
       type: object
       description: Anthropic provider config (no extra fields needed).
@@ -1128,6 +1508,61 @@ components:
           type: string
           description: Optional title for the session.
       description: Request to create a new deploy session.
+    Models.CreateHttpToolRequest:
+      type: object
+      required:
+        - name
+        - method
+        - url
+      properties:
+        name:
+          type: string
+          description: Display name for this tool.
+        description:
+          type: string
+          description: Description of what this tool does.
+        method:
+          allOf:
+            - $ref: '#/components/schemas/Models.HttpMethod'
+          description: HTTP method to use.
+        url:
+          type: string
+          description: URL of the API endpoint. Supports Go template expressions.
+        headers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.HttpToolHeader'
+          description: HTTP headers to include.
+        bodyTemplate:
+          type: string
+          description: Request body template. Supports Go template expressions.
+        inputSchema:
+          type: string
+          description: JSON Schema describing the input parameters for LLM function calling.
+      description: Request to create a new HTTP tool.
+    Models.CreateMcpServerRequest:
+      type: object
+      required:
+        - name
+        - transport
+        - url
+      properties:
+        name:
+          type: string
+          description: Display name for this MCP server.
+        transport:
+          allOf:
+            - $ref: '#/components/schemas/Models.McpTransport'
+          description: Transport type used to connect to the MCP server.
+        url:
+          type: string
+          description: URL of the MCP server endpoint.
+        headers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.McpServerHeader'
+          description: HTTP headers to include when connecting.
+      description: Request to create a new MCP server configuration.
     Models.CreatePlaygroundSessionRequest:
       type: object
       properties:
@@ -1336,6 +1771,106 @@ components:
         - up
         - down
       description: Status of a health check probe.
+    Models.HttpMethod:
+      type: string
+      enum:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
+        - HEAD
+        - OPTIONS
+      description: HTTP method for an HTTP tool.
+    Models.HttpToolHeader:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          description: Header name (e.g. Content-Type, Authorization).
+        value:
+          type: string
+          description: Header value. Supports Go template expressions (e.g. Bearer {{.token}}).
+      description: A key-value pair representing an HTTP header. Values may contain Go template expressions.
+    Models.HttpToolListResponse:
+      type: object
+      required:
+        - httpTools
+        - total
+        - limit
+        - offset
+      properties:
+        httpTools:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.HttpToolResponse'
+          description: Array of HTTP tools.
+        total:
+          type: integer
+          format: int32
+          description: Total number of HTTP tools.
+        limit:
+          type: integer
+          format: int32
+          description: Number of HTTP tools per page.
+        offset:
+          type: integer
+          format: int32
+          description: Number of HTTP tools skipped.
+      description: Paginated list of HTTP tools.
+    Models.HttpToolResponse:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - method
+        - url
+        - headers
+        - bodyTemplate
+        - inputSchema
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Unique HTTP tool ID.
+        name:
+          type: string
+          description: Display name for this tool. The LLM uses this as the function name.
+        description:
+          type: string
+          description: Description of what this tool does. The LLM uses this to decide when to call the tool.
+        method:
+          allOf:
+            - $ref: '#/components/schemas/Models.HttpMethod'
+          description: HTTP method to use when calling the endpoint.
+        url:
+          type: string
+          description: URL of the API endpoint. Supports Go template expressions (e.g. https://api.example.com/{{.resource}}).
+        headers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.HttpToolHeader'
+          description: HTTP headers to include in the request.
+        bodyTemplate:
+          type: string
+          description: Request body template. Supports Go template expressions.
+        inputSchema:
+          type: string
+          description: JSON Schema describing the input parameters the LLM must provide when calling this tool.
+        createdAt:
+          type: string
+          format: date-time
+          description: When this tool was created.
+        updatedAt:
+          type: string
+          format: date-time
+          description: When this tool was last updated.
+      description: An HTTP tool that can be attached to agents for LLM function calling.
     Models.LoginRequest:
       type: object
       required:
@@ -1366,6 +1901,113 @@ components:
         ok:
           type: boolean
       description: Response after successful logout.
+    Models.McpServerHeader:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          description: Header name (e.g. Authorization).
+        value:
+          type: string
+          description: Header value. Supports Go template expressions (e.g. Bearer {{.token}}).
+      description: A key-value pair representing an HTTP header for MCP server connections.
+    Models.McpServerListResponse:
+      type: object
+      required:
+        - mcpServers
+        - total
+        - limit
+        - offset
+      properties:
+        mcpServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.McpServerResponse'
+          description: Array of MCP servers.
+        total:
+          type: integer
+          format: int32
+          description: Total number of MCP servers.
+        limit:
+          type: integer
+          format: int32
+          description: Number of MCP servers per page.
+        offset:
+          type: integer
+          format: int32
+          description: Number of MCP servers skipped.
+      description: Paginated list of MCP servers.
+    Models.McpServerResponse:
+      type: object
+      required:
+        - id
+        - name
+        - transport
+        - url
+        - headers
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Unique MCP server ID.
+        name:
+          type: string
+          description: Display name for this MCP server.
+        transport:
+          allOf:
+            - $ref: '#/components/schemas/Models.McpTransport'
+          description: Transport type used to connect to the MCP server.
+        url:
+          type: string
+          description: URL of the MCP server endpoint.
+        headers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.McpServerHeader'
+          description: HTTP headers to include when connecting to the MCP server.
+        createdAt:
+          type: string
+          format: date-time
+          description: When this MCP server was created.
+        updatedAt:
+          type: string
+          format: date-time
+          description: When this MCP server was last updated.
+      description: A remote MCP server configuration.
+    Models.McpServerToolListResponse:
+      type: object
+      required:
+        - tools
+      properties:
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.McpServerToolResponse'
+          description: Array of available tools.
+      description: List of tools available from an MCP server.
+    Models.McpServerToolResponse:
+      type: object
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+          description: Tool name as reported by the MCP server.
+        description:
+          type: string
+          description: Tool description as reported by the MCP server.
+      description: A tool available from an MCP server.
+    Models.McpTransport:
+      type: string
+      enum:
+        - sse
+        - streamableHttp
+      description: Transport type for an MCP server connection.
     Models.MeResponse:
       type: object
       required:
@@ -1436,7 +2078,36 @@ components:
         stream:
           type: boolean
           description: Whether to stream the response (SSE). Defaults to true. Set to false for a single JSON response.
+        httpToolIds:
+          type: array
+          items:
+            type: string
+          description: Optional HTTP tool ID overrides for testing. When provided, overrides the agent's saved HTTP tools.
+        mcpServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.PlaygroundMcpServerToolOverride'
+          description: Optional MCP server tool overrides for testing. When provided, overrides the agent's saved MCP server tools.
       description: Request to send a chat message in the playground.
+    Models.PlaygroundMcpServerToolOverride:
+      type: object
+      required:
+        - mcpServerId
+        - selectAll
+        - toolNames
+      properties:
+        mcpServerId:
+          type: string
+          description: ID of the MCP server.
+        selectAll:
+          type: boolean
+          description: Whether all tools from this server are selected.
+        toolNames:
+          type: array
+          items:
+            type: string
+          description: Specific tool names (used when selectAll is false).
+      description: MCP server tool override for playground chat.
     Models.PlaygroundMessageListResponse:
       type: object
       required:
@@ -1740,6 +2411,70 @@ components:
           format: int32
           description: Updated top-k sampling.
       description: Request to update an existing agent.
+    Models.UpdateAgentToolConfigRequest:
+      type: object
+      required:
+        - httpToolIds
+        - mcpServers
+      properties:
+        httpToolIds:
+          type: array
+          items:
+            type: string
+          description: IDs of HTTP tools to assign.
+        mcpServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.AgentMcpServerToolConfig'
+          description: MCP server tool configurations to assign.
+      description: Request to update an agent's tool configuration.
+    Models.UpdateHttpToolRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Updated display name.
+        description:
+          type: string
+          description: Updated description.
+        method:
+          allOf:
+            - $ref: '#/components/schemas/Models.HttpMethod'
+          description: Updated HTTP method.
+        url:
+          type: string
+          description: Updated URL. Supports Go template expressions.
+        headers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.HttpToolHeader'
+          description: Updated HTTP headers.
+        bodyTemplate:
+          type: string
+          description: Updated request body template.
+        inputSchema:
+          type: string
+          description: Updated JSON Schema for input parameters.
+      description: Request to update an existing HTTP tool.
+    Models.UpdateMcpServerRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Updated display name.
+        transport:
+          allOf:
+            - $ref: '#/components/schemas/Models.McpTransport'
+          description: Updated transport type.
+        url:
+          type: string
+          description: Updated URL.
+        headers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.McpServerHeader'
+          description: Updated HTTP headers.
+      description: Request to update an existing MCP server configuration.
     Models.UpdatePromptRequest:
       type: object
       properties:

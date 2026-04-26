@@ -100,7 +100,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	}
 
 	// Build app layer (minimal — only what deploy handler needs)
-	resolveConfig := queries.NewResolvePlaygroundConfigQuery(agentRepo, providerRepo, promptRepo, enc)
+	resolveConfig := queries.NewResolvePlaygroundConfigQuery(agentRepo, providerRepo, promptRepo, enc, nil, nil, nil)
 	saveMessage := commands.NewSavePlaygroundMessageCommand(playgroundRepo)
 	createSession := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)
 	deleteSession := commands.NewDeletePlaygroundSessionCommand(playgroundRepo)
@@ -127,7 +127,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 		StreamTokens: []string{"Hello", " from", " mock", "!"},
 	}
 
-	handler := httphandler.NewHandler(nil, nil, nil, nil, playgroundApp, mockCP)
+	handler := httphandler.NewHandler(nil, nil, nil, nil, playgroundApp, nil, nil, nil, mockCP, nil)
 
 	mux := http.NewServeMux()
 	gen.HandlerFromMux(handler, mux)

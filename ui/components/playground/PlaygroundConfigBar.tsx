@@ -46,9 +46,10 @@ interface PlaygroundConfigBarProps {
   config: PlaygroundConfig
   onChange: (config: PlaygroundConfig) => void
   onSaveToAgent: () => void
+  hasToolOverrides?: boolean
 }
 
-export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent }: PlaygroundConfigBarProps) {
+export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent, hasToolOverrides }: PlaygroundConfigBarProps) {
   const [opened, setOpened] = useState(false)
   const [modelSearch, setModelSearch] = useState(config.modelId ?? '')
   const modelCombobox = useCombobox({
@@ -106,7 +107,8 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent }: 
     config.topP !== agent.topP ||
     config.topKEnabled !== agent.topKEnabled ||
     config.topK !== agent.topK ||
-    !config.streaming
+    !config.streaming ||
+    hasToolOverrides
 
   function handleProviderChange(val: string | null) {
     setModelSearch('')

@@ -16,6 +16,7 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/app/queries"
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
 	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
+	mcpdiscovery "github.com/DEEJ4Y/genkitkraft/internal/ports/mcp_discovery"
 )
 
 const sessionCookieName = "session_token"
@@ -31,11 +32,15 @@ type Handler struct {
 	promptApp     *app.PromptApp
 	agentApp      *app.AgentApp
 	playgroundApp *app.PlaygroundApp
+	httpToolApp   *app.HttpToolApp
+	mcpServerApp  *app.McpServerApp
+	agentToolApp  *app.AgentToolApp
 	chatProvider  chatprovider.ChatProvider
+	mcpDiscovery  mcpdiscovery.McpDiscovery
 }
 
-func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp, promptApp *app.PromptApp, agentApp *app.AgentApp, playgroundApp *app.PlaygroundApp, chatProvider chatprovider.ChatProvider) *Handler {
-	return &Handler{authApp: authApp, providerApp: providerApp, promptApp: promptApp, agentApp: agentApp, playgroundApp: playgroundApp, chatProvider: chatProvider}
+func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp, promptApp *app.PromptApp, agentApp *app.AgentApp, playgroundApp *app.PlaygroundApp, httpToolApp *app.HttpToolApp, mcpServerApp *app.McpServerApp, agentToolApp *app.AgentToolApp, chatProvider chatprovider.ChatProvider, mcpDiscovery mcpdiscovery.McpDiscovery) *Handler {
+	return &Handler{authApp: authApp, providerApp: providerApp, promptApp: promptApp, agentApp: agentApp, playgroundApp: playgroundApp, httpToolApp: httpToolApp, mcpServerApp: mcpServerApp, agentToolApp: agentToolApp, chatProvider: chatProvider, mcpDiscovery: mcpDiscovery}
 }
 
 func (h *Handler) GetAuthStatus(w http.ResponseWriter, r *http.Request) {
@@ -272,6 +277,68 @@ func (h *Handler) DeletePrompt(w http.ResponseWriter, r *http.Request, id string
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) ListHttpTools(w http.ResponseWriter, r *http.Request, params gen.ListHttpToolsParams) {
+	qParams := toListHttpToolsParams(params)
+	result, err := h.httpToolApp.Queries.ListHttpTools.Execute(r.Context(), qParams)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toHttpToolListResponse(result, qParams.Limit, qParams.Offset))
+}
+
+func (h *Handler) CreateHttpTool(w http.ResponseWriter, r *http.Request) {
+	var req gen.ModelsCreateHttpToolRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	params := toCreateHttpToolParams(req)
+	result, err := h.httpToolApp.Commands.CreateHttpTool.Execute(r.Context(), params)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toHttpToolResponse(result.HttpTool))
+}
+
+func (h *Handler) GetHttpTool(w http.ResponseWriter, r *http.Request, id string) {
+	result, err := h.httpToolApp.Queries.GetHttpTool.Execute(r.Context(), queries.GetHttpToolParams{ID: id})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toHttpToolResponse(result.HttpTool))
+}
+
+func (h *Handler) UpdateHttpTool(w http.ResponseWriter, r *http.Request, id string) {
+	var req gen.ModelsUpdateHttpToolRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	params := toUpdateHttpToolParams(id, req)
+	result, err := h.httpToolApp.Commands.UpdateHttpTool.Execute(r.Context(), params)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toHttpToolResponse(result.HttpTool))
+}
+
+func (h *Handler) DeleteHttpTool(w http.ResponseWriter, r *http.Request, id string) {
+	err := h.httpToolApp.Commands.DeleteHttpTool.Execute(r.Context(), commands.DeleteHttpToolParams{ID: id})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) ListAgents(w http.ResponseWriter, r *http.Request, params gen.ListAgentsParams) {
 	qParams := toListAgentsParams(params)
 	result, err := h.agentApp.Queries.ListAgents.Execute(r.Context(), qParams)
@@ -446,6 +513,12 @@ func (h *Handler) PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId
 		configParams.TopKEnabled = req.TopKEnabled
 	}
 
+	// Tool overrides
+	configParams.IncludeTools = true
+	if req.HttpToolIds != nil || req.McpServers != nil {
+		configParams.ToolOverride = toToolOverride(req.HttpToolIds, req.McpServers)
+	}
+
 	configResult, err := h.playgroundApp.Queries.ResolveConfig.Execute(r.Context(), configParams)
 	if err != nil {
 		writeAppError(w, err)
@@ -557,9 +630,10 @@ func (h *Handler) DeployChatCompletions(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	// Resolve agent config (provider, model, system prompt, etc.)
+	// Resolve agent config (provider, model, system prompt, tools)
 	configResult, err := h.playgroundApp.Queries.ResolveConfig.Execute(r.Context(), queries.ResolvePlaygroundConfigParams{
-		AgentID: agentId,
+		AgentID:      agentId,
+		IncludeTools: true,
 	})
 	if err != nil {
 		writeAppError(w, err)
@@ -916,4 +990,127 @@ func (h *Handler) DeploySessionChatCompletions(w http.ResponseWriter, r *http.Re
 
 func strPtr(s string) *string {
 	return &s
+}
+
+// ---- MCP Server handlers ----
+
+func (h *Handler) ListMcpServers(w http.ResponseWriter, r *http.Request, params gen.ListMcpServersParams) {
+	qParams := toListMcpServersParams(params)
+	result, err := h.mcpServerApp.Queries.ListMcpServers.Execute(r.Context(), qParams)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toMcpServerListResponse(result, qParams.Limit, qParams.Offset))
+}
+
+func (h *Handler) CreateMcpServer(w http.ResponseWriter, r *http.Request) {
+	var req gen.ModelsCreateMcpServerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	params := toCreateMcpServerParams(req)
+	result, err := h.mcpServerApp.Commands.CreateMcpServer.Execute(r.Context(), params)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toMcpServerResponse(result.McpServer))
+}
+
+func (h *Handler) GetMcpServer(w http.ResponseWriter, r *http.Request, id string) {
+	result, err := h.mcpServerApp.Queries.GetMcpServer.Execute(r.Context(), queries.GetMcpServerParams{ID: id})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toMcpServerResponse(result.McpServer))
+}
+
+func (h *Handler) UpdateMcpServer(w http.ResponseWriter, r *http.Request, id string) {
+	var req gen.ModelsUpdateMcpServerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	params := toUpdateMcpServerParams(id, req)
+	result, err := h.mcpServerApp.Commands.UpdateMcpServer.Execute(r.Context(), params)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toMcpServerResponse(result.McpServer))
+}
+
+func (h *Handler) DeleteMcpServer(w http.ResponseWriter, r *http.Request, id string) {
+	err := h.mcpServerApp.Commands.DeleteMcpServer.Execute(r.Context(), commands.DeleteMcpServerParams{ID: id})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) ListMcpServerTools(w http.ResponseWriter, r *http.Request, id string) {
+	result, err := h.mcpServerApp.Queries.GetMcpServer.Execute(r.Context(), queries.GetMcpServerParams{ID: id})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	server := result.McpServer
+	headerMap := make(map[string]string, len(server.Headers))
+	for _, hdr := range server.Headers {
+		headerMap[hdr.Name] = hdr.Value
+	}
+
+	tools, err := h.mcpDiscovery.ListTools(r.Context(), server.Name, server.Transport, server.URL, headerMap)
+	if err != nil {
+		writeJSON(w, http.StatusOK, gen.ModelsMcpServerToolListResponse{
+			Tools: []gen.ModelsMcpServerToolResponse{},
+		})
+		return
+	}
+
+	resp := make([]gen.ModelsMcpServerToolResponse, len(tools))
+	for i, t := range tools {
+		resp[i] = gen.ModelsMcpServerToolResponse{
+			Name:        t.Name,
+			Description: t.Description,
+		}
+	}
+	writeJSON(w, http.StatusOK, gen.ModelsMcpServerToolListResponse{Tools: resp})
+}
+
+// --- Agent Tools ---
+
+func (h *Handler) GetAgentTools(w http.ResponseWriter, r *http.Request, agentId string) {
+	result, err := h.agentToolApp.Queries.GetTools.Execute(r.Context(), queries.GetAgentToolsParams{
+		AgentID: agentId,
+	})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toAgentToolConfigResponse(result.Config))
+}
+
+func (h *Handler) UpdateAgentTools(w http.ResponseWriter, r *http.Request, agentId string) {
+	var req gen.ModelsUpdateAgentToolConfigRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+
+	result, err := h.agentToolApp.Commands.UpdateTools.Execute(r.Context(), toUpdateAgentToolsParams(agentId, req))
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toAgentToolConfigResponse(result.Config))
 }

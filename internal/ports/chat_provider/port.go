@@ -11,6 +11,28 @@ type ChatMessage struct {
 	Content string
 }
 
+// HttpToolDefinition contains everything needed to register and execute an HTTP tool.
+type HttpToolDefinition struct {
+	ID           string
+	Name         string
+	Description  string
+	Method       string
+	URL          string
+	Headers      map[string]string
+	BodyTemplate string
+	InputSchema  json.RawMessage
+}
+
+// McpServerConfig contains connection info and tool selection for an MCP server.
+type McpServerConfig struct {
+	ServerID  string
+	Transport string // "sse" or "streamableHttp"
+	URL       string
+	Headers   map[string]string
+	SelectAll bool
+	ToolNames []string // specific tools when SelectAll is false
+}
+
 // ChatRequest contains all information needed to make a chat completion request.
 type ChatRequest struct {
 	ProviderType       string
@@ -26,6 +48,8 @@ type ChatRequest struct {
 	TopP               float64
 	TopKEnabled        bool
 	TopK               int
+	HttpTools          []HttpToolDefinition
+	McpServers         []McpServerConfig
 }
 
 // ChatProvider defines the contract for chat completions from LLM providers.
