@@ -6,7 +6,7 @@ Self-hostable platform for configuring and running LLM agents. Built on [Google 
 
 - [x] **Any LLM provider**: Google AI, OpenAI, Anthropic, Vertex AI, Bedrock, Azure, xAI, DeepSeek, Ollama
 - [ ] **Agent builder UI**: Create agents with system prompts, model selection, temperature, and tool config
-- [ ] **MCP tool support**: Connect tools via MCP servers (stdio and SSE transports)
+- [ ] **MCP tool support**: Connect tools via MCP servers (SSE and Streamable HTTP transports)
 - [ ] **Smart tool selection**: Three tool modes (manual, auto-search, hybrid) to avoid context pollution
 - [ ] **OpenAI-compatible API**: `/v1/chat/completions` with streaming support, works with any OpenAI client
 - [ ] **Single binary**: Frontend embedded in the Go binary, SQLite by default, zero external dependencies

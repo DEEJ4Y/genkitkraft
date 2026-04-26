@@ -176,9 +176,6 @@ export default function ToolsPage() {
       <Tabs defaultValue="http">
         <Tabs.List mb="md">
           <Tabs.Tab value="http">HTTP Tools</Tabs.Tab>
-          <Tabs.Tab value="cli" disabled>
-            CLI Tools
-          </Tabs.Tab>
           <Tabs.Tab value="mcp" disabled>
             MCP Tools
           </Tabs.Tab>
@@ -186,12 +183,6 @@ export default function ToolsPage() {
 
         <Tabs.Panel value="http">
           <HttpToolsTab />
-        </Tabs.Panel>
-
-        <Tabs.Panel value="cli">
-          <Text c="dimmed" py="xl" ta="center">
-            CLI tools support coming soon.
-          </Text>
         </Tabs.Panel>
 
         <Tabs.Panel value="mcp">
