@@ -13,7 +13,10 @@ import (
 
 	aesgcmencryptor "github.com/DEEJ4Y/genkitkraft/internal/adapters/aesgcm_encryptor"
 	sqliteagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent"
+	sqliteagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent_tool"
 	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
+	sqlitehttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_http_tool"
+	sqlitemcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_mcp_server"
 	sqliteplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_playground"
 	sqliteprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_prompt"
 	sqliteprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_provider"
@@ -58,6 +61,9 @@ func setupTestEnv(t *testing.T) *testEnv {
 	providerRepo := sqliteprovider.NewProviderRepository(db)
 	promptRepo := sqliteprompt.NewPromptRepository(db)
 	playgroundRepo := sqliteplayground.NewPlaygroundRepository(db)
+	agentToolRepo := sqliteagenttool.NewRepository(db)
+	httpToolRepo := sqlitehttptool.NewHttpToolRepository(db)
+	mcpServerRepo := sqlitemcpserver.NewMcpServerRepository(db)
 
 	ctx := context.Background()
 
@@ -100,7 +106,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	}
 
 	// Build app layer (minimal — only what deploy handler needs)
-	resolveConfig := queries.NewResolvePlaygroundConfigQuery(agentRepo, providerRepo, promptRepo, enc, nil, nil, nil)
+	resolveConfig := queries.NewResolvePlaygroundConfigQuery(agentRepo, providerRepo, promptRepo, enc, agentToolRepo, httpToolRepo, mcpServerRepo)
 	saveMessage := commands.NewSavePlaygroundMessageCommand(playgroundRepo)
 	createSession := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)
 	deleteSession := commands.NewDeletePlaygroundSessionCommand(playgroundRepo)
