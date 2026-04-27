@@ -35,6 +35,7 @@ import (
 	domainauth "github.com/DEEJ4Y/genkitkraft/internal/domain/auth"
 	httphandler "github.com/DEEJ4Y/genkitkraft/internal/handlers/http_handler"
 	"github.com/DEEJ4Y/genkitkraft/internal/handlers/http_handler/interceptors"
+	mcphandler "github.com/DEEJ4Y/genkitkraft/internal/handlers/mcp_handler"
 	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/hasher"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/session"
@@ -327,6 +328,14 @@ func (s *Server) Start() error {
 
 	// SPA fallback: serve embedded UI or fallback to index.html
 	mux.HandleFunc("/", spaHandler())
+
+	// Mount MCP server at /mcp
+	mcpH := mcphandler.NewHandler(
+		s.authApp, s.providerApp, s.promptApp, s.agentApp,
+		s.playgroundApp, s.httpToolApp, s.mcpServerApp, s.agentToolApp,
+		s.chatProvider, mcpDiscovery, s.cfg.Auth,
+	)
+	mux.Handle("/mcp", mcpH.HTTPHandler())
 
 	// Wrap with auth middleware
 	handler := interceptors.DeployAuthMiddleware(s.cfg.Deploy.APIKeys)(interceptors.AuthMiddleware(s.authApp)(mux))
