@@ -73,6 +73,7 @@ func (h *Handler) HTTPHandler() http.Handler {
 	h.registerMcpServerTools(server)
 	h.registerPlaygroundTools(server)
 	h.registerHealthTools(server)
+	h.registerPrompts(server)
 
 	handler := mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {
 		return server

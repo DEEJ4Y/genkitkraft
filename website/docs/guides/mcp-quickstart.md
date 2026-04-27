@@ -170,6 +170,12 @@ Using any MCP client, you can create a fully configured agent in a few tool call
 5. **`playground_sessions_create`** — start a chat session
 6. **`playground_chat`** — chat with your agent
 
+For a detailed walkthrough with examples and input schemas, see the [Agent Creation Guide](/docs/guides/mcp-agent-creation-guide).
+
+## Built-in Prompts
+
+The MCP server includes a **`create-agent`** prompt that provides the LLM with a comprehensive guide to all available tools and the correct workflow for creating agents. MCP clients that support server-side prompts (like Claude Desktop) can load this prompt automatically to give the LLM full context.
+
 ## Troubleshooting
 
 **401 Unauthorized**: `AUTH_CREDENTIALS` is set but your client isn't sending the correct Basic Auth header. Double-check the base64-encoded `username:password`.
