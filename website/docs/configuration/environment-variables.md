@@ -44,6 +44,7 @@ AUTH_CREDENTIALS=admin:changeme,readonly:viewer123
 
 - When set: all UI and API access requires authentication
 - When unset: authentication is disabled entirely
+- Also controls authentication for the [MCP endpoint](/docs/guides/mcp-quickstart) — when set, the MCP server requires HTTP Basic Auth with the same credentials
 - See [Authentication](./authentication) for more details
 
 ### `PUBLIC_API_KEY`
