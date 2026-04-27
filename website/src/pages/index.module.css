@@ -57,3 +57,77 @@
   color: var(--ifm-color-emphasis-700);
   margin-bottom: 0;
 }
+
+/* MCP hero button */
+.mcpHeroButton {
+  margin-left: 0.75rem;
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  color: #fff;
+}
+
+.mcpHeroButton:hover {
+  border-color: #fff;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* MCP Showcase section */
+.mcpShowcase {
+  padding: 3rem 0;
+  background: var(--ifm-color-emphasis-100);
+}
+
+.mcpContent {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.mcpHeading {
+  font-size: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.mcpDescription {
+  font-size: 1.05rem;
+  color: var(--ifm-color-emphasis-800);
+  margin-bottom: 1rem;
+}
+
+.mcpHighlights {
+  padding-left: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.mcpHighlights li {
+  margin-bottom: 0.4rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.mcpButtons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.mcpCode {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.mcpCodeLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-600);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+@media screen and (max-width: 996px) {
+  .mcpContent {
+    margin-bottom: 2rem;
+  }
+}

@@ -39,6 +39,7 @@ services:
       DATABASE_PATH: /data/app.db
       ENCRYPTION_KEY: your-encryption-key
       # AUTH_CREDENTIALS: admin:changeme
+      # PUBLIC_API_KEY: sk-my-secret-key
 
 volumes:
   genkitkraft-data:

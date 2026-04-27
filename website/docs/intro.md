@@ -10,16 +10,25 @@ GenKitKraft is a self-hostable platform for configuring and running LLM agents, 
 ## Features
 
 - **Agent Builder UI** — Create agents with custom system instructions
-- **MCP Tool Support** — Connect Model Context Protocol tool servers to your agents
+- **MCP Server** — Manage everything via Model Context Protocol from Claude Desktop, Cursor, or any MCP client
+- **MCP Tool Support** — Connect MCP tool servers to your agents for external integrations
 - **Multi-Provider LLM Access** — Use OpenAI, Anthropic, Google, and more
 - **OpenAI-Compatible API** — Expose configured agents via a standard API
 - **Single Binary Deployment** — Server and UI ship as one binary
 
 ## Getting Started
 
-For installation instructions, see [Installation](/docs/getting-started/installation).
+There are two ways to get started with GenKitKraft:
 
-Once running, follow the [First Steps](/docs/getting-started/first-steps) guide to configure your first agent.
+### Via the UI
+
+1. [Install GenKitKraft](/docs/getting-started/installation)
+2. Follow the [First Steps](/docs/getting-started/first-steps) guide to configure your first agent through the web interface
+
+### Via MCP (Claude Desktop, Cursor, etc.)
+
+1. [Install GenKitKraft](/docs/getting-started/installation)
+2. Follow the [MCP Quickstart](/docs/getting-started/mcp-quickstart) to connect your MCP client and create agents conversationally
 
 ## Configuration
 
@@ -28,3 +37,7 @@ GenKitKraft is configured entirely through environment variables. For configurat
 ## Using the UI
 
 To learn about the UI, start with [Configuring Providers](/docs/guides/providers). Once you have agents set up, see the [Tools guide](/docs/guides/tools) to connect HTTP tools and MCP servers.
+
+## Using the MCP Server
+
+GenKitKraft exposes all management APIs as MCP tools. Connect from any MCP-compatible client to create agents, configure providers, assign tools, and chat — all conversationally. See the [MCP Quickstart](/docs/getting-started/mcp-quickstart) to get connected, or the [full MCP reference](/docs/guides/mcp-quickstart) for all available tools.

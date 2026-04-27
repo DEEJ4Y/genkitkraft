@@ -8,7 +8,7 @@ GenKitKraft exposes all of its management APIs as [MCP](https://modelcontextprot
 
 ## Prerequisites
 
-- GenKitKraft running (see [Getting Started](/docs/getting-started/docker))
+- GenKitKraft running (see [Installation](/docs/getting-started/installation))
 
 ## Endpoint
 

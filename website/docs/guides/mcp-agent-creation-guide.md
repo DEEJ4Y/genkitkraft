@@ -4,7 +4,7 @@ This guide explains how to create and configure GenKitKraft agents using the MCP
 
 ## Prerequisites
 
-- GenKitKraft running (see [Docker setup](/docs/guides/docker))
+- GenKitKraft running (see [Installation](/docs/getting-started/installation))
 - MCP client connected to GenKitKraft (see [MCP Quickstart](/docs/guides/mcp-quickstart))
 
 ## The `create-agent` Prompt

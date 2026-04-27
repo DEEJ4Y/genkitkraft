@@ -4,6 +4,7 @@ import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
+import CodeBlock from '@theme/CodeBlock';
 
 import styles from './index.module.css';
 
@@ -52,6 +53,14 @@ const FeatureList: FeatureItem[] = [
   },
 ];
 
+const mcpConfigSnippet = `{
+  "mcpServers": {
+    "genkitkraft": {
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}`;
+
 function Feature({icon, title, description}: FeatureItem) {
   return (
     <div className={clsx('col col--4', styles.featureCol)}>
@@ -80,6 +89,49 @@ function HomepageFeatures() {
   );
 }
 
+function McpShowcase() {
+  return (
+    <section className={styles.mcpShowcase}>
+      <div className="container">
+        <div className="row">
+          <div className={clsx('col col--6', styles.mcpContent)}>
+            <Heading as="h2" className={styles.mcpHeading}>
+              🔧 MCP Server Built In
+            </Heading>
+            <p className={styles.mcpDescription}>
+              GenKitKraft exposes all management APIs as an{' '}
+              <a href="https://modelcontextprotocol.io/">MCP</a> server.
+              Create agents, configure providers, assign tools, and chat —
+              directly from Claude Desktop, Cursor, or any MCP client.
+            </p>
+            <ul className={styles.mcpHighlights}>
+              <li>40+ tools covering agents, providers, prompts, tools, and playground</li>
+              <li>Built-in <code>create-agent</code> prompt for guided setup</li>
+              <li>Streamable HTTP transport with Basic Auth support</li>
+            </ul>
+            <div className={styles.mcpButtons}>
+              <Link
+                className="button button--primary button--md"
+                to="/docs/getting-started/mcp-quickstart">
+                MCP Quickstart
+              </Link>
+              <Link
+                className="button button--outline button--secondary button--md"
+                to="/docs/guides/mcp-quickstart">
+                Full MCP Reference
+              </Link>
+            </div>
+          </div>
+          <div className={clsx('col col--6', styles.mcpCode)}>
+            <div className={styles.mcpCodeLabel}>Claude Desktop / Cursor config</div>
+            <CodeBlock language="json">{mcpConfigSnippet}</CodeBlock>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function HomepageHeader() {
   const {siteConfig} = useDocusaurusContext();
   return (
@@ -94,6 +146,11 @@ function HomepageHeader() {
             className="button button--secondary button--lg"
             to="/docs">
             Get Started
+          </Link>
+          <Link
+            className={clsx('button button--lg', styles.mcpHeroButton)}
+            to="/docs/getting-started/mcp-quickstart">
+            Connect via MCP
           </Link>
         </div>
       </div>
@@ -110,6 +167,7 @@ export default function Home(): ReactNode {
       <HomepageHeader />
       <main>
         <HomepageFeatures />
+        <McpShowcase />
       </main>
     </Layout>
   );
