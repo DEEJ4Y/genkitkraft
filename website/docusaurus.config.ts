@@ -38,6 +38,31 @@ const config: Config = {
         theme: {
           customCss: './src/css/custom.css',
         },
+        sitemap: {
+          createSitemapItems: async (params) => {
+            const {defaultCreateSitemapItems, ...rest} = params;
+            const items = await defaultCreateSitemapItems(rest);
+            return items.map((item) => {
+              const path =
+                item.url.replace(/^https?:\/\/[^/]+\/genkitkraft/, '') || '/';
+              let priority = 0.5;
+              if (path === '/' || path === '') priority = 1.0;
+              else if (
+                path === '/docs' ||
+                path.startsWith('/docs/getting-started/')
+              )
+                priority = 0.9;
+              else if (path.startsWith('/docs/guides/')) priority = 0.8;
+              else if (
+                path.startsWith('/docs/configuration/') ||
+                path.startsWith('/docs/api/') ||
+                path.startsWith('/docs/deployment/')
+              )
+                priority = 0.7;
+              return {...item, priority};
+            });
+          },
+        },
       } satisfies Preset.Options,
     ],
   ],
