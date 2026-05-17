@@ -7,7 +7,7 @@ description: Guidelines and rules for developing in the GenKitKraft codebase, in
 
 ## When to Use
 
-Invoke this skill whenever building, modifying, or reviewing code in this project. This includes adding features, creating new endpoints, writing domain logic, defining ports/adapters, or modifying API specs.
+Invoke this skill whenever building, modifying, or reviewing code in this project. This includes adding features, creating new endpoints, adding MCP tools, writing domain logic, defining ports/adapters, or modifying API specs.
 
 ## Project Overview
 
@@ -218,6 +218,90 @@ namespace Things {
 }
 ```
 
+## MCP Tools
+
+In addition to the HTTP API, GenKitKraft exposes functionality as MCP (Model Context Protocol) tools. MCP tools are a **separate primary adapter** — they follow the same hexagonal architecture rules as HTTP handlers but are hand-written (no code generation).
+
+### MCP Tool Location
+
+All MCP tools live in `internal/handlers/mcp_handler/`, organized by domain:
+
+```
+internal/handlers/mcp_handler/
+  handler.go              → Handler struct, NewHandler(), HTTPHandler() (server init + registration)
+  auth_tools.go           → Authentication tools
+  agent_tools.go          → Agent CRUD tools
+  agent_tool_config_tools.go → Agent tool configuration tools
+  provider_tools.go       → LLM provider tools
+  prompt_tools.go         → Prompt template tools
+  http_tool_tools.go      → HTTP tool tools
+  mcp_server_tools.go     → MCP server management tools
+  builtin_tool_tools.go   → Built-in tool tools
+  playground_tools.go     → Playground/chat tools
+  health_tools.go         → Health check tools
+```
+
+### MCP Tool Pattern
+
+Each tool file follows a consistent three-part structure:
+
+```go
+package mcphandler
+
+// 1. Input/Output DTOs — use json + jsonschema struct tags
+type CreateThingInput struct {
+    Name   string `json:"name" jsonschema:"name of the thing to create"`
+    Status string `json:"status" jsonschema:"initial status (active or inactive)"`
+}
+
+type CreateThingOutput struct {
+    ID   string `json:"id"`
+    Name string `json:"name"`
+}
+
+// 2. Tool registration — called from handler.go's HTTPHandler()
+func (h *Handler) registerThingTools(s *mcp.Server) {
+    mcp.AddTool(s, &mcp.Tool{
+        Name:        "thing_create",
+        Description: "Create a new thing with the given name and status.",
+    }, h.thingCreate)
+
+    mcp.AddTool(s, &mcp.Tool{
+        Name:        "thing_list",
+        Description: "List all things.",
+    }, h.thingList)
+}
+
+// 3. Tool handlers — call app layer commands/queries
+func (h *Handler) thingCreate(ctx context.Context, _ *mcp.CallToolRequest, input CreateThingInput) (*mcp.CallToolResult, CreateThingOutput, error) {
+    result, err := h.thingApp.Commands.Create.Execute(ctx, commands.CreateThingParams{
+        Name:   input.Name,
+        Status: input.Status,
+    })
+    if err != nil {
+        return nil, CreateThingOutput{}, fmt.Errorf("create thing failed: %w", err)
+    }
+    return nil, CreateThingOutput{ID: result.ID, Name: result.Name}, nil
+}
+```
+
+### Key Conventions
+
+- **Naming**: Tool names use `snake_case` with domain prefix (e.g., `auth_login`, `agent_create`, `provider_list`)
+- **Input schemas**: The `jsonschema` struct tag provides descriptions for each field; the MCP SDK auto-generates the JSON Schema from these tags
+- **No code generation**: Unlike HTTP handlers (generated from OpenAPI), MCP tools are entirely hand-written
+- **App layer access**: MCP tool handlers call `app.Commands` / `app.Queries` — never call adapters directly
+- **Handler struct**: Add new app dependencies to the `Handler` struct in `handler.go` and the `NewHandler()` constructor
+- **Server mounting**: The MCP server is mounted at `/mcp` via `mcp.NewStreamableHTTPHandler` in `internal/services/server.go`
+- **Auth**: If `AUTH_CREDENTIALS` is configured, the MCP endpoint is wrapped with HTTP basic auth automatically
+
+### Workflow for Adding MCP Tools
+
+1. **Ensure app layer exists** — The commands/queries your MCP tools will call must already exist (or be created first following hexagonal architecture rules)
+2. **Create or update the tools file** — Add input/output DTOs, registration function, and handler methods in `internal/handlers/mcp_handler/<domain>_tools.go`
+3. **Register in handler.go** — If it's a new file, add `h.register<Domain>Tools(server)` call in `HTTPHandler()`
+4. **Update Handler struct** — If new app dependencies are needed, add them to the struct and `NewHandler()` in `handler.go`, then wire them in `internal/services/server.go`
+
 ## Checklist for New Features
 
 ### Phase 1: Spec-Driven Contract (do this FIRST, before any Go code)
@@ -235,13 +319,38 @@ namespace Things {
 8. [ ] Create commands/queries in `internal/app/commands/` or `internal/app/queries/` (imports ports + domain)
 9. [ ] Add decorators if needed in `internal/app/decorators/` (imports app + executors)
 10. [ ] Add handler with `type_conversion.go` in `internal/handlers/<name>/` (imports app + gen + common)
-11. [ ] Wire everything in `internal/services/` composition root (imports all layers)
+11. [ ] Add MCP tools in `internal/handlers/mcp_handler/<domain>_tools.go` if the feature should be exposed via MCP (imports app + mcp SDK)
+12. [ ] Wire everything in `internal/services/` composition root (imports all layers)
 
 ### Phase 3: Verification
 
-12. [ ] Run `go build ./...` and `go vet ./...`
-13. [ ] Write unit tests (mock port interfaces) and integration tests (test containers)
-14. [ ] Verify dependency flow rules: no forbidden imports between layers
+13. [ ] Run `go build ./...` and `go vet ./...`
+14. [ ] Write unit tests (mock port interfaces) and integration tests (test containers)
+15. [ ] Verify dependency flow rules: no forbidden imports between layers
+
+### Phase 4: Documentation (`website/docs/`)
+
+Update user-facing documentation in `website/docs/` to reflect the feature change.
+
+**Rules:**
+
+- **Major features** → Create a new page in the appropriate `website/docs/<category>/` folder (e.g., `guides/`, `api/`, `configuration/`).
+- **Minor feature updates** → Update the existing relevant page, or add an info/details section within it.
+- **Page too large** → If an existing page has grown unwieldy, break it into multiple pages within a new or existing subfolder. Update `_category_.json` if adding a new folder.
+
+**Conventions:**
+
+- Docusaurus auto-generates the sidebar from folder structure (`sidebars.ts` uses `autogenerated`). No manual sidebar edits needed.
+- Each new folder needs a `_category_.json` with `label` and `position` fields.
+- Use markdown frontmatter (`sidebar_position`, `title`) to control page ordering.
+- Link to related API endpoints or configuration options where relevant.
+
+**Checklist:**
+
+16. [ ] Determine scope: new page (major) vs. update existing page (minor)
+17. [ ] If page is too large, split into subfolder with multiple pages + `_category_.json`
+18. [ ] Add/update the relevant doc page in `website/docs/<category>/`
+19. [ ] Verify links and cross-references are correct
 
 ## Additional Resources
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/firebase/genkit/go/ai"
@@ -66,6 +67,10 @@ func fetchAsMarkdown(rawURL string) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Sprintf("Fetch failed with status %d", resp.StatusCode), nil
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("reading body: %w", err)
@@ -75,6 +80,10 @@ func fetchAsMarkdown(rawURL string) (string, error) {
 	markdown, err := converter.ConvertString(string(body))
 	if err != nil {
 		return "", fmt.Errorf("converting to markdown: %w", err)
+	}
+
+	if strings.TrimSpace(markdown) == "" {
+		return "No content received. Page may be dynamically rendered.", nil
 	}
 
 	return markdown, nil
