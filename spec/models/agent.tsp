@@ -44,6 +44,9 @@ model AgentResponse {
   /** Top-k sampling. */
   topK: int32;
 
+  /** Maximum number of tool call iterations per request. */
+  maxToolCalls: int32;
+
   /** When this agent was created. */
   createdAt: utcDateTime;
 
@@ -82,6 +85,9 @@ model CreateAgentRequest {
 
   /** Top-k sampling (default 40). */
   topK?: int32;
+
+  /** Maximum number of tool call iterations per request (default 10). */
+  maxToolCalls?: int32;
 }
 
 /** Request to update an existing agent. */
@@ -115,6 +121,9 @@ model UpdateAgentRequest {
 
   /** Updated top-k sampling. */
   topK?: int32;
+
+  /** Updated maximum tool call iterations. */
+  maxToolCalls?: int32;
 }
 
 /** Paginated list of agents. */

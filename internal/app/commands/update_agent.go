@@ -22,6 +22,7 @@ type UpdateAgentParams struct {
 	TopP               *float64
 	TopKEnabled        *bool
 	TopK               *int
+	MaxToolCalls       *int
 }
 
 type UpdateAgentResult struct {
@@ -83,6 +84,9 @@ func (c *UpdateAgentCommand) Execute(ctx context.Context, params UpdateAgentPara
 	}
 	if params.TopK != nil {
 		a.TopK = *params.TopK
+	}
+	if params.MaxToolCalls != nil {
+		a.MaxToolCalls = *params.MaxToolCalls
 	}
 
 	if err := c.repo.Update(ctx, a); err != nil {

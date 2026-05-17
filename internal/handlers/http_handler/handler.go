@@ -512,6 +512,10 @@ func (h *Handler) PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId
 	if req.TopKEnabled != nil {
 		configParams.TopKEnabled = req.TopKEnabled
 	}
+	if req.MaxToolCalls != nil {
+		t := int(*req.MaxToolCalls)
+		configParams.MaxToolCalls = &t
+	}
 
 	// Tool overrides
 	configParams.IncludeTools = true

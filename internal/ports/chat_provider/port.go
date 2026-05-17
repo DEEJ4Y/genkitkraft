@@ -48,6 +48,7 @@ type ChatRequest struct {
 	TopP               float64
 	TopKEnabled        bool
 	TopK               int
+	MaxToolCalls       int
 	HttpTools          []HttpToolDefinition
 	McpServers         []McpServerConfig
 }

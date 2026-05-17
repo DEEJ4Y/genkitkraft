@@ -88,6 +88,10 @@ func (cp *ChatProvider) Chat(ctx context.Context, req chatprovider.ChatRequest) 
 		opts = append(opts, ai.WithTools(tools...))
 	}
 
+	if req.MaxToolCalls > 0 {
+		opts = append(opts, ai.WithMaxTurns(req.MaxToolCalls))
+	}
+
 	resp, err := genkit.Generate(ctx, g, opts...)
 	if err != nil {
 		return "", fmt.Errorf("generate error: %w", err)
@@ -136,6 +140,10 @@ func (cp *ChatProvider) doStream(ctx context.Context, req chatprovider.ChatReque
 	}
 	if len(tools) > 0 {
 		opts = append(opts, ai.WithTools(tools...))
+	}
+
+	if req.MaxToolCalls > 0 {
+		opts = append(opts, ai.WithMaxTurns(req.MaxToolCalls))
 	}
 
 	// Stream the response.

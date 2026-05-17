@@ -1314,6 +1314,7 @@ components:
         - topP
         - topKEnabled
         - topK
+        - maxToolCalls
         - createdAt
         - updatedAt
       properties:
@@ -1363,6 +1364,10 @@ components:
           type: integer
           format: int32
           description: Top-k sampling.
+        maxToolCalls:
+          type: integer
+          format: int32
+          description: Maximum number of tool call iterations per request.
         createdAt:
           type: string
           format: date-time
@@ -1500,6 +1505,10 @@ components:
           type: integer
           format: int32
           description: Top-k sampling (default 40).
+        maxToolCalls:
+          type: integer
+          format: int32
+          description: Maximum number of tool call iterations per request (default 10).
       description: Request to create a new agent.
     Models.CreateDeploySessionRequest:
       type: object
@@ -2075,6 +2084,10 @@ components:
           type: integer
           format: int32
           description: Optional top-k override for testing.
+        maxToolCalls:
+          type: integer
+          format: int32
+          description: Optional max tool calls override for testing.
         stream:
           type: boolean
           description: Whether to stream the response (SSE). Defaults to true. Set to false for a single JSON response.
@@ -2410,6 +2423,10 @@ components:
           type: integer
           format: int32
           description: Updated top-k sampling.
+        maxToolCalls:
+          type: integer
+          format: int32
+          description: Updated maximum tool call iterations.
       description: Request to update an existing agent.
     Models.UpdateAgentToolConfigRequest:
       type: object

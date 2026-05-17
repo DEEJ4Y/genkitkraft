@@ -93,6 +93,9 @@ type ModelsAgentResponse struct {
 	// Id Unique agent ID.
 	Id string `json:"id"`
 
+	// MaxToolCalls Maximum number of tool call iterations per request.
+	MaxToolCalls int32 `json:"maxToolCalls"`
+
 	// ModelId Model identifier (e.g. gemini-2.5-flash, gpt-4o).
 	ModelId string `json:"modelId"`
 
@@ -171,6 +174,9 @@ type ModelsConfigFieldInfo struct {
 
 // ModelsCreateAgentRequest Request to create a new agent.
 type ModelsCreateAgentRequest struct {
+	// MaxToolCalls Maximum number of tool call iterations per request (default 10).
+	MaxToolCalls *int32 `json:"maxToolCalls,omitempty"`
+
 	// ModelId Model identifier.
 	ModelId string `json:"modelId"`
 
@@ -542,6 +548,9 @@ type ModelsPlaygroundChatRequest struct {
 	// HttpToolIds Optional HTTP tool ID overrides for testing. When provided, overrides the agent's saved HTTP tools.
 	HttpToolIds *[]string `json:"httpToolIds,omitempty"`
 
+	// MaxToolCalls Optional max tool calls override for testing.
+	MaxToolCalls *int32 `json:"maxToolCalls,omitempty"`
+
 	// McpServers Optional MCP server tool overrides for testing. When provided, overrides the agent's saved MCP server tools.
 	McpServers *[]ModelsPlaygroundMcpServerToolOverride `json:"mcpServers,omitempty"`
 
@@ -761,6 +770,9 @@ type ModelsTestProviderResponse struct {
 
 // ModelsUpdateAgentRequest Request to update an existing agent.
 type ModelsUpdateAgentRequest struct {
+	// MaxToolCalls Updated maximum tool call iterations.
+	MaxToolCalls *int32 `json:"maxToolCalls,omitempty"`
+
 	// ModelId Updated model identifier.
 	ModelId *string `json:"modelId,omitempty"`
 

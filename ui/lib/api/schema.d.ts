@@ -709,6 +709,11 @@ export interface components {
              */
             topK: number;
             /**
+             * Format: int32
+             * @description Maximum number of tool call iterations per request.
+             */
+            maxToolCalls: number;
+            /**
              * Format: date-time
              * @description When this agent was created.
              */
@@ -797,6 +802,11 @@ export interface components {
              * @description Top-k sampling (default 40).
              */
             topK?: number;
+            /**
+             * Format: int32
+             * @description Maximum number of tool call iterations per request (default 10).
+             */
+            maxToolCalls?: number;
         };
         /** @description Request to create a new deploy session. */
         "Models.CreateDeploySessionRequest": {
@@ -1153,6 +1163,11 @@ export interface components {
              * @description Optional top-k override for testing.
              */
             topK?: number;
+            /**
+             * Format: int32
+             * @description Optional max tool calls override for testing.
+             */
+            maxToolCalls?: number;
             /** @description Whether to stream the response (SSE). Defaults to true. Set to false for a single JSON response. */
             stream?: boolean;
             /** @description Optional HTTP tool ID overrides for testing. When provided, overrides the agent's saved HTTP tools. */
@@ -1359,6 +1374,11 @@ export interface components {
              * @description Updated top-k sampling.
              */
             topK?: number;
+            /**
+             * Format: int32
+             * @description Updated maximum tool call iterations.
+             */
+            maxToolCalls?: number;
         };
         /** @description Request to update an agent's tool configuration. */
         "Models.UpdateAgentToolConfigRequest": {

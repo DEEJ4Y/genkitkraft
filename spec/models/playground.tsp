@@ -89,6 +89,9 @@ model PlaygroundChatRequest {
   /** Optional top-k override for testing. */
   topK?: int32;
 
+  /** Optional max tool calls override for testing. */
+  maxToolCalls?: int32;
+
   /** Whether to stream the response (SSE). Defaults to true. Set to false for a single JSON response. */
   stream?: boolean;
 

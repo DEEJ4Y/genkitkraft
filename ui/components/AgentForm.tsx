@@ -43,6 +43,7 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
   const [topPEnabled, setTopPEnabled] = useState(agent?.topPEnabled ?? false)
   const [topK, setTopK] = useState(agent?.topK ?? 40)
   const [topKEnabled, setTopKEnabled] = useState(agent?.topKEnabled ?? false)
+  const [maxToolCalls, setMaxToolCalls] = useState(agent?.maxToolCalls ?? 10)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -136,6 +137,7 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
             topP,
             topKEnabled,
             topK,
+            maxToolCalls,
           } as any,
         })
         if (err) throw new Error((err as any).error)
@@ -152,6 +154,7 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
             topP,
             topKEnabled,
             topK,
+            maxToolCalls,
           } as any,
         })
         if (err) throw new Error((err as any).error)
@@ -391,6 +394,21 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
           step={1}
           w={120}
           disabled={!topKEnabled}
+        />
+      </div>
+
+      <div>
+        <Text size="sm" fw={500} mb={4}>
+          Max Tool Calls
+        </Text>
+        <NumberInput
+          value={maxToolCalls}
+          onChange={(val) => setMaxToolCalls(typeof val === 'number' ? val : 10)}
+          min={1}
+          max={100}
+          step={1}
+          w={320}
+          description="Maximum tool call iterations per request"
         />
       </div>
 

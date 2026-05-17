@@ -233,6 +233,7 @@ func toAgentResponse(a *agent.Agent) gen.ModelsAgentResponse {
 		TopP:               float32(a.TopP),
 		TopKEnabled:        a.TopKEnabled,
 		TopK:               int32(a.TopK),
+		MaxToolCalls:       int32(a.MaxToolCalls),
 		CreatedAt:          a.CreatedAt,
 		UpdatedAt:          a.UpdatedAt,
 	}
@@ -282,6 +283,10 @@ func toCreateAgentParams(req gen.ModelsCreateAgentRequest) commands.CreateAgentP
 		t := int(*req.TopK)
 		params.TopK = &t
 	}
+	if req.MaxToolCalls != nil {
+		t := int(*req.MaxToolCalls)
+		params.MaxToolCalls = &t
+	}
 	return params
 }
 
@@ -307,6 +312,10 @@ func toUpdateAgentParams(id string, req gen.ModelsUpdateAgentRequest) commands.U
 	if req.TopK != nil {
 		t := int(*req.TopK)
 		params.TopK = &t
+	}
+	if req.MaxToolCalls != nil {
+		t := int(*req.MaxToolCalls)
+		params.MaxToolCalls = &t
 	}
 	return params
 }
