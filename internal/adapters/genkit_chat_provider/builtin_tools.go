@@ -54,8 +54,13 @@ func buildWebFetchTool() ai.Tool {
 	return ai.NewTool(name, description, toolFn, ai.WithInputSchema(inputSchema))
 }
 
-func fetchAsMarkdown(url string) (string, error) {
-	resp, err := http.Get(url)
+func fetchAsMarkdown(rawURL string) (string, error) {
+	encodedURL, err := sanitizeURL(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid URL: %w", err)
+	}
+
+	resp, err := http.Get(encodedURL)
 	if err != nil {
 		return "", fmt.Errorf("fetching URL: %w", err)
 	}

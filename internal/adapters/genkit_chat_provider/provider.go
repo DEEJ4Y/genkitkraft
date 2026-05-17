@@ -387,6 +387,12 @@ func executeHttpTool(ctx context.Context, ht chatprovider.HttpToolDefinition, ar
 		return nil, fmt.Errorf("rendering URL template: %w", err)
 	}
 
+	// Encode URL path segments and query parameters
+	resolvedURL, err = sanitizeURL(resolvedURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid resolved URL: %w", err)
+	}
+
 	// Render body template
 	var bodyReader io.Reader
 	if ht.BodyTemplate != "" {
