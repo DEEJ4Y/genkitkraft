@@ -90,13 +90,27 @@ func (h *Handler) registerHttpToolTools(s *mcp.Server) {
 	}, h.getHttpTool)
 
 	mcp.AddTool(s, &mcp.Tool{
-		Name:        "http_tools_create",
-		Description: "Create a new HTTP tool (custom API call).",
+		Name: "http_tools_create",
+		Description: `Create a new HTTP tool (custom API call).
+
+The 'url', 'body_template', and header values support Go template syntax. Parameters defined in 'input_schema' can be referenced as {{.paramName}}.
+
+Example: If input_schema defines parameters 'name', 'id', and 'token', use them as:
+  - URL: https://api.example.com/users/{{.id}}
+  - Headers: [{"name": "Authorization", "value": "Bearer {{.token}}"}]
+  - Body: {"name": "{{.name}}"}`,
 	}, h.createHttpTool)
 
 	mcp.AddTool(s, &mcp.Tool{
-		Name:        "http_tools_update",
-		Description: "Update an existing HTTP tool. Only provided fields are changed.",
+		Name: "http_tools_update",
+		Description: `Update an existing HTTP tool. Only provided fields are changed.
+
+The 'url', 'body_template', and header values support Go template syntax. Parameters defined in 'input_schema' can be referenced as {{.paramName}}.
+
+Example: If input_schema defines parameters 'name', 'id', and 'token', use them as:
+  - URL: https://api.example.com/users/{{.id}}
+  - Headers: [{"name": "Authorization", "value": "Bearer {{.token}}"}]
+  - Body: {"name": "{{.name}}"}`,
 	}, h.updateHttpTool)
 
 	mcp.AddTool(s, &mcp.Tool{

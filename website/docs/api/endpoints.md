@@ -114,11 +114,33 @@ Request:
   "generationConfig": {
     "temperature": 0.7,
     "topP": 0.9,
-    "topK": 40
+    "topK": 40,
+    "maxToolCalls": 10
   }
 }
 ```
 Responses: 201 (created)
+
+## Built-in Tools
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/v1/built-in-tools` | List all available built-in tools |
+
+### GET /api/v1/built-in-tools
+
+Response:
+```json
+{
+  "builtInTools": [
+    {
+      "id": "web_fetch",
+      "name": "Web Fetch",
+      "description": "Fetches static content from a URL and returns it as Markdown."
+    }
+  ]
+}
+```
 
 ## HTTP Tools
 
@@ -188,7 +210,8 @@ Request:
       "mcpServerId": "server-uuid",
       "toolNames": ["tool1", "tool2"]
     }
-  ]
+  ],
+  "builtInToolIds": ["web_fetch"]
 }
 ```
 Responses: 200 (updated)
@@ -227,7 +250,8 @@ Request:
     "model": "string",
     "temperature": 0.7,
     "topP": 0.9,
-    "topK": 40
+    "topK": 40,
+    "maxToolCalls": 10
   },
   "httpToolIds": ["tool-uuid-1"],
   "mcpServers": [
@@ -235,7 +259,8 @@ Request:
       "mcpServerId": "server-uuid",
       "toolNames": ["tool1"]
     }
-  ]
+  ],
+  "builtInToolIds": ["web_fetch"]
 }
 ```
 
