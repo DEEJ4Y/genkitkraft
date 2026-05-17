@@ -17,8 +17,9 @@ import (
 
 // ToolOverride specifies tool configuration overrides for a chat request.
 type ToolOverride struct {
-	HttpToolIDs []string
-	McpServers  []agenttoolrepo.McpServerToolConfig
+	HttpToolIDs    []string
+	McpServers     []agenttoolrepo.McpServerToolConfig
+	BuiltInToolIDs []string
 }
 
 type ResolvePlaygroundConfigParams struct {
@@ -186,6 +187,7 @@ func (q *ResolvePlaygroundConfigQuery) resolveTools(ctx context.Context, params 
 		// Use override values
 		httpToolIDs = params.ToolOverride.HttpToolIDs
 		mcpConfigs = params.ToolOverride.McpServers
+		chatReq.BuiltInToolIDs = params.ToolOverride.BuiltInToolIDs
 	} else {
 		// Load agent's saved tool config
 		agentTools, err := q.agentToolRepo.GetByAgentID(ctx, params.AgentID)
@@ -194,6 +196,7 @@ func (q *ResolvePlaygroundConfigQuery) resolveTools(ctx context.Context, params 
 		}
 		httpToolIDs = agentTools.HttpToolIDs
 		mcpConfigs = agentTools.McpServers
+		chatReq.BuiltInToolIDs = agentTools.BuiltInToolIDs
 	}
 
 	// Resolve HTTP tools

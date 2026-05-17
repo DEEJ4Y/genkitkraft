@@ -13,6 +13,7 @@ tags:
   - name: HttpTools
   - name: McpServers
   - name: Agent Tools
+  - name: Built-in Tools
 paths:
   /api/auth/login:
     post:
@@ -637,6 +638,21 @@ paths:
                 $ref: '#/components/schemas/Models.ErrorResponse'
       tags:
         - Agents
+  /api/v1/built-in-tools:
+    get:
+      operationId: listBuiltInTools
+      summary: List built-in tools
+      description: List all available built-in tools.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.BuiltInToolListResponse'
+      tags:
+        - Built-in Tools
   /api/v1/http-tools:
     get:
       operationId: listHttpTools
@@ -1382,6 +1398,7 @@ components:
       required:
         - httpToolIds
         - mcpServers
+        - builtInToolIds
       properties:
         httpToolIds:
           type: array
@@ -1393,6 +1410,11 @@ components:
           items:
             $ref: '#/components/schemas/Models.AgentMcpServerToolConfig'
           description: MCP server tool configurations for this agent.
+        builtInToolIds:
+          type: array
+          items:
+            type: string
+          description: IDs of built-in tools enabled for this agent.
       description: Response containing an agent's tool configuration.
     Models.AnthropicProviderConfig:
       type: object
@@ -1442,6 +1464,34 @@ components:
           type: string
           description: AWS session token (optional).
       description: AWS Bedrock provider config.
+    Models.BuiltInToolListResponse:
+      type: object
+      required:
+        - builtInTools
+      properties:
+        builtInTools:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.BuiltInToolResponse'
+          description: List of available built-in tools.
+      description: Response containing the list of available built-in tools.
+    Models.BuiltInToolResponse:
+      type: object
+      required:
+        - id
+        - name
+        - description
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the built-in tool.
+        name:
+          type: string
+          description: Human-readable name of the tool.
+        description:
+          type: string
+          description: Description of what the tool does.
+      description: A built-in tool available in GenKitKraft.
     Models.ConfigFieldInfo:
       type: object
       required:
@@ -2101,6 +2151,11 @@ components:
           items:
             $ref: '#/components/schemas/Models.PlaygroundMcpServerToolOverride'
           description: Optional MCP server tool overrides for testing. When provided, overrides the agent's saved MCP server tools.
+        builtInToolIds:
+          type: array
+          items:
+            type: string
+          description: Optional built-in tool ID overrides for testing. When provided, overrides the agent's saved built-in tools.
       description: Request to send a chat message in the playground.
     Models.PlaygroundMcpServerToolOverride:
       type: object
@@ -2433,6 +2488,7 @@ components:
       required:
         - httpToolIds
         - mcpServers
+        - builtInToolIds
       properties:
         httpToolIds:
           type: array
@@ -2444,6 +2500,11 @@ components:
           items:
             $ref: '#/components/schemas/Models.AgentMcpServerToolConfig'
           description: MCP server tool configurations to assign.
+        builtInToolIds:
+          type: array
+          items:
+            type: string
+          description: IDs of built-in tools to enable.
       description: Request to update an agent's tool configuration.
     Models.UpdateHttpToolRequest:
       type: object

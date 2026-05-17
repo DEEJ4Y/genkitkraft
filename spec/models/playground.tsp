@@ -100,4 +100,7 @@ model PlaygroundChatRequest {
 
   /** Optional MCP server tool overrides for testing. When provided, overrides the agent's saved MCP server tools. */
   mcpServers?: PlaygroundMcpServerToolOverride[];
+
+  /** Optional built-in tool ID overrides for testing. When provided, overrides the agent's saved built-in tools. */
+  builtInToolIds?: string[];
 }

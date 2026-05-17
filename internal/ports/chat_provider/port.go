@@ -51,6 +51,7 @@ type ChatRequest struct {
 	MaxToolCalls       int
 	HttpTools          []HttpToolDefinition
 	McpServers         []McpServerConfig
+	BuiltInToolIDs     []string
 }
 
 // ChatProvider defines the contract for chat completions from LLM providers.

@@ -328,6 +328,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/built-in-tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List built-in tools
+         * @description List all available built-in tools.
+         */
+        get: operations["listBuiltInTools"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/http-tools": {
         parameters: {
             query?: never;
@@ -730,6 +750,8 @@ export interface components {
             httpToolIds: string[];
             /** @description MCP server tool configurations for this agent. */
             mcpServers: components["schemas"]["Models.AgentMcpServerToolConfig"][];
+            /** @description IDs of built-in tools enabled for this agent. */
+            builtInToolIds: string[];
         };
         /** @description Anthropic provider config (no extra fields needed). */
         "Models.AnthropicProviderConfig": Record<string, never>;
@@ -757,6 +779,20 @@ export interface components {
             secretAccessKey: string;
             /** @description AWS session token (optional). */
             sessionToken?: string;
+        };
+        /** @description Response containing the list of available built-in tools. */
+        "Models.BuiltInToolListResponse": {
+            /** @description List of available built-in tools. */
+            builtInTools: components["schemas"]["Models.BuiltInToolResponse"][];
+        };
+        /** @description A built-in tool available in GenKitKraft. */
+        "Models.BuiltInToolResponse": {
+            /** @description Unique identifier for the built-in tool. */
+            id: string;
+            /** @description Human-readable name of the tool. */
+            name: string;
+            /** @description Description of what the tool does. */
+            description: string;
         };
         /** @description Describes a config field for a provider type. */
         "Models.ConfigFieldInfo": {
@@ -1174,6 +1210,8 @@ export interface components {
             httpToolIds?: string[];
             /** @description Optional MCP server tool overrides for testing. When provided, overrides the agent's saved MCP server tools. */
             mcpServers?: components["schemas"]["Models.PlaygroundMcpServerToolOverride"][];
+            /** @description Optional built-in tool ID overrides for testing. When provided, overrides the agent's saved built-in tools. */
+            builtInToolIds?: string[];
         };
         /** @description MCP server tool override for playground chat. */
         "Models.PlaygroundMcpServerToolOverride": {
@@ -1386,6 +1424,8 @@ export interface components {
             httpToolIds: string[];
             /** @description MCP server tool configurations to assign. */
             mcpServers: components["schemas"]["Models.AgentMcpServerToolConfig"][];
+            /** @description IDs of built-in tools to enable. */
+            builtInToolIds: string[];
         };
         /** @description Request to update an existing HTTP tool. */
         "Models.UpdateHttpToolRequest": {
@@ -2173,6 +2213,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    listBuiltInTools: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.BuiltInToolListResponse"];
                 };
             };
         };

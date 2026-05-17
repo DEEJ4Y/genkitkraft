@@ -11,9 +11,10 @@ type McpServerToolConfig struct {
 
 // AgentToolConfig represents an agent's complete tool configuration.
 type AgentToolConfig struct {
-	AgentID    string
-	HttpToolIDs []string
-	McpServers []McpServerToolConfig
+	AgentID        string
+	HttpToolIDs    []string
+	McpServers     []McpServerToolConfig
+	BuiltInToolIDs []string
 }
 
 // AgentToolRepository defines the contract for managing agent-tool associations.

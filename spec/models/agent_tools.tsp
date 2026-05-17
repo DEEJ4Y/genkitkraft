@@ -19,6 +19,9 @@ model AgentToolConfigResponse {
 
   /** MCP server tool configurations for this agent. */
   mcpServers: AgentMcpServerToolConfig[];
+
+  /** IDs of built-in tools enabled for this agent. */
+  builtInToolIds: string[];
 }
 
 /** Request to update an agent's tool configuration. */
@@ -28,6 +31,9 @@ model UpdateAgentToolConfigRequest {
 
   /** MCP server tool configurations to assign. */
   mcpServers: AgentMcpServerToolConfig[];
+
+  /** IDs of built-in tools to enable. */
+  builtInToolIds: string[];
 }
 
 /** MCP server tool override for playground chat. */

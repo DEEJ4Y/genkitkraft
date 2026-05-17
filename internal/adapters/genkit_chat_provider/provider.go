@@ -308,6 +308,10 @@ func buildTools(ctx context.Context, req chatprovider.ChatRequest) ([]ai.ToolRef
 		}
 	}
 
+	// Build built-in tools
+	builtInTools := buildBuiltInTools(req.BuiltInToolIDs)
+	tools = append(tools, builtInTools...)
+
 	// Build HTTP tools
 	for _, ht := range req.HttpTools {
 		tool := buildHttpTool(ht)
