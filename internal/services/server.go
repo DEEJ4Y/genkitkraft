@@ -43,19 +43,20 @@ import (
 
 // Server is the main HTTP server for GenKitKraft.
 type Server struct {
-	cfg           config.Config
-	authApp       *app.AuthApp
-	providerApp   *app.ProviderApp
-	promptApp     *app.PromptApp
-	agentApp      *app.AgentApp
-	playgroundApp *app.PlaygroundApp
-	httpToolApp   *app.HttpToolApp
-	mcpServerApp  *app.McpServerApp
-	agentToolApp  *app.AgentToolApp
-	chatProvider  chatprovider.ChatProvider
-	sessionStore  session.Store
-	db            *sql.DB
-	done          chan struct{}
+	cfg            config.Config
+	authApp        *app.AuthApp
+	providerApp    *app.ProviderApp
+	promptApp      *app.PromptApp
+	agentApp       *app.AgentApp
+	playgroundApp  *app.PlaygroundApp
+	httpToolApp    *app.HttpToolApp
+	mcpServerApp   *app.McpServerApp
+	agentToolApp   *app.AgentToolApp
+	builtInToolApp *app.BuiltInToolApp
+	chatProvider   chatprovider.ChatProvider
+	sessionStore   session.Store
+	db             *sql.DB
+	done           chan struct{}
 }
 
 // NewServer wires all dependencies and returns a ready-to-start Server.
@@ -268,6 +269,13 @@ func NewServer(cfg config.Config) (*Server, error) {
 		},
 	}
 
+	// Build built-in tool application
+	builtInToolApp := &app.BuiltInToolApp{
+		Queries: app.BuiltInToolQueries{
+			ListBuiltInTools: queries.NewListBuiltInToolsQuery(),
+		},
+	}
+
 	// Create playground adapters
 	playgroundRepo := sqliteplayground.NewPlaygroundRepository(db)
 	chatProvider := genkitchatprovider.NewChatProvider()
@@ -299,19 +307,20 @@ func NewServer(cfg config.Config) (*Server, error) {
 	}
 
 	return &Server{
-		cfg:           cfg,
-		authApp:       authApp,
-		providerApp:   providerApp,
-		promptApp:     promptApp,
-		agentApp:      agentApp,
-		playgroundApp: playgroundApp,
-		httpToolApp:   httpToolApp,
-		mcpServerApp:  mcpServerApp,
-		agentToolApp:  agentToolApp,
-		chatProvider:  chatProvider,
-		sessionStore:  sessionStore,
-		db:            db,
-		done:          make(chan struct{}),
+		cfg:            cfg,
+		authApp:        authApp,
+		providerApp:    providerApp,
+		promptApp:      promptApp,
+		agentApp:       agentApp,
+		playgroundApp:  playgroundApp,
+		httpToolApp:    httpToolApp,
+		mcpServerApp:   mcpServerApp,
+		agentToolApp:   agentToolApp,
+		builtInToolApp: builtInToolApp,
+		chatProvider:   chatProvider,
+		sessionStore:   sessionStore,
+		db:             db,
+		done:           make(chan struct{}),
 	}, nil
 }
 
@@ -323,7 +332,7 @@ func (s *Server) Start() error {
 
 	// Register all API routes via generated handler
 	mcpDiscovery := mcpdiscoveryadapter.New()
-	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp, s.promptApp, s.agentApp, s.playgroundApp, s.httpToolApp, s.mcpServerApp, s.agentToolApp, s.chatProvider, mcpDiscovery)
+	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp, s.promptApp, s.agentApp, s.playgroundApp, s.httpToolApp, s.mcpServerApp, s.agentToolApp, s.builtInToolApp, s.chatProvider, mcpDiscovery)
 	gen.HandlerFromMux(apiHandler, mux)
 
 	// SPA fallback: serve embedded UI or fallback to index.html
@@ -333,7 +342,7 @@ func (s *Server) Start() error {
 	mcpH := mcphandler.NewHandler(
 		s.authApp, s.providerApp, s.promptApp, s.agentApp,
 		s.playgroundApp, s.httpToolApp, s.mcpServerApp, s.agentToolApp,
-		s.chatProvider, mcpDiscovery, s.cfg.Auth,
+		s.builtInToolApp, s.chatProvider, mcpDiscovery, s.cfg.Auth,
 	)
 	mux.Handle("/mcp", mcpH.HTTPHandler())
 

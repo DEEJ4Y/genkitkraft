@@ -28,6 +28,7 @@ In the playground config bar, you can temporarily override:
 - **Provider** — Test with a different LLM provider.
 - **Model** — Try a different model. If the model doesn't exist in the dropdown, simply type the correct model name (e.g., `gpt-5-mini`) and it will be saved for future use.
 - **Temperature, Top P, Top K** — Experiment with generation parameters.
+- **Max Tool Calls** — Override the maximum number of tool call iterations per request.
 
 These overrides apply only to the current playground session and don't modify the agent's saved configuration.
 
@@ -36,7 +37,7 @@ These overrides apply only to the current playground session and don't modify th
 You can temporarily override which tools the agent has access to:
 
 1. Click the **Tools** icon in the config bar (next to the configuration button).
-2. A panel shows all available HTTP tools and MCP servers with checkboxes.
+2. A panel shows all available built-in tools, HTTP tools, and MCP servers with checkboxes.
 3. Check or uncheck tools to customize what the agent can use for this session.
 
 Tool overrides are temporary — they don't modify the saved agent configuration unless you explicitly save them. For more details, see the [Tools guide](./tools#playground-tool-overrides).

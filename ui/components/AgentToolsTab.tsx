@@ -24,6 +24,7 @@ type AgentMcpServerToolConfig = components['schemas']['Models.AgentMcpServerTool
 type HttpToolResponse = components['schemas']['Models.HttpToolResponse']
 type McpServerResponse = components['schemas']['Models.McpServerResponse']
 type McpServerToolResponse = components['schemas']['Models.McpServerToolResponse']
+type BuiltInToolResponse = components['schemas']['Models.BuiltInToolResponse']
 
 interface AgentToolsTabProps {
   agentId: string
@@ -33,6 +34,7 @@ export function AgentToolsTab({ agentId }: AgentToolsTabProps) {
   const queryClient = useQueryClient()
   const [httpToolIds, setHttpToolIds] = useState<string[]>([])
   const [mcpServers, setMcpServers] = useState<AgentMcpServerToolConfig[]>([])
+  const [builtInToolIds, setBuiltInToolIds] = useState<string[]>([])
   const [dirty, setDirty] = useState(false)
   const [addHttpModalOpen, setAddHttpModalOpen] = useState(false)
   const [addMcpModalOpen, setAddMcpModalOpen] = useState(false)
@@ -73,11 +75,22 @@ export function AgentToolsTab({ agentId }: AgentToolsTabProps) {
     },
   })
 
+  // Load all available built-in tools
+  const builtInToolsQuery = useQuery({
+    queryKey: ['get', '/api/v1/built-in-tools'],
+    queryFn: async () => {
+      const { data, error } = await fetchClient.GET('/api/v1/built-in-tools')
+      if (error) throw new Error('Failed to fetch built-in tools')
+      return data
+    },
+  })
+
   // Sync state from server
   useEffect(() => {
     if (configQuery.data) {
       setHttpToolIds(configQuery.data.httpToolIds ?? [])
       setMcpServers(configQuery.data.mcpServers ?? [])
+      setBuiltInToolIds(configQuery.data.builtInToolIds ?? [])
       setDirty(false)
     }
   }, [configQuery.data])
@@ -86,7 +99,7 @@ export function AgentToolsTab({ agentId }: AgentToolsTabProps) {
     mutationFn: async () => {
       const { error } = await fetchClient.PUT('/api/v1/agents/{agentId}/tools', {
         params: { path: { agentId } },
-        body: { httpToolIds, mcpServers },
+        body: { httpToolIds, mcpServers, builtInToolIds },
       })
       if (error) throw new Error('Failed to save agent tools')
     },
@@ -119,6 +132,15 @@ export function AgentToolsTab({ agentId }: AgentToolsTabProps) {
 
   function removeMcpServer(serverId: string) {
     setMcpServers(mcpServers.filter((s) => s.mcpServerId !== serverId))
+    setDirty(true)
+  }
+
+  function toggleBuiltInTool(toolId: string, enabled: boolean) {
+    if (enabled) {
+      setBuiltInToolIds([...builtInToolIds, toolId])
+    } else {
+      setBuiltInToolIds(builtInToolIds.filter((id) => id !== toolId))
+    }
     setDirty(true)
   }
 
@@ -162,6 +184,7 @@ export function AgentToolsTab({ agentId }: AgentToolsTabProps) {
 
   const allHttpTools: HttpToolResponse[] = httpToolsQuery.data?.httpTools ?? []
   const allMcpServers: McpServerResponse[] = mcpServersQuery.data?.mcpServers ?? []
+  const allBuiltInTools: BuiltInToolResponse[] = builtInToolsQuery.data?.builtInTools ?? []
 
   // Filter out already-added items for pickers
   const availableHttpTools = allHttpTools.filter((t) => !httpToolIds.includes(t.id))
@@ -177,8 +200,37 @@ export function AgentToolsTab({ agentId }: AgentToolsTabProps) {
         </Alert>
       )}
 
+      {/* Built-in Tools Section */}
+      <Text fw={600} size="md">
+        Built-in Tools
+      </Text>
+
+      {allBuiltInTools.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          No built-in tools available.
+        </Text>
+      ) : (
+        <Stack gap="xs">
+          {allBuiltInTools.map((tool) => (
+            <Card key={tool.id} padding="xs" withBorder>
+              <Checkbox
+                label={
+                  <Group gap="xs">
+                    <Text size="sm" fw={500}>{tool.name}</Text>
+                    <Badge size="xs" variant="light" color="blue">{tool.id}</Badge>
+                  </Group>
+                }
+                description={tool.description}
+                checked={builtInToolIds.includes(tool.id)}
+                onChange={(e) => toggleBuiltInTool(tool.id, e.currentTarget.checked)}
+              />
+            </Card>
+          ))}
+        </Stack>
+      )}
+
       {/* HTTP Tools Section */}
-      <Group justify="space-between" align="center">
+      <Group justify="space-between" align="center" mt="md">
         <Text fw={600} size="md">
           HTTP Tools
         </Text>

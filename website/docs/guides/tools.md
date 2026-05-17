@@ -4,7 +4,32 @@ sidebar_position: 5
 
 # Tools
 
-Tools give your agents the ability to take actions beyond generating text — call APIs, query databases, interact with external services, and more. GenKitKraft supports two types of tools: **HTTP Tools** and **MCP Servers**.
+Tools give your agents the ability to take actions beyond generating text — call APIs, query databases, interact with external services, and more. GenKitKraft supports three types of tools: **Built-in Tools**, **HTTP Tools**, and **MCP Servers**.
+
+## Built-in Tools
+
+Built-in tools are provided by GenKitKraft itself — no external configuration required. They run inside the server and are always available to enable on any agent.
+
+### Web Fetch
+
+The **Web Fetch** tool lets your agent fetch content from any URL and receive it as Markdown. This is useful for browsing documentation, referencing web pages, or pulling in context from external sources during a conversation.
+
+**Capabilities:**
+- Fetches static HTML content from any URL.
+- Converts the HTML to Markdown for easy consumption by the LLM.
+
+**Limitations:**
+- Only supports static HTML content. It does not execute JavaScript or render dynamic content (no headless browser).
+- Pages that require client-side rendering will return incomplete or empty results.
+
+### Enabling Built-in Tools
+
+1. Open an agent for editing.
+2. Click the **Tools** tab.
+3. In the **Built-in Tools** section, check the tools you want to enable.
+4. Click **Save Tools**.
+
+You can also enable built-in tools via the API by including `builtInToolIds` in the agent tool configuration request (e.g., `["web_fetch"]`).
 
 ## HTTP Tools
 
@@ -74,13 +99,17 @@ The same Docker networking rules apply to MCP servers. Use `host.docker.internal
 
 ## Agent Tool Configuration
 
-Once you've defined HTTP tools and MCP servers, you can assign specific tools to each agent.
+Once you've configured built-in tools, HTTP tools, and MCP servers, you can assign specific tools to each agent.
 
 ### Tools Tab
 
 1. Open an agent for editing.
 2. Click the **Tools** tab.
-3. You'll see two sections:
+3. You'll see three sections:
+
+#### Enabling Built-in Tools
+
+Check the built-in tools you want the agent to use (e.g., **Web Fetch**). These are always available and require no external setup.
 
 #### Adding HTTP Tools
 
@@ -116,6 +145,7 @@ The playground lets you temporarily override an agent's tool configuration witho
 1. Open an agent in the playground.
 2. Click the **Tools** icon in the config bar (next to the configuration button).
 3. A panel opens showing:
+   - **Built-in Tools** — Available built-in tools with checkboxes. Tools saved in the agent's config are pre-selected.
    - **HTTP Tools** — All available HTTP tools with checkboxes. Tools saved in the agent's config are pre-selected.
    - **MCP Servers** — All configured MCP servers. Select a server to see its tools. Tools saved in the agent's config are pre-selected.
 4. Check or uncheck tools to customize what the agent can use for this session.

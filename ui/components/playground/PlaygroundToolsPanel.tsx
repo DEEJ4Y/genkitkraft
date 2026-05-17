@@ -24,10 +24,12 @@ type AgentMcpServerToolConfig = components['schemas']['Models.AgentMcpServerTool
 type HttpToolResponse = components['schemas']['Models.HttpToolResponse']
 type McpServerResponse = components['schemas']['Models.McpServerResponse']
 type McpServerToolResponse = components['schemas']['Models.McpServerToolResponse']
+type BuiltInToolResponse = components['schemas']['Models.BuiltInToolResponse']
 
 export interface PlaygroundToolConfig {
   httpToolIds: string[]
   mcpServers: AgentMcpServerToolConfig[]
+  builtInToolIds: string[]
 }
 
 interface PlaygroundToolsPanelProps {
@@ -69,8 +71,18 @@ export function PlaygroundToolsPanel({
     },
   })
 
+  const builtInToolsQuery = useQuery({
+    queryKey: ['get', '/api/v1/built-in-tools'],
+    queryFn: async () => {
+      const { data, error } = await fetchClient.GET('/api/v1/built-in-tools')
+      if (error) throw new Error('Failed to fetch built-in tools')
+      return data
+    },
+  })
+
   const allHttpTools: HttpToolResponse[] = httpToolsQuery.data?.httpTools ?? []
   const allMcpServers: McpServerResponse[] = mcpServersQuery.data?.mcpServers ?? []
+  const allBuiltInTools: BuiltInToolResponse[] = builtInToolsQuery.data?.builtInTools ?? []
 
   const availableHttpTools = allHttpTools.filter((t) => !toolConfig.httpToolIds.includes(t.id))
   const availableMcpServers = allMcpServers.filter(
@@ -127,7 +139,15 @@ export function PlaygroundToolsPanel({
     })
   }
 
-  const toolCount = toolConfig.httpToolIds.length + toolConfig.mcpServers.length
+  function toggleBuiltInTool(toolId: string, checked: boolean) {
+    if (checked) {
+      onChange({ ...toolConfig, builtInToolIds: [...toolConfig.builtInToolIds, toolId] })
+    } else {
+      onChange({ ...toolConfig, builtInToolIds: toolConfig.builtInToolIds.filter((id) => id !== toolId) })
+    }
+  }
+
+  const toolCount = toolConfig.httpToolIds.length + toolConfig.mcpServers.length + toolConfig.builtInToolIds.length
 
   return (
     <Box style={{ borderBottom: '1px solid var(--mantine-color-gray-3)' }}>
@@ -150,8 +170,25 @@ export function PlaygroundToolsPanel({
       <Collapse in={opened}>
         <Box p="md" pt={0}>
           <Stack gap="sm">
+            {/* Built-in Tools */}
+            <Text size="xs" fw={600}>Built-in Tools</Text>
+            {allBuiltInTools.length === 0 ? (
+              <Text size="xs" c="dimmed">None available</Text>
+            ) : (
+              allBuiltInTools.map((tool) => (
+                <Checkbox
+                  key={tool.id}
+                  size="xs"
+                  label={tool.name}
+                  description={tool.description}
+                  checked={toolConfig.builtInToolIds.includes(tool.id)}
+                  onChange={(e) => toggleBuiltInTool(tool.id, e.currentTarget.checked)}
+                />
+              ))
+            )}
+
             {/* HTTP Tools */}
-            <Group justify="space-between" align="center">
+            <Group justify="space-between" align="center" mt="xs">
               <Text size="xs" fw={600}>HTTP Tools</Text>
               <Button
                 size="compact-xs"

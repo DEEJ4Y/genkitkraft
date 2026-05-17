@@ -34,6 +34,7 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
     topP: agent.topP,
     topKEnabled: agent.topKEnabled,
     topK: agent.topK,
+    maxToolCalls: agent.maxToolCalls,
     streaming: true,
   })
 
@@ -52,11 +53,13 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
   const savedToolConfig: PlaygroundToolConfig = {
     httpToolIds: agentToolsQuery.data?.httpToolIds ?? [],
     mcpServers: agentToolsQuery.data?.mcpServers ?? [],
+    builtInToolIds: agentToolsQuery.data?.builtInToolIds ?? [],
   }
 
   const [toolConfig, setToolConfig] = useState<PlaygroundToolConfig>({
     httpToolIds: [],
     mcpServers: [],
+    builtInToolIds: [],
   })
 
   // Sync tool config from saved agent tools when loaded
@@ -65,6 +68,7 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
       setToolConfig({
         httpToolIds: agentToolsQuery.data.httpToolIds ?? [],
         mcpServers: agentToolsQuery.data.mcpServers ?? [],
+        builtInToolIds: agentToolsQuery.data.builtInToolIds ?? [],
       })
     }
   }, [agentToolsQuery.data])
@@ -106,8 +110,10 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
       topP: config.topP !== agent.topP ? config.topP : undefined,
       topKEnabled: config.topKEnabled !== agent.topKEnabled ? config.topKEnabled : undefined,
       topK: config.topK !== agent.topK ? config.topK : undefined,
+      maxToolCalls: config.maxToolCalls !== agent.maxToolCalls ? config.maxToolCalls : undefined,
       httpToolIds: toolsHaveOverrides ? toolConfig.httpToolIds : undefined,
       mcpServers: toolsHaveOverrides ? toolConfig.mcpServers : undefined,
+      builtInToolIds: toolsHaveOverrides ? toolConfig.builtInToolIds : undefined,
     },
     onSessionTitleUpdate: handleSessionTitleUpdate,
   })
@@ -187,6 +193,7 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
           topP: config.topP,
           topKEnabled: config.topKEnabled,
           topK: config.topK,
+          maxToolCalls: config.maxToolCalls,
         } as any,
       })
       if (error) throw new Error('Failed to save configuration to agent.')
@@ -198,6 +205,7 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
           body: {
             httpToolIds: toolConfig.httpToolIds,
             mcpServers: toolConfig.mcpServers,
+            builtInToolIds: toolConfig.builtInToolIds,
           } as any,
         })
         if (toolsError) throw new Error('Failed to save tool configuration to agent.')

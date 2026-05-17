@@ -93,6 +93,9 @@ type ModelsAgentResponse struct {
 	// Id Unique agent ID.
 	Id string `json:"id"`
 
+	// MaxToolCalls Maximum number of tool call iterations per request.
+	MaxToolCalls int32 `json:"maxToolCalls"`
+
 	// ModelId Model identifier (e.g. gemini-2.5-flash, gpt-4o).
 	ModelId string `json:"modelId"`
 
@@ -138,6 +141,9 @@ type ModelsAgentResponse struct {
 
 // ModelsAgentToolConfigResponse Response containing an agent's tool configuration.
 type ModelsAgentToolConfigResponse struct {
+	// BuiltInToolIds IDs of built-in tools enabled for this agent.
+	BuiltInToolIds []string `json:"builtInToolIds"`
+
 	// HttpToolIds IDs of HTTP tools assigned to this agent.
 	HttpToolIds []string `json:"httpToolIds"`
 
@@ -149,6 +155,24 @@ type ModelsAgentToolConfigResponse struct {
 type ModelsAuthStatusResponse struct {
 	// Required True if AUTH_CREDENTIALS is configured and non-empty.
 	Required bool `json:"required"`
+}
+
+// ModelsBuiltInToolListResponse Response containing the list of available built-in tools.
+type ModelsBuiltInToolListResponse struct {
+	// BuiltInTools List of available built-in tools.
+	BuiltInTools []ModelsBuiltInToolResponse `json:"builtInTools"`
+}
+
+// ModelsBuiltInToolResponse A built-in tool available in GenKitKraft.
+type ModelsBuiltInToolResponse struct {
+	// Description Description of what the tool does.
+	Description string `json:"description"`
+
+	// Id Unique identifier for the built-in tool.
+	Id string `json:"id"`
+
+	// Name Human-readable name of the tool.
+	Name string `json:"name"`
 }
 
 // ModelsConfigFieldInfo Describes a config field for a provider type.
@@ -171,6 +195,9 @@ type ModelsConfigFieldInfo struct {
 
 // ModelsCreateAgentRequest Request to create a new agent.
 type ModelsCreateAgentRequest struct {
+	// MaxToolCalls Maximum number of tool call iterations per request (default 10).
+	MaxToolCalls *int32 `json:"maxToolCalls,omitempty"`
+
 	// ModelId Model identifier.
 	ModelId string `json:"modelId"`
 
@@ -536,11 +563,17 @@ type ModelsMeResponse struct {
 
 // ModelsPlaygroundChatRequest Request to send a chat message in the playground.
 type ModelsPlaygroundChatRequest struct {
+	// BuiltInToolIds Optional built-in tool ID overrides for testing. When provided, overrides the agent's saved built-in tools.
+	BuiltInToolIds *[]string `json:"builtInToolIds,omitempty"`
+
 	// Content The user message content.
 	Content string `json:"content"`
 
 	// HttpToolIds Optional HTTP tool ID overrides for testing. When provided, overrides the agent's saved HTTP tools.
 	HttpToolIds *[]string `json:"httpToolIds,omitempty"`
+
+	// MaxToolCalls Optional max tool calls override for testing.
+	MaxToolCalls *int32 `json:"maxToolCalls,omitempty"`
 
 	// McpServers Optional MCP server tool overrides for testing. When provided, overrides the agent's saved MCP server tools.
 	McpServers *[]ModelsPlaygroundMcpServerToolOverride `json:"mcpServers,omitempty"`
@@ -761,6 +794,9 @@ type ModelsTestProviderResponse struct {
 
 // ModelsUpdateAgentRequest Request to update an existing agent.
 type ModelsUpdateAgentRequest struct {
+	// MaxToolCalls Updated maximum tool call iterations.
+	MaxToolCalls *int32 `json:"maxToolCalls,omitempty"`
+
 	// ModelId Updated model identifier.
 	ModelId *string `json:"modelId,omitempty"`
 
@@ -794,6 +830,9 @@ type ModelsUpdateAgentRequest struct {
 
 // ModelsUpdateAgentToolConfigRequest Request to update an agent's tool configuration.
 type ModelsUpdateAgentToolConfigRequest struct {
+	// BuiltInToolIds IDs of built-in tools to enable.
+	BuiltInToolIds []string `json:"builtInToolIds"`
+
 	// HttpToolIds IDs of HTTP tools to assign.
 	HttpToolIds []string `json:"httpToolIds"`
 

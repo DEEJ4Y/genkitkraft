@@ -21,6 +21,7 @@ type CreateAgentParams struct {
 	TopP               *float64
 	TopKEnabled        *bool
 	TopK               *int
+	MaxToolCalls       *int
 }
 
 type CreateAgentResult struct {
@@ -84,6 +85,10 @@ func (c *CreateAgentCommand) Execute(ctx context.Context, params CreateAgentPara
 	if params.TopKEnabled != nil {
 		topKEnabled = *params.TopKEnabled
 	}
+	maxToolCalls := agent.DefaultMaxToolCalls
+	if params.MaxToolCalls != nil {
+		maxToolCalls = *params.MaxToolCalls
+	}
 
 	a := &agent.Agent{
 		Name:               params.Name,
@@ -96,6 +101,7 @@ func (c *CreateAgentCommand) Execute(ctx context.Context, params CreateAgentPara
 		TopP:               topP,
 		TopKEnabled:        topKEnabled,
 		TopK:               topK,
+		MaxToolCalls:       maxToolCalls,
 	}
 
 	if err := c.repo.Create(ctx, a); err != nil {

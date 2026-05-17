@@ -10,6 +10,7 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/app/queries"
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/agent"
+	builtintool "github.com/DEEJ4Y/genkitkraft/internal/domain/builtin_tool"
 	httptool "github.com/DEEJ4Y/genkitkraft/internal/domain/http_tool"
 	mcpserver "github.com/DEEJ4Y/genkitkraft/internal/domain/mcp_server"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/playground"
@@ -233,6 +234,7 @@ func toAgentResponse(a *agent.Agent) gen.ModelsAgentResponse {
 		TopP:               float32(a.TopP),
 		TopKEnabled:        a.TopKEnabled,
 		TopK:               int32(a.TopK),
+		MaxToolCalls:       int32(a.MaxToolCalls),
 		CreatedAt:          a.CreatedAt,
 		UpdatedAt:          a.UpdatedAt,
 	}
@@ -282,6 +284,10 @@ func toCreateAgentParams(req gen.ModelsCreateAgentRequest) commands.CreateAgentP
 		t := int(*req.TopK)
 		params.TopK = &t
 	}
+	if req.MaxToolCalls != nil {
+		t := int(*req.MaxToolCalls)
+		params.MaxToolCalls = &t
+	}
 	return params
 }
 
@@ -307,6 +313,10 @@ func toUpdateAgentParams(id string, req gen.ModelsUpdateAgentRequest) commands.U
 	if req.TopK != nil {
 		t := int(*req.TopK)
 		params.TopK = &t
+	}
+	if req.MaxToolCalls != nil {
+		t := int(*req.MaxToolCalls)
+		params.MaxToolCalls = &t
 	}
 	return params
 }
@@ -645,6 +655,11 @@ func toAgentToolConfigResponse(config agenttoolrepo.AgentToolConfig) gen.ModelsA
 		httpToolIDs = []string{}
 	}
 
+	builtInToolIDs := config.BuiltInToolIDs
+	if builtInToolIDs == nil {
+		builtInToolIDs = []string{}
+	}
+
 	mcpServers := make([]gen.ModelsAgentMcpServerToolConfig, 0, len(config.McpServers))
 	for _, mc := range config.McpServers {
 		toolNames := mc.ToolNames
@@ -659,8 +674,9 @@ func toAgentToolConfigResponse(config agenttoolrepo.AgentToolConfig) gen.ModelsA
 	}
 
 	return gen.ModelsAgentToolConfigResponse{
-		HttpToolIds: httpToolIDs,
-		McpServers:  mcpServers,
+		HttpToolIds:    httpToolIDs,
+		McpServers:     mcpServers,
+		BuiltInToolIds: builtInToolIDs,
 	}
 }
 
@@ -678,18 +694,28 @@ func toUpdateAgentToolsParams(agentID string, req gen.ModelsUpdateAgentToolConfi
 		})
 	}
 
+	builtInToolIDs := req.BuiltInToolIds
+	if builtInToolIDs == nil {
+		builtInToolIDs = []string{}
+	}
+
 	return commands.UpdateAgentToolsParams{
-		AgentID:     agentID,
-		HttpToolIDs: req.HttpToolIds,
-		McpServers:  mcpServers,
+		AgentID:        agentID,
+		HttpToolIDs:    req.HttpToolIds,
+		McpServers:     mcpServers,
+		BuiltInToolIDs: builtInToolIDs,
 	}
 }
 
-func toToolOverride(httpToolIDs *[]string, mcpServers *[]gen.ModelsPlaygroundMcpServerToolOverride) *queries.ToolOverride {
+func toToolOverride(httpToolIDs *[]string, mcpServers *[]gen.ModelsPlaygroundMcpServerToolOverride, builtInToolIDs *[]string) *queries.ToolOverride {
 	override := &queries.ToolOverride{}
 
 	if httpToolIDs != nil {
 		override.HttpToolIDs = *httpToolIDs
+	}
+
+	if builtInToolIDs != nil {
+		override.BuiltInToolIDs = *builtInToolIDs
 	}
 
 	if mcpServers != nil {
@@ -707,4 +733,22 @@ func toToolOverride(httpToolIDs *[]string, mcpServers *[]gen.ModelsPlaygroundMcp
 	}
 
 	return override
+}
+
+func toBuiltInToolListResponse(result queries.ListBuiltInToolsResult) gen.ModelsBuiltInToolListResponse {
+	tools := make([]gen.ModelsBuiltInToolResponse, len(result.BuiltInTools))
+	for i, t := range result.BuiltInTools {
+		tools[i] = toBuiltInToolResponse(t)
+	}
+	return gen.ModelsBuiltInToolListResponse{
+		BuiltInTools: tools,
+	}
+}
+
+func toBuiltInToolResponse(t builtintool.BuiltInTool) gen.ModelsBuiltInToolResponse {
+	return gen.ModelsBuiltInToolResponse{
+		Id:          t.ID,
+		Name:        t.Name,
+		Description: t.Description,
+	}
 }

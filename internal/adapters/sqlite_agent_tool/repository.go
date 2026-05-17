@@ -19,9 +19,10 @@ func NewRepository(db *sql.DB) *Repository {
 
 func (r *Repository) GetByAgentID(ctx context.Context, agentID string) (agenttoolrepo.AgentToolConfig, error) {
 	config := agenttoolrepo.AgentToolConfig{
-		AgentID:     agentID,
-		HttpToolIDs: []string{},
-		McpServers:  []agenttoolrepo.McpServerToolConfig{},
+		AgentID:        agentID,
+		HttpToolIDs:    []string{},
+		McpServers:     []agenttoolrepo.McpServerToolConfig{},
+		BuiltInToolIDs: []string{},
 	}
 
 	// Load HTTP tool IDs
@@ -39,6 +40,24 @@ func (r *Repository) GetByAgentID(ctx context.Context, agentID string) (agenttoo
 		config.HttpToolIDs = append(config.HttpToolIDs, id)
 	}
 	if err := rows.Err(); err != nil {
+		return config, err
+	}
+
+	// Load built-in tool IDs
+	builtInRows, err := r.db.QueryContext(ctx, `SELECT builtin_tool_id FROM agent_builtin_tools WHERE agent_id = ?`, agentID)
+	if err != nil {
+		return config, err
+	}
+	defer builtInRows.Close()
+
+	for builtInRows.Next() {
+		var id string
+		if err := builtInRows.Scan(&id); err != nil {
+			return config, err
+		}
+		config.BuiltInToolIDs = append(config.BuiltInToolIDs, id)
+	}
+	if err := builtInRows.Err(); err != nil {
 		return config, err
 	}
 
@@ -116,11 +135,23 @@ func (r *Repository) Save(ctx context.Context, config agenttoolrepo.AgentToolCon
 	if _, err := tx.ExecContext(ctx, `DELETE FROM agent_http_tools WHERE agent_id = ?`, config.AgentID); err != nil {
 		return err
 	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM agent_builtin_tools WHERE agent_id = ?`, config.AgentID); err != nil {
+		return err
+	}
 
 	// Insert HTTP tools
 	for _, toolID := range config.HttpToolIDs {
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO agent_http_tools (agent_id, http_tool_id) VALUES (?, ?)`,
+			config.AgentID, toolID); err != nil {
+			return err
+		}
+	}
+
+	// Insert built-in tools
+	for _, toolID := range config.BuiltInToolIDs {
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO agent_builtin_tools (agent_id, builtin_tool_id) VALUES (?, ?)`,
 			config.AgentID, toolID); err != nil {
 			return err
 		}

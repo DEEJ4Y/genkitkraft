@@ -88,6 +88,10 @@ func (cp *ChatProvider) Chat(ctx context.Context, req chatprovider.ChatRequest) 
 		opts = append(opts, ai.WithTools(tools...))
 	}
 
+	if req.MaxToolCalls > 0 {
+		opts = append(opts, ai.WithMaxTurns(req.MaxToolCalls))
+	}
+
 	resp, err := genkit.Generate(ctx, g, opts...)
 	if err != nil {
 		return "", fmt.Errorf("generate error: %w", err)
@@ -136,6 +140,10 @@ func (cp *ChatProvider) doStream(ctx context.Context, req chatprovider.ChatReque
 	}
 	if len(tools) > 0 {
 		opts = append(opts, ai.WithTools(tools...))
+	}
+
+	if req.MaxToolCalls > 0 {
+		opts = append(opts, ai.WithMaxTurns(req.MaxToolCalls))
 	}
 
 	// Stream the response.
@@ -300,6 +308,10 @@ func buildTools(ctx context.Context, req chatprovider.ChatRequest) ([]ai.ToolRef
 		}
 	}
 
+	// Build built-in tools
+	builtInTools := buildBuiltInTools(req.BuiltInToolIDs)
+	tools = append(tools, builtInTools...)
+
 	// Build HTTP tools
 	for _, ht := range req.HttpTools {
 		tool := buildHttpTool(ht)
@@ -373,6 +385,12 @@ func executeHttpTool(ctx context.Context, ht chatprovider.HttpToolDefinition, ar
 	resolvedURL, err := renderTemplate("url", ht.URL, argsMap)
 	if err != nil {
 		return nil, fmt.Errorf("rendering URL template: %w", err)
+	}
+
+	// Encode URL path segments and query parameters
+	resolvedURL, err = sanitizeURL(resolvedURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid resolved URL: %w", err)
 	}
 
 	// Render body template

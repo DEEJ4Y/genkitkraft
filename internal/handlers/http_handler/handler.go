@@ -27,20 +27,21 @@ var _ gen.ServerInterface = (*Handler)(nil)
 
 // Handler implements gen.ServerInterface, delegating to the application layer.
 type Handler struct {
-	authApp       *app.AuthApp
-	providerApp   *app.ProviderApp
-	promptApp     *app.PromptApp
-	agentApp      *app.AgentApp
-	playgroundApp *app.PlaygroundApp
-	httpToolApp   *app.HttpToolApp
-	mcpServerApp  *app.McpServerApp
-	agentToolApp  *app.AgentToolApp
-	chatProvider  chatprovider.ChatProvider
-	mcpDiscovery  mcpdiscovery.McpDiscovery
+	authApp        *app.AuthApp
+	providerApp    *app.ProviderApp
+	promptApp      *app.PromptApp
+	agentApp       *app.AgentApp
+	playgroundApp  *app.PlaygroundApp
+	httpToolApp    *app.HttpToolApp
+	mcpServerApp   *app.McpServerApp
+	agentToolApp   *app.AgentToolApp
+	builtInToolApp *app.BuiltInToolApp
+	chatProvider   chatprovider.ChatProvider
+	mcpDiscovery   mcpdiscovery.McpDiscovery
 }
 
-func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp, promptApp *app.PromptApp, agentApp *app.AgentApp, playgroundApp *app.PlaygroundApp, httpToolApp *app.HttpToolApp, mcpServerApp *app.McpServerApp, agentToolApp *app.AgentToolApp, chatProvider chatprovider.ChatProvider, mcpDiscovery mcpdiscovery.McpDiscovery) *Handler {
-	return &Handler{authApp: authApp, providerApp: providerApp, promptApp: promptApp, agentApp: agentApp, playgroundApp: playgroundApp, httpToolApp: httpToolApp, mcpServerApp: mcpServerApp, agentToolApp: agentToolApp, chatProvider: chatProvider, mcpDiscovery: mcpDiscovery}
+func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp, promptApp *app.PromptApp, agentApp *app.AgentApp, playgroundApp *app.PlaygroundApp, httpToolApp *app.HttpToolApp, mcpServerApp *app.McpServerApp, agentToolApp *app.AgentToolApp, builtInToolApp *app.BuiltInToolApp, chatProvider chatprovider.ChatProvider, mcpDiscovery mcpdiscovery.McpDiscovery) *Handler {
+	return &Handler{authApp: authApp, providerApp: providerApp, promptApp: promptApp, agentApp: agentApp, playgroundApp: playgroundApp, httpToolApp: httpToolApp, mcpServerApp: mcpServerApp, agentToolApp: agentToolApp, builtInToolApp: builtInToolApp, chatProvider: chatProvider, mcpDiscovery: mcpDiscovery}
 }
 
 func (h *Handler) GetAuthStatus(w http.ResponseWriter, r *http.Request) {
@@ -512,11 +513,15 @@ func (h *Handler) PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId
 	if req.TopKEnabled != nil {
 		configParams.TopKEnabled = req.TopKEnabled
 	}
+	if req.MaxToolCalls != nil {
+		t := int(*req.MaxToolCalls)
+		configParams.MaxToolCalls = &t
+	}
 
 	// Tool overrides
 	configParams.IncludeTools = true
-	if req.HttpToolIds != nil || req.McpServers != nil {
-		configParams.ToolOverride = toToolOverride(req.HttpToolIds, req.McpServers)
+	if req.HttpToolIds != nil || req.McpServers != nil || req.BuiltInToolIds != nil {
+		configParams.ToolOverride = toToolOverride(req.HttpToolIds, req.McpServers, req.BuiltInToolIds)
 	}
 
 	configResult, err := h.playgroundApp.Queries.ResolveConfig.Execute(r.Context(), configParams)
@@ -1113,4 +1118,13 @@ func (h *Handler) UpdateAgentTools(w http.ResponseWriter, r *http.Request, agent
 		return
 	}
 	writeJSON(w, http.StatusOK, toAgentToolConfigResponse(result.Config))
+}
+
+func (h *Handler) ListBuiltInTools(w http.ResponseWriter, r *http.Request) {
+	result, err := h.builtInToolApp.Queries.ListBuiltInTools.Execute(r.Context())
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toBuiltInToolListResponse(result))
 }

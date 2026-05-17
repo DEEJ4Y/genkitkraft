@@ -27,6 +27,7 @@ type ProviderResponse = components['schemas']['Models.ProviderResponse']
 const DEFAULT_TEMPERATURE = 0.95
 const DEFAULT_TOP_P = 0.95
 const DEFAULT_TOP_K = 40
+const DEFAULT_MAX_TOOL_CALLS = 10
 
 export interface PlaygroundConfig {
   providerId: string
@@ -38,6 +39,7 @@ export interface PlaygroundConfig {
   topP: number
   topKEnabled: boolean
   topK: number
+  maxToolCalls: number
   streaming: boolean
 }
 
@@ -320,6 +322,20 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent, ha
                 disabled={!config.topKEnabled}
               />
             </div>
+            <div>
+              <Text size="xs" fw={500} mb={2}>
+                Max Tool Calls
+              </Text>
+              <NumberInput
+                value={config.maxToolCalls}
+                onChange={(val) => onChange({ ...config, maxToolCalls: typeof val === 'number' ? val : DEFAULT_MAX_TOOL_CALLS })}
+                min={1}
+                max={100}
+                size="xs"
+              />
+            </div>
+          </Group>
+          <Group grow gap="md" mt="sm" align="flex-start">
             <div>
               <Group gap="xs" mb={2}>
                 <Switch

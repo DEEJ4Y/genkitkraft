@@ -10,6 +10,8 @@ import {
   Center,
   Pagination,
   Tabs,
+  Card,
+  Badge,
 } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -22,6 +24,7 @@ import type { components } from "../lib/api/schema";
 
 type HttpToolResponse = components["schemas"]["Models.HttpToolResponse"];
 type McpServerResponse = components["schemas"]["Models.McpServerResponse"];
+type BuiltInToolResponse = components["schemas"]["Models.BuiltInToolResponse"];
 
 type View =
   | { mode: "list" }
@@ -29,6 +32,59 @@ type View =
   | { mode: "edit"; toolId: string };
 
 const PAGE_SIZE = 20;
+
+function BuiltInToolsTab() {
+  const toolsQuery = useQuery({
+    queryKey: ["get", "/api/v1/built-in-tools"],
+    queryFn: async () => {
+      const { data, error } = await fetchClient.GET("/api/v1/built-in-tools");
+      if (error) throw new Error("Failed to fetch built-in tools");
+      return data;
+    },
+  });
+
+  const tools: BuiltInToolResponse[] = toolsQuery.data?.builtInTools ?? [];
+
+  return (
+    <>
+      {toolsQuery.isPending && (
+        <Center py="xl">
+          <Loader />
+        </Center>
+      )}
+
+      {toolsQuery.error && (
+        <Alert color="red" variant="light" mb="md">
+          Failed to load built-in tools.
+        </Alert>
+      )}
+
+      {!toolsQuery.isPending && tools.length === 0 && (
+        <Text c="dimmed" ta="center" py="xl">
+          No built-in tools available.
+        </Text>
+      )}
+
+      <Stack gap="sm">
+        {tools.map((tool) => (
+          <Card key={tool.id} withBorder padding="md">
+            <Group justify="space-between" align="flex-start" mb="xs">
+              <Group gap="sm">
+                <Text fw={600}>{tool.name}</Text>
+                <Badge size="sm" variant="light" color="blue">
+                  {tool.id}
+                </Badge>
+              </Group>
+            </Group>
+            <Text size="sm" c="dimmed">
+              {tool.description}
+            </Text>
+          </Card>
+        ))}
+      </Stack>
+    </>
+  );
+}
 
 function HttpToolsTab() {
   const queryClient = useQueryClient();
@@ -320,11 +376,16 @@ export default function ToolsPage() {
         calling.
       </Text>
 
-      <Tabs defaultValue="http">
+      <Tabs defaultValue="built-in">
         <Tabs.List mb="md">
+          <Tabs.Tab value="built-in">Built-in Tools</Tabs.Tab>
           <Tabs.Tab value="http">HTTP Tools</Tabs.Tab>
           <Tabs.Tab value="mcp">MCP Servers</Tabs.Tab>
         </Tabs.List>
+
+        <Tabs.Panel value="built-in">
+          <BuiltInToolsTab />
+        </Tabs.Panel>
 
         <Tabs.Panel value="http">
           <HttpToolsTab />

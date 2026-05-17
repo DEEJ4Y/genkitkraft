@@ -7,9 +7,10 @@ import (
 )
 
 type UpdateAgentToolsParams struct {
-	AgentID     string
-	HttpToolIDs []string
-	McpServers  []agenttoolrepo.McpServerToolConfig
+	AgentID        string
+	HttpToolIDs    []string
+	McpServers     []agenttoolrepo.McpServerToolConfig
+	BuiltInToolIDs []string
 }
 
 type UpdateAgentToolsResult struct {
@@ -26,9 +27,10 @@ func NewUpdateAgentToolsCommand(repo agenttoolrepo.AgentToolRepository) *UpdateA
 
 func (c *UpdateAgentToolsCommand) Execute(ctx context.Context, params UpdateAgentToolsParams) (UpdateAgentToolsResult, error) {
 	config := agenttoolrepo.AgentToolConfig{
-		AgentID:     params.AgentID,
-		HttpToolIDs: params.HttpToolIDs,
-		McpServers:  params.McpServers,
+		AgentID:        params.AgentID,
+		HttpToolIDs:    params.HttpToolIDs,
+		McpServers:     params.McpServers,
+		BuiltInToolIDs: params.BuiltInToolIDs,
 	}
 
 	if config.HttpToolIDs == nil {
@@ -36,6 +38,9 @@ func (c *UpdateAgentToolsCommand) Execute(ctx context.Context, params UpdateAgen
 	}
 	if config.McpServers == nil {
 		config.McpServers = []agenttoolrepo.McpServerToolConfig{}
+	}
+	if config.BuiltInToolIDs == nil {
+		config.BuiltInToolIDs = []string{}
 	}
 
 	if err := c.repo.Save(ctx, config); err != nil {

@@ -4,9 +4,10 @@ import "time"
 
 // Default generation config values.
 const (
-	DefaultTemperature = 0.95
-	DefaultTopP        = 0.95
-	DefaultTopK        = 40
+	DefaultTemperature  = 0.95
+	DefaultTopP         = 0.95
+	DefaultTopK         = 40
+	DefaultMaxToolCalls = 10
 )
 
 // Agent represents an AI agent configuration.
@@ -22,6 +23,7 @@ type Agent struct {
 	TopP               float64
 	TopKEnabled        bool
 	TopK               int
+	MaxToolCalls       int
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 

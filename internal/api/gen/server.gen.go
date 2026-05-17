@@ -77,6 +77,9 @@ type ServerInterface interface {
 	// Update agent
 	// (PUT /api/v1/agents/{id})
 	UpdateAgent(w http.ResponseWriter, r *http.Request, id string)
+	// List built-in tools
+	// (GET /api/v1/built-in-tools)
+	ListBuiltInTools(w http.ResponseWriter, r *http.Request)
 	// List HTTP tools
 	// (GET /api/v1/http-tools)
 	ListHttpTools(w http.ResponseWriter, r *http.Request, params ListHttpToolsParams)
@@ -679,6 +682,20 @@ func (siw *ServerInterfaceWrapper) UpdateAgent(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateAgent(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListBuiltInTools operation middleware
+func (siw *ServerInterfaceWrapper) ListBuiltInTools(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListBuiltInTools(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1396,6 +1413,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/agents/{id}", wrapper.DeleteAgent)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{id}", wrapper.GetAgent)
 	m.HandleFunc("PUT "+options.BaseURL+"/api/v1/agents/{id}", wrapper.UpdateAgent)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/built-in-tools", wrapper.ListBuiltInTools)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/http-tools", wrapper.ListHttpTools)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/http-tools", wrapper.CreateHttpTool)
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/http-tools/{id}", wrapper.DeleteHttpTool)

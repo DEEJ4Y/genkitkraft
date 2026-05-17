@@ -89,6 +89,9 @@ model PlaygroundChatRequest {
   /** Optional top-k override for testing. */
   topK?: int32;
 
+  /** Optional max tool calls override for testing. */
+  maxToolCalls?: int32;
+
   /** Whether to stream the response (SSE). Defaults to true. Set to false for a single JSON response. */
   stream?: boolean;
 
@@ -97,4 +100,7 @@ model PlaygroundChatRequest {
 
   /** Optional MCP server tool overrides for testing. When provided, overrides the agent's saved MCP server tools. */
   mcpServers?: PlaygroundMcpServerToolOverride[];
+
+  /** Optional built-in tool ID overrides for testing. When provided, overrides the agent's saved built-in tools. */
+  builtInToolIds?: string[];
 }

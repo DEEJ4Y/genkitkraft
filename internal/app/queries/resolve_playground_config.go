@@ -17,8 +17,9 @@ import (
 
 // ToolOverride specifies tool configuration overrides for a chat request.
 type ToolOverride struct {
-	HttpToolIDs []string
-	McpServers  []agenttoolrepo.McpServerToolConfig
+	HttpToolIDs    []string
+	McpServers     []agenttoolrepo.McpServerToolConfig
+	BuiltInToolIDs []string
 }
 
 type ResolvePlaygroundConfigParams struct {
@@ -33,6 +34,7 @@ type ResolvePlaygroundConfigParams struct {
 	TopP               *float64
 	TopKEnabled        *bool
 	TopK               *int
+	MaxToolCalls       *int
 	// Optional tool overrides — nil means use agent defaults
 	ToolOverride *ToolOverride
 	// IncludeTools controls whether tools are resolved. Deploy and playground set this true.
@@ -113,6 +115,10 @@ func (q *ResolvePlaygroundConfigQuery) Execute(ctx context.Context, params Resol
 	if params.TopKEnabled != nil {
 		topKEnabled = *params.TopKEnabled
 	}
+	maxToolCalls := a.MaxToolCalls
+	if params.MaxToolCalls != nil {
+		maxToolCalls = *params.MaxToolCalls
+	}
 
 	// Determine system prompt ID
 	systemPromptID := a.SystemPromptID
@@ -159,6 +165,7 @@ func (q *ResolvePlaygroundConfigQuery) Execute(ctx context.Context, params Resol
 		TopP:               topP,
 		TopKEnabled:        topKEnabled,
 		TopK:               topK,
+		MaxToolCalls:       maxToolCalls,
 	}
 
 	// Resolve tools if requested
@@ -180,6 +187,7 @@ func (q *ResolvePlaygroundConfigQuery) resolveTools(ctx context.Context, params 
 		// Use override values
 		httpToolIDs = params.ToolOverride.HttpToolIDs
 		mcpConfigs = params.ToolOverride.McpServers
+		chatReq.BuiltInToolIDs = params.ToolOverride.BuiltInToolIDs
 	} else {
 		// Load agent's saved tool config
 		agentTools, err := q.agentToolRepo.GetByAgentID(ctx, params.AgentID)
@@ -188,6 +196,7 @@ func (q *ResolvePlaygroundConfigQuery) resolveTools(ctx context.Context, params 
 		}
 		httpToolIDs = agentTools.HttpToolIDs
 		mcpConfigs = agentTools.McpServers
+		chatReq.BuiltInToolIDs = agentTools.BuiltInToolIDs
 	}
 
 	// Resolve HTTP tools

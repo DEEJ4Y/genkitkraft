@@ -14,17 +14,18 @@ import (
 // Handler registers all GenKitKraft APIs as MCP tools and serves them
 // over the StreamableHTTP transport.
 type Handler struct {
-	authApp       *app.AuthApp
-	providerApp   *app.ProviderApp
-	promptApp     *app.PromptApp
-	agentApp      *app.AgentApp
-	playgroundApp *app.PlaygroundApp
-	httpToolApp   *app.HttpToolApp
-	mcpServerApp  *app.McpServerApp
-	agentToolApp  *app.AgentToolApp
-	chatProvider  chatprovider.ChatProvider
-	mcpDiscovery  mcpdiscovery.McpDiscovery
-	authCfg       config.AuthConfig
+	authApp        *app.AuthApp
+	providerApp    *app.ProviderApp
+	promptApp      *app.PromptApp
+	agentApp       *app.AgentApp
+	playgroundApp  *app.PlaygroundApp
+	httpToolApp    *app.HttpToolApp
+	mcpServerApp   *app.McpServerApp
+	agentToolApp   *app.AgentToolApp
+	builtInToolApp *app.BuiltInToolApp
+	chatProvider   chatprovider.ChatProvider
+	mcpDiscovery   mcpdiscovery.McpDiscovery
+	authCfg        config.AuthConfig
 }
 
 func NewHandler(
@@ -36,22 +37,24 @@ func NewHandler(
 	httpToolApp *app.HttpToolApp,
 	mcpServerApp *app.McpServerApp,
 	agentToolApp *app.AgentToolApp,
+	builtInToolApp *app.BuiltInToolApp,
 	chatProvider chatprovider.ChatProvider,
 	mcpDiscovery mcpdiscovery.McpDiscovery,
 	authCfg config.AuthConfig,
 ) *Handler {
 	return &Handler{
-		authApp:       authApp,
-		providerApp:   providerApp,
-		promptApp:     promptApp,
-		agentApp:      agentApp,
-		playgroundApp: playgroundApp,
-		httpToolApp:   httpToolApp,
-		mcpServerApp:  mcpServerApp,
-		agentToolApp:  agentToolApp,
-		chatProvider:  chatProvider,
-		mcpDiscovery:  mcpDiscovery,
-		authCfg:       authCfg,
+		authApp:        authApp,
+		providerApp:    providerApp,
+		promptApp:      promptApp,
+		agentApp:       agentApp,
+		playgroundApp:  playgroundApp,
+		httpToolApp:    httpToolApp,
+		mcpServerApp:   mcpServerApp,
+		agentToolApp:   agentToolApp,
+		builtInToolApp: builtInToolApp,
+		chatProvider:   chatProvider,
+		mcpDiscovery:   mcpDiscovery,
+		authCfg:        authCfg,
 	}
 }
 
@@ -71,6 +74,7 @@ func (h *Handler) HTTPHandler() http.Handler {
 	h.registerProviderTools(server)
 	h.registerHttpToolTools(server)
 	h.registerMcpServerTools(server)
+	h.registerBuiltInToolTools(server)
 	h.registerPlaygroundTools(server)
 	h.registerHealthTools(server)
 	h.registerPrompts(server)

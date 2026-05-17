@@ -19,15 +19,17 @@ Agents are the core concept in GenKitKraft — they combine a provider, model, a
      - **Temperature** — Controls randomness (0 = deterministic, higher = more creative).
      - **Top P** — Nucleus sampling threshold.
      - **Top K** — Limits token selection to the top K candidates.
+     - **Max Tool Calls** — Maximum number of tool call iterations per request (default 10).
 4. Click **Save**.
 
 ## Generation Parameters
 
-| Parameter       | Range   | Description                                                                                                                                                |
-| --------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Temperature** | 0.0–2.0 | Controls randomness. Lower values produce more focused, deterministic output. Higher values increase creativity and variation. Default varies by provider. |
-| **Top P**       | 0.0–1.0 | Controls diversity via nucleus sampling. The model considers only the smallest set of tokens whose cumulative probability exceeds this threshold.          |
-| **Top K**       | Integer | Restricts the model's choices to the K most likely tokens at each step. Lower values make output more predictable.                                         |
+| Parameter          | Range   | Description                                                                                                                                                |
+| ------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Temperature**    | 0.0–2.0 | Controls randomness. Lower values produce more focused, deterministic output. Higher values increase creativity and variation. Default varies by provider. |
+| **Top P**          | 0.0–1.0 | Controls diversity via nucleus sampling. The model considers only the smallest set of tokens whose cumulative probability exceeds this threshold.          |
+| **Top K**          | Integer | Restricts the model's choices to the K most likely tokens at each step. Lower values make output more predictable.                                         |
+| **Max Tool Calls** | Integer | Limits how many tool call iterations the agent can perform in a single request. Prevents runaway loops when tools trigger additional tool calls. Default is 10. |
 
 ## Configuring Tools
 
