@@ -19,5 +19,21 @@ test-integration:
 	TEST_POSTGRES_URL="postgres://test:test@localhost:15432/genkitkraft?sslmode=disable" \
 	TEST_MYSQL_URL="test:test@tcp(localhost:3306)/genkitkraft?parseTime=true" \
 	TEST_MARIADB_URL="test:test@tcp(localhost:3307)/genkitkraft?parseTime=true" \
-	  go test -tags integration -v ./internal/adapters/postgres_db/... ./internal/adapters/mysql_db/...
+	  go test -tags integration -v \
+	    ./internal/adapters/postgres_db/... \
+	    ./internal/adapters/postgres_agent/... \
+	    ./internal/adapters/postgres_agent_tool/... \
+	    ./internal/adapters/postgres_http_tool/... \
+	    ./internal/adapters/postgres_mcp_server/... \
+	    ./internal/adapters/postgres_playground/... \
+	    ./internal/adapters/postgres_prompt/... \
+	    ./internal/adapters/postgres_provider/... \
+	    ./internal/adapters/mysql_db/... \
+	    ./internal/adapters/mysql_agent/... \
+	    ./internal/adapters/mysql_agent_tool/... \
+	    ./internal/adapters/mysql_http_tool/... \
+	    ./internal/adapters/mysql_mcp_server/... \
+	    ./internal/adapters/mysql_playground/... \
+	    ./internal/adapters/mysql_prompt/... \
+	    ./internal/adapters/mysql_provider/...
 	docker compose -f docker-compose.test.yml down
