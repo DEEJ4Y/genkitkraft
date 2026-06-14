@@ -1,4 +1,4 @@
-package inmemorychache
+package inmemorycache
 
 import (
 	"context"

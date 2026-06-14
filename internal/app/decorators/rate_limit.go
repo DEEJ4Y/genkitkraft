@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	"github.com/DEEJ4Y/genkitkraft/internal/app/commands"
 	"github.com/DEEJ4Y/genkitkraft/internal/app/executors"
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
@@ -22,16 +24,18 @@ var _ executors.ExecutorWithReturn[commands.LoginParams, commands.LoginResult] =
 
 // RateLimitingLoginDecorator wraps a login executor with per-IP rate limiting.
 type RateLimitingLoginDecorator struct {
-	inner executors.ExecutorWithReturn[commands.LoginParams, commands.LoginResult]
-	cache cache.Cache
-	mu    sync.Mutex
+	inner  executors.ExecutorWithReturn[commands.LoginParams, commands.LoginResult]
+	cache  cache.Cache
+	logger zerolog.Logger
+	mu     sync.Mutex
 }
 
 func NewRateLimitingLoginDecorator(
 	inner executors.ExecutorWithReturn[commands.LoginParams, commands.LoginResult],
 	c cache.Cache,
+	logger zerolog.Logger,
 ) *RateLimitingLoginDecorator {
-	return &RateLimitingLoginDecorator{inner: inner, cache: c}
+	return &RateLimitingLoginDecorator{inner: inner, cache: c, logger: logger}
 }
 
 func (d *RateLimitingLoginDecorator) Execute(ctx context.Context, params commands.LoginParams) (commands.LoginResult, error) {
@@ -112,6 +116,7 @@ func (d *RateLimitingLoginDecorator) getAttempts(ctx context.Context, ip string)
 	}
 	var attempts []int64
 	if err := json.Unmarshal([]byte(val), &attempts); err != nil {
+		d.logger.Warn().Err(err).Str("ip", ip).Msg("rate_limit: corrupt attempts data, resetting count")
 		return nil
 	}
 	return attempts

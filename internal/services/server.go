@@ -16,7 +16,7 @@ import (
 	aesgcmencryptor "github.com/DEEJ4Y/genkitkraft/internal/adapters/aesgcm_encryptor"
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
 	genkitchatprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/genkit_chat_provider"
-	inmemorychache "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_cache"
+	inmemorycache "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_cache"
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	mcpdiscoveryadapter "github.com/DEEJ4Y/genkitkraft/internal/adapters/mcp_discovery"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
@@ -73,7 +73,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 	cfg.Encryption.Key = ""
 
 	// Create shared cache store — all scoped caches derive from this single backing store.
-	cacheStore := inmemorychache.NewCache(10 * time.Minute)
+	cacheStore := inmemorycache.NewCache(10 * time.Minute)
 
 	// Create adapters
 	passwordHasher := bcrypthasher.NewBcryptHasher()
@@ -95,7 +95,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 	logoutCmd := commands.NewLogoutCommand(sessionStore)
 
 	// Apply decorators
-	rateLimitedLogin := decorators.NewRateLimitingLoginDecorator(loginCmd, cacheStore.Scope("rate_limit"))
+	rateLimitedLogin := decorators.NewRateLimitingLoginDecorator(loginCmd, cacheStore.Scope("rate_limit"), logger)
 
 	// Create queries
 	getMeQuery := queries.NewGetMeQuery(sessionStore)
