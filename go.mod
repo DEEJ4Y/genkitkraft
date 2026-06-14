@@ -14,6 +14,7 @@ require (
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/openai/openai-go v1.8.2
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.24.1
 	github.com/rs/zerolog v1.33.0
 	github.com/xavidop/genkit-aws-bedrock-go v1.13.0

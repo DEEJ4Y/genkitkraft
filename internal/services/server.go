@@ -9,12 +9,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 
 	aesgcmencryptor "github.com/DEEJ4Y/genkitkraft/internal/adapters/aesgcm_encryptor"
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
 	genkitchatprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/genkit_chat_provider"
+	inmemorychache "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_cache"
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	mcpdiscoveryadapter "github.com/DEEJ4Y/genkitkraft/internal/adapters/mcp_discovery"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
@@ -278,7 +280,8 @@ func NewServer(cfg config.Config) (*Server, error) {
 
 	// Create playground adapters
 	playgroundRepo := sqliteplayground.NewPlaygroundRepository(db)
-	chatProvider := genkitchatprovider.NewChatProvider()
+	cacheStore := inmemorychache.NewCache(time.Hour, 10*time.Minute)
+	chatProvider := genkitchatprovider.NewChatProvider(cacheStore.Scope("web_fetch"))
 
 	// Create playground commands
 	createSessionCmd := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)

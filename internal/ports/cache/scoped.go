@@ -1,0 +1,25 @@
+package cache
+
+import (
+	"context"
+	"time"
+)
+
+type scopedCache struct {
+	inner  Cache
+	prefix string
+}
+
+// Scope wraps c so all keys are stored as "<namespace>:<key>".
+// Adapters call this from their own Scope method to reuse this logic.
+func Scope(c Cache, namespace string) Cache {
+	return &scopedCache{inner: c, prefix: namespace + ":"}
+}
+
+func (s *scopedCache) Get(ctx context.Context, key string) (string, bool) {
+	return s.inner.Get(ctx, s.prefix+key)
+}
+
+func (s *scopedCache) Set(ctx context.Context, key string, value string, ttl time.Duration) error {
+	return s.inner.Set(ctx, s.prefix+key, value, ttl)
+}
