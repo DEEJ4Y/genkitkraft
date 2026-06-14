@@ -20,6 +20,7 @@ import (
 	anthropicsdk "github.com/anthropics/anthropic-sdk-go"
 
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
+	"github.com/DEEJ4Y/genkitkraft/internal/ports/cache"
 	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
 )
 
@@ -27,11 +28,13 @@ import (
 var _ chatprovider.ChatProvider = (*ChatProvider)(nil)
 
 // ChatProvider implements chatprovider.ChatProvider using the Genkit Go SDK.
-type ChatProvider struct{}
+type ChatProvider struct {
+	cache cache.Cache
+}
 
 // NewChatProvider creates a new Genkit-based chat provider.
-func NewChatProvider() *ChatProvider {
-	return &ChatProvider{}
+func NewChatProvider(c cache.Cache) *ChatProvider {
+	return &ChatProvider{cache: c}
 }
 
 func (cp *ChatProvider) ChatStream(ctx context.Context, req chatprovider.ChatRequest) (<-chan string, <-chan error) {
@@ -77,7 +80,7 @@ func (cp *ChatProvider) Chat(ctx context.Context, req chatprovider.ChatRequest) 
 	}
 
 	// Build and attach tools
-	tools, mcpCleanup, err := buildTools(ctx, req)
+	tools, mcpCleanup, err := cp.buildTools(ctx, req)
 	if err != nil {
 		return "", fmt.Errorf("building tools: %w", err)
 	}
@@ -131,7 +134,7 @@ func (cp *ChatProvider) doStream(ctx context.Context, req chatprovider.ChatReque
 	}
 
 	// Build and attach tools
-	tools, mcpCleanup, err := buildTools(ctx, req)
+	tools, mcpCleanup, err := cp.buildTools(ctx, req)
 	if err != nil {
 		return fmt.Errorf("building tools: %w", err)
 	}
@@ -298,7 +301,7 @@ func buildOpenAICompatibleConfig(req chatprovider.ChatRequest) any {
 
 // buildTools creates Genkit tool references from the ChatRequest's HTTP tools and MCP server configs.
 // Returns a cleanup function that should be deferred to close MCP connections.
-func buildTools(ctx context.Context, req chatprovider.ChatRequest) ([]ai.ToolRef, func(), error) {
+func (cp *ChatProvider) buildTools(ctx context.Context, req chatprovider.ChatRequest) ([]ai.ToolRef, func(), error) {
 	var tools []ai.ToolRef
 	var mcpClients []*mcp.GenkitMCPClient
 
@@ -309,7 +312,7 @@ func buildTools(ctx context.Context, req chatprovider.ChatRequest) ([]ai.ToolRef
 	}
 
 	// Build built-in tools
-	builtInTools := buildBuiltInTools(req.BuiltInToolIDs)
+	builtInTools := cp.buildBuiltInTools(req.BuiltInToolIDs)
 	tools = append(tools, builtInTools...)
 
 	// Build HTTP tools

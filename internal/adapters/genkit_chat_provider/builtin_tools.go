@@ -5,24 +5,25 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/firebase/genkit/go/ai"
 )
 
 // buildBuiltInTools creates Genkit tool references for the specified built-in tool IDs.
-func buildBuiltInTools(ids []string) []ai.ToolRef {
+func (cp *ChatProvider) buildBuiltInTools(ids []string) []ai.ToolRef {
 	var tools []ai.ToolRef
 	for _, id := range ids {
 		switch id {
 		case "web_fetch":
-			tools = append(tools, buildWebFetchTool())
+			tools = append(tools, cp.buildWebFetchTool())
 		}
 	}
 	return tools
 }
 
-func buildWebFetchTool() ai.Tool {
+func (cp *ChatProvider) buildWebFetchTool() ai.Tool {
 	name := "web_fetch"
 	description := "Fetches static content from a URL and returns it as Markdown. " +
 		"Note: This tool only supports static HTML content. It does not execute JavaScript " +
@@ -49,7 +50,18 @@ func buildWebFetchTool() ai.Tool {
 		if !ok || url == "" {
 			return nil, fmt.Errorf("invalid arguments: 'url' is required and must be a string")
 		}
-		return fetchAsMarkdown(url)
+
+		if cached, ok := cp.cache.Get(toolCtx.Context, url); ok {
+			return cached, nil
+		}
+
+		result, err := fetchAsMarkdown(url)
+		if err != nil {
+			return nil, err
+		}
+
+		_ = cp.cache.Set(toolCtx.Context, url, result, time.Hour)
+		return result, nil
 	}
 
 	return ai.NewTool(name, description, toolFn, ai.WithInputSchema(inputSchema))

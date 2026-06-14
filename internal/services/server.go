@@ -9,12 +9,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 
 	aesgcmencryptor "github.com/DEEJ4Y/genkitkraft/internal/adapters/aesgcm_encryptor"
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
 	genkitchatprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/genkit_chat_provider"
+	inmemorycache "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_cache"
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	mcpdiscoveryadapter "github.com/DEEJ4Y/genkitkraft/internal/adapters/mcp_discovery"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
@@ -56,7 +58,6 @@ type Server struct {
 	chatProvider   chatprovider.ChatProvider
 	sessionStore   session.Store
 	db             *sql.DB
-	done           chan struct{}
 }
 
 // NewServer wires all dependencies and returns a ready-to-start Server.
@@ -71,9 +72,12 @@ func NewServer(cfg config.Config) (*Server, error) {
 	}
 	cfg.Encryption.Key = ""
 
+	// Create shared cache store — all scoped caches derive from this single backing store.
+	cacheStore := inmemorycache.NewCache(10 * time.Minute)
+
 	// Create adapters
 	passwordHasher := bcrypthasher.NewBcryptHasher()
-	sessionStore := memorysession.NewMemoryStore()
+	sessionStore := memorysession.NewMemoryStore(cacheStore.Scope("session"))
 
 	// Hash credentials using adapter, then discard plaintext
 	users, err := hashCredentials(cfg.Auth.Credentials, passwordHasher)
@@ -91,7 +95,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 	logoutCmd := commands.NewLogoutCommand(sessionStore)
 
 	// Apply decorators
-	rateLimitedLogin := decorators.NewRateLimitingLoginDecorator(loginCmd)
+	rateLimitedLogin := decorators.NewRateLimitingLoginDecorator(loginCmd, cacheStore.Scope("rate_limit"), logger)
 
 	// Create queries
 	getMeQuery := queries.NewGetMeQuery(sessionStore)
@@ -278,7 +282,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 
 	// Create playground adapters
 	playgroundRepo := sqliteplayground.NewPlaygroundRepository(db)
-	chatProvider := genkitchatprovider.NewChatProvider()
+	chatProvider := genkitchatprovider.NewChatProvider(cacheStore.Scope("web_fetch"))
 
 	// Create playground commands
 	createSessionCmd := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)
@@ -320,14 +324,11 @@ func NewServer(cfg config.Config) (*Server, error) {
 		chatProvider:   chatProvider,
 		sessionStore:   sessionStore,
 		db:             db,
-		done:           make(chan struct{}),
 	}, nil
 }
 
 // Start begins serving HTTP. This blocks until the server stops.
 func (s *Server) Start() error {
-	s.sessionStore.StartCleanupLoop(s.done)
-
 	mux := http.NewServeMux()
 
 	// Register all API routes via generated handler
@@ -354,9 +355,8 @@ func (s *Server) Start() error {
 	return http.ListenAndServe(addr, handler)
 }
 
-// Stop signals background goroutines to stop and releases resources.
+// Stop releases server resources.
 func (s *Server) Stop() {
-	close(s.done)
 	if s.db != nil {
 		s.db.Close()
 	}
