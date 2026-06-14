@@ -35,11 +35,25 @@ func NewRateLimitingLoginDecorator(
 }
 
 func (d *RateLimitingLoginDecorator) Execute(ctx context.Context, params commands.LoginParams) (commands.LoginResult, error) {
-	if !d.checkAndRecord(ctx, params.ClientIP) {
+	ts, ok := d.checkAndRecord(ctx, params.ClientIP)
+	if !ok {
 		return commands.LoginResult{}, errors.NewAppError(errors.TooManyRequests, "too many login attempts, try again later")
 	}
 
+	completed := false
+	defer func() {
+		if !completed {
+			// inner.Execute panicked; remove only the slot we pre-recorded so prior
+			// failures for this IP remain counted.
+			d.mu.Lock()
+			d.removeAttempt(ctx, params.ClientIP, ts)
+			d.mu.Unlock()
+		}
+	}()
+
 	result, err := d.inner.Execute(ctx, params)
+	completed = true
+
 	if err != nil {
 		return result, err
 	}
@@ -52,21 +66,43 @@ func (d *RateLimitingLoginDecorator) Execute(ctx context.Context, params command
 }
 
 // checkAndRecord atomically checks whether the IP is under the rate limit and,
-// if so, pre-records the attempt. Returns false if the limit is already reached.
+// if so, pre-records the attempt. Returns the recorded timestamp and true if
+// allowed, or zero and false if the limit is already reached.
 // The lock is not held during inner.Execute so slow operations (e.g. bcrypt) do
 // not block concurrent requests from other IPs.
-func (d *RateLimitingLoginDecorator) checkAndRecord(ctx context.Context, ip string) bool {
+func (d *RateLimitingLoginDecorator) checkAndRecord(ctx context.Context, ip string) (int64, bool) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	attempts := d.getAttempts(ctx, ip)
 	attempts = prune(attempts)
 	if len(attempts) >= rateLimitMaxFails {
-		return false
+		return 0, false
 	}
-	attempts = append(attempts, time.Now().UnixNano())
+	ts := time.Now().UnixNano()
+	attempts = append(attempts, ts)
 	d.setAttempts(ctx, ip, attempts)
-	return true
+	return ts, true
+}
+
+// removeAttempt removes the single entry with timestamp ts for ip. Called on
+// panic to undo the pre-recorded slot without erasing prior failures.
+func (d *RateLimitingLoginDecorator) removeAttempt(ctx context.Context, ip string, ts int64) {
+	attempts := d.getAttempts(ctx, ip)
+	out := attempts[:0]
+	removed := false
+	for _, t := range attempts {
+		if !removed && t == ts {
+			removed = true
+			continue
+		}
+		out = append(out, t)
+	}
+	if len(out) == 0 {
+		_ = d.cache.Delete(ctx, ip)
+	} else {
+		d.setAttempts(ctx, ip, out)
+	}
 }
 
 func (d *RateLimitingLoginDecorator) getAttempts(ctx context.Context, ip string) []int64 {

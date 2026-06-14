@@ -20,6 +20,11 @@ type Cache struct {
 // NewCache creates a new in-memory backing store.
 // cleanupInterval controls how often expired entries are purged from memory.
 // TTLs are always specified per-Set call; there is no global default expiration.
+//
+// NOTE: This store has no maximum-entry cap. A large number of unique keys (e.g.
+// attacker-controlled IPs or URLs) will grow memory without bound. For production
+// deployments or high-traffic environments, replace this adapter with a Redis/Valkey
+// adapter — see GitHub issue #29.
 func NewCache(cleanupInterval time.Duration) *Cache {
 	return &Cache{store: gocache.New(gocache.NoExpiration, cleanupInterval)}
 }
