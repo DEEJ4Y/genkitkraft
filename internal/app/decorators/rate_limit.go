@@ -3,6 +3,7 @@ package decorators
 import (
 	"context"
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/DEEJ4Y/genkitkraft/internal/app/commands"
@@ -20,11 +21,10 @@ const (
 var _ executors.ExecutorWithReturn[commands.LoginParams, commands.LoginResult] = (*RateLimitingLoginDecorator)(nil)
 
 // RateLimitingLoginDecorator wraps a login executor with per-IP rate limiting.
-// Attempt counts are persisted via the cache port. Read-modify-write is not atomic;
-// a distributed cache backend would need atomic ops for strict correctness.
 type RateLimitingLoginDecorator struct {
 	inner executors.ExecutorWithReturn[commands.LoginParams, commands.LoginResult]
 	cache cache.Cache
+	mu    sync.Mutex
 }
 
 func NewRateLimitingLoginDecorator(
@@ -35,31 +35,38 @@ func NewRateLimitingLoginDecorator(
 }
 
 func (d *RateLimitingLoginDecorator) Execute(ctx context.Context, params commands.LoginParams) (commands.LoginResult, error) {
-	if !d.allow(ctx, params.ClientIP) {
+	if !d.checkAndRecord(ctx, params.ClientIP) {
 		return commands.LoginResult{}, errors.NewAppError(errors.TooManyRequests, "too many login attempts, try again later")
 	}
 
 	result, err := d.inner.Execute(ctx, params)
 	if err != nil {
-		d.record(ctx, params.ClientIP)
 		return result, err
 	}
 
+	// Successful login — clear the failure count for this IP.
+	d.mu.Lock()
 	_ = d.cache.Delete(ctx, params.ClientIP)
+	d.mu.Unlock()
 	return result, nil
 }
 
-func (d *RateLimitingLoginDecorator) allow(ctx context.Context, ip string) bool {
-	attempts := d.getAttempts(ctx, ip)
-	attempts = prune(attempts)
-	return len(attempts) < rateLimitMaxFails
-}
+// checkAndRecord atomically checks whether the IP is under the rate limit and,
+// if so, pre-records the attempt. Returns false if the limit is already reached.
+// The lock is not held during inner.Execute so slow operations (e.g. bcrypt) do
+// not block concurrent requests from other IPs.
+func (d *RateLimitingLoginDecorator) checkAndRecord(ctx context.Context, ip string) bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
-func (d *RateLimitingLoginDecorator) record(ctx context.Context, ip string) {
 	attempts := d.getAttempts(ctx, ip)
 	attempts = prune(attempts)
+	if len(attempts) >= rateLimitMaxFails {
+		return false
+	}
 	attempts = append(attempts, time.Now().UnixNano())
 	d.setAttempts(ctx, ip, attempts)
+	return true
 }
 
 func (d *RateLimitingLoginDecorator) getAttempts(ctx context.Context, ip string) []int64 {

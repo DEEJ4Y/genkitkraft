@@ -58,7 +58,6 @@ type Server struct {
 	chatProvider   chatprovider.ChatProvider
 	sessionStore   session.Store
 	db             *sql.DB
-	done           chan struct{}
 }
 
 // NewServer wires all dependencies and returns a ready-to-start Server.
@@ -325,7 +324,6 @@ func NewServer(cfg config.Config) (*Server, error) {
 		chatProvider:   chatProvider,
 		sessionStore:   sessionStore,
 		db:             db,
-		done:           make(chan struct{}),
 	}, nil
 }
 
@@ -357,9 +355,8 @@ func (s *Server) Start() error {
 	return http.ListenAndServe(addr, handler)
 }
 
-// Stop signals background goroutines to stop and releases resources.
+// Stop releases server resources.
 func (s *Server) Stop() {
-	close(s.done)
 	if s.db != nil {
 		s.db.Close()
 	}
