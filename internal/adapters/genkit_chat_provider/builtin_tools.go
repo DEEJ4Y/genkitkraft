@@ -3,7 +3,6 @@ package genkitchatprovider
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"strings"
 	"time"
 
@@ -73,7 +72,7 @@ func fetchAsMarkdown(rawURL string) (string, error) {
 		return "", fmt.Errorf("invalid URL: %w", err)
 	}
 
-	resp, err := http.Get(encodedURL)
+	resp, err := httpClient.Get(encodedURL)
 	if err != nil {
 		return "", fmt.Errorf("fetching URL: %w", err)
 	}

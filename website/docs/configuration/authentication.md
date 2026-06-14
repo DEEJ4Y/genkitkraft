@@ -18,6 +18,12 @@ AUTH_CREDENTIALS=admin:strongpassword,user2:anotherpassword
 
 Multiple users can be configured by separating credential pairs with commas.
 
+:::note
+
+`AUTH_CREDENTIALS` is read once at startup. If you add, change, or remove credentials, you must **restart the server** for the changes to take effect.
+
+:::
+
 ## Login Flow
 
 1. When auth is enabled, users see a login dialog on first visit

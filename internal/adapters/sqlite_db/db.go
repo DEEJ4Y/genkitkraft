@@ -1,9 +1,11 @@
 package sqlitedb
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -39,13 +41,17 @@ func Open(dbPath string) (*sql.DB, error) {
 }
 
 func runMigrations(db *sql.DB) error {
-	goose.SetBaseFS(migrations)
-
-	if err := goose.SetDialect("sqlite3"); err != nil {
-		return fmt.Errorf("setting goose dialect: %w", err)
+	migFS, err := fs.Sub(migrations, "migrations")
+	if err != nil {
+		return fmt.Errorf("creating migrations sub-FS: %w", err)
 	}
 
-	if err := goose.Up(db, "migrations"); err != nil {
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, migFS)
+	if err != nil {
+		return fmt.Errorf("setting up goose provider: %w", err)
+	}
+
+	if _, err = provider.Up(context.Background()); err != nil {
 		return fmt.Errorf("running migrations: %w", err)
 	}
 
