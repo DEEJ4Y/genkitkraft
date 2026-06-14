@@ -18,10 +18,10 @@ type Cache struct {
 }
 
 // NewCache creates a new in-memory backing store.
-// defaultExpiration is used when Set is called with a zero TTL.
 // cleanupInterval controls how often expired entries are purged from memory.
-func NewCache(defaultExpiration, cleanupInterval time.Duration) *Cache {
-	return &Cache{store: gocache.New(defaultExpiration, cleanupInterval)}
+// TTLs are always specified per-Set call; there is no global default expiration.
+func NewCache(cleanupInterval time.Duration) *Cache {
+	return &Cache{store: gocache.New(gocache.NoExpiration, cleanupInterval)}
 }
 
 // Scope returns a Cache where every key is prefixed with "<namespace>:".
@@ -45,5 +45,10 @@ func (r *rawCache) Get(_ context.Context, key string) (string, bool) {
 
 func (r *rawCache) Set(_ context.Context, key string, value string, ttl time.Duration) error {
 	r.store.Set(key, value, ttl)
+	return nil
+}
+
+func (r *rawCache) Delete(_ context.Context, key string) error {
+	r.store.Delete(key)
 	return nil
 }

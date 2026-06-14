@@ -23,3 +23,7 @@ func (s *scopedCache) Get(ctx context.Context, key string) (string, bool) {
 func (s *scopedCache) Set(ctx context.Context, key string, value string, ttl time.Duration) error {
 	return s.inner.Set(ctx, s.prefix+key, value, ttl)
 }
+
+func (s *scopedCache) Delete(ctx context.Context, key string) error {
+	return s.inner.Delete(ctx, s.prefix+key)
+}

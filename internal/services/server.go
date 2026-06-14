@@ -73,9 +73,12 @@ func NewServer(cfg config.Config) (*Server, error) {
 	}
 	cfg.Encryption.Key = ""
 
+	// Create shared cache store — all scoped caches derive from this single backing store.
+	cacheStore := inmemorychache.NewCache(10 * time.Minute)
+
 	// Create adapters
 	passwordHasher := bcrypthasher.NewBcryptHasher()
-	sessionStore := memorysession.NewMemoryStore()
+	sessionStore := memorysession.NewMemoryStore(cacheStore.Scope("session"))
 
 	// Hash credentials using adapter, then discard plaintext
 	users, err := hashCredentials(cfg.Auth.Credentials, passwordHasher)
@@ -93,7 +96,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 	logoutCmd := commands.NewLogoutCommand(sessionStore)
 
 	// Apply decorators
-	rateLimitedLogin := decorators.NewRateLimitingLoginDecorator(loginCmd)
+	rateLimitedLogin := decorators.NewRateLimitingLoginDecorator(loginCmd, cacheStore.Scope("rate_limit"))
 
 	// Create queries
 	getMeQuery := queries.NewGetMeQuery(sessionStore)
@@ -280,7 +283,6 @@ func NewServer(cfg config.Config) (*Server, error) {
 
 	// Create playground adapters
 	playgroundRepo := sqliteplayground.NewPlaygroundRepository(db)
-	cacheStore := inmemorychache.NewCache(time.Hour, 10*time.Minute)
 	chatProvider := genkitchatprovider.NewChatProvider(cacheStore.Scope("web_fetch"))
 
 	// Create playground commands
@@ -329,8 +331,6 @@ func NewServer(cfg config.Config) (*Server, error) {
 
 // Start begins serving HTTP. This blocks until the server stops.
 func (s *Server) Start() error {
-	s.sessionStore.StartCleanupLoop(s.done)
-
 	mux := http.NewServeMux()
 
 	// Register all API routes via generated handler

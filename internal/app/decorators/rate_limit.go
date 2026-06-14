@@ -2,12 +2,13 @@ package decorators
 
 import (
 	"context"
-	"sync"
+	"encoding/json"
 	"time"
 
 	"github.com/DEEJ4Y/genkitkraft/internal/app/commands"
 	"github.com/DEEJ4Y/genkitkraft/internal/app/executors"
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
+	"github.com/DEEJ4Y/genkitkraft/internal/ports/cache"
 )
 
 const (
@@ -19,64 +20,77 @@ const (
 var _ executors.ExecutorWithReturn[commands.LoginParams, commands.LoginResult] = (*RateLimitingLoginDecorator)(nil)
 
 // RateLimitingLoginDecorator wraps a login executor with per-IP rate limiting.
+// Attempt counts are persisted via the cache port. Read-modify-write is not atomic;
+// a distributed cache backend would need atomic ops for strict correctness.
 type RateLimitingLoginDecorator struct {
-	inner    executors.ExecutorWithReturn[commands.LoginParams, commands.LoginResult]
-	mu       sync.Mutex
-	attempts map[string][]time.Time
+	inner executors.ExecutorWithReturn[commands.LoginParams, commands.LoginResult]
+	cache cache.Cache
 }
 
 func NewRateLimitingLoginDecorator(
 	inner executors.ExecutorWithReturn[commands.LoginParams, commands.LoginResult],
+	c cache.Cache,
 ) *RateLimitingLoginDecorator {
-	return &RateLimitingLoginDecorator{
-		inner:    inner,
-		attempts: make(map[string][]time.Time),
-	}
+	return &RateLimitingLoginDecorator{inner: inner, cache: c}
 }
 
 func (d *RateLimitingLoginDecorator) Execute(ctx context.Context, params commands.LoginParams) (commands.LoginResult, error) {
-	if !d.allow(params.ClientIP) {
+	if !d.allow(ctx, params.ClientIP) {
 		return commands.LoginResult{}, errors.NewAppError(errors.TooManyRequests, "too many login attempts, try again later")
 	}
 
 	result, err := d.inner.Execute(ctx, params)
 	if err != nil {
-		d.record(params.ClientIP)
+		d.record(ctx, params.ClientIP)
 		return result, err
 	}
 
-	d.reset(params.ClientIP)
+	_ = d.cache.Delete(ctx, params.ClientIP)
 	return result, nil
 }
 
-func (d *RateLimitingLoginDecorator) allow(ip string) bool {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.prune(ip)
-	return len(d.attempts[ip]) < rateLimitMaxFails
+func (d *RateLimitingLoginDecorator) allow(ctx context.Context, ip string) bool {
+	attempts := d.getAttempts(ctx, ip)
+	attempts = prune(attempts)
+	return len(attempts) < rateLimitMaxFails
 }
 
-func (d *RateLimitingLoginDecorator) record(ip string) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.attempts[ip] = append(d.attempts[ip], time.Now())
+func (d *RateLimitingLoginDecorator) record(ctx context.Context, ip string) {
+	attempts := d.getAttempts(ctx, ip)
+	attempts = prune(attempts)
+	attempts = append(attempts, time.Now().UnixNano())
+	d.setAttempts(ctx, ip, attempts)
 }
 
-func (d *RateLimitingLoginDecorator) reset(ip string) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	delete(d.attempts, ip)
+func (d *RateLimitingLoginDecorator) getAttempts(ctx context.Context, ip string) []int64 {
+	val, ok := d.cache.Get(ctx, ip)
+	if !ok {
+		return nil
+	}
+	var attempts []int64
+	if err := json.Unmarshal([]byte(val), &attempts); err != nil {
+		return nil
+	}
+	return attempts
 }
 
-func (d *RateLimitingLoginDecorator) prune(ip string) {
-	cutoff := time.Now().Add(-rateLimitWindow)
-	attempts := d.attempts[ip]
+func (d *RateLimitingLoginDecorator) setAttempts(ctx context.Context, ip string, attempts []int64) {
+	data, err := json.Marshal(attempts)
+	if err != nil {
+		return
+	}
+	_ = d.cache.Set(ctx, ip, string(data), rateLimitWindow)
+}
+
+// prune removes attempt timestamps that fall outside the rolling window.
+func prune(attempts []int64) []int64 {
+	cutoff := time.Now().Add(-rateLimitWindow).UnixNano()
 	i := 0
 	for _, t := range attempts {
-		if t.After(cutoff) {
+		if t > cutoff {
 			attempts[i] = t
 			i++
 		}
 	}
-	d.attempts[ip] = attempts[:i]
+	return attempts[:i]
 }

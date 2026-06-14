@@ -11,6 +11,8 @@ type Cache interface {
 	Get(ctx context.Context, key string) (string, bool)
 	// Set stores a value with the given TTL. A zero TTL means no expiration.
 	Set(ctx context.Context, key string, value string, ttl time.Duration) error
+	// Delete removes the entry for key. No-op if the key does not exist.
+	Delete(ctx context.Context, key string) error
 }
 
 // Store is the factory for obtaining namespace-isolated Cache instances.
