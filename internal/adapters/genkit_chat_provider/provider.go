@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
@@ -26,6 +27,8 @@ import (
 
 // Compile-time check that ChatProvider implements the port interface.
 var _ chatprovider.ChatProvider = (*ChatProvider)(nil)
+
+var httpClient = &http.Client{Timeout: 30 * time.Second}
 
 // ChatProvider implements chatprovider.ChatProvider using the Genkit Go SDK.
 type ChatProvider struct {
@@ -419,7 +422,7 @@ func executeHttpTool(ctx context.Context, ht chatprovider.HttpToolDefinition, ar
 		httpReq.Header.Set("Content-Type", "application/json")
 	}
 
-	resp, err := http.DefaultClient.Do(httpReq)
+	resp, err := httpClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("HTTP tool request failed: %w", err)
 	}
