@@ -4,20 +4,17 @@ package postgresmcpserver_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
 	postgresmcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_mcp_server"
 	mcpserver "github.com/DEEJ4Y/genkitkraft/internal/domain/mcp_server"
+	"github.com/DEEJ4Y/genkitkraft/resources/test/containers"
 	"github.com/google/uuid"
 )
 
 func TestMcpServerRepositoryPostgres(t *testing.T) {
-	url := os.Getenv("TEST_POSTGRES_URL")
-	if url == "" {
-		t.Skip("TEST_POSTGRES_URL not set")
-	}
+	url := containers.StartPostgresDSN(t)
 
 	db, err := postgresdb.Open(url)
 	if err != nil {

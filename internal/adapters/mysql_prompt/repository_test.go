@@ -5,28 +5,22 @@ package mysqlprompt_test
 import (
 	"context"
 	"database/sql"
-	"os"
 	"testing"
 
 	mysqldb "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_db"
 	mysqlprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_prompt"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/prompt"
+	"github.com/DEEJ4Y/genkitkraft/resources/test/containers"
 	"github.com/google/uuid"
 )
 
 func TestPromptRepositoryMySQL(t *testing.T) {
-	dsn := os.Getenv("TEST_MYSQL_URL")
-	if dsn == "" {
-		t.Skip("TEST_MYSQL_URL not set")
-	}
+	dsn := containers.StartMySQLDSN(t)
 	testPromptRepository(t, mysqldb.Open, dsn)
 }
 
 func TestPromptRepositoryMariaDB(t *testing.T) {
-	dsn := os.Getenv("TEST_MARIADB_URL")
-	if dsn == "" {
-		t.Skip("TEST_MARIADB_URL not set")
-	}
+	dsn := containers.StartMariaDBDSN(t)
 	testPromptRepository(t, mysqldb.Open, dsn)
 }
 

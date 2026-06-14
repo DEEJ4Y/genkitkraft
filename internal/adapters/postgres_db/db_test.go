@@ -4,10 +4,10 @@ package postgresdb_test
 
 import (
 	"database/sql"
-	"os"
 	"testing"
 
 	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
+	"github.com/DEEJ4Y/genkitkraft/resources/test/containers"
 )
 
 // expectedTables lists every table created by the 11 migrations.
@@ -28,10 +28,7 @@ var expectedTables = []string{
 const totalMigrations = 11
 
 func TestOpen(t *testing.T) {
-	url := os.Getenv("TEST_POSTGRES_URL")
-	if url == "" {
-		t.Skip("TEST_POSTGRES_URL not set")
-	}
+	url := containers.StartPostgresDSN(t)
 
 	db, err := postgresdb.Open(url)
 	if err != nil {

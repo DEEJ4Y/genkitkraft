@@ -4,10 +4,10 @@ package mysqldb_test
 
 import (
 	"database/sql"
-	"os"
 	"testing"
 
 	mysqldb "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_db"
+	"github.com/DEEJ4Y/genkitkraft/resources/test/containers"
 )
 
 // expectedTables lists every table created by the 11 migrations.
@@ -28,18 +28,12 @@ var expectedTables = []string{
 const totalMigrations = 11
 
 func TestOpenMySQL(t *testing.T) {
-	dsn := os.Getenv("TEST_MYSQL_URL")
-	if dsn == "" {
-		t.Skip("TEST_MYSQL_URL not set")
-	}
+	dsn := containers.StartMySQLDSN(t)
 	testOpen(t, dsn)
 }
 
 func TestOpenMariaDB(t *testing.T) {
-	dsn := os.Getenv("TEST_MARIADB_URL")
-	if dsn == "" {
-		t.Skip("TEST_MARIADB_URL not set")
-	}
+	dsn := containers.StartMariaDBDSN(t)
 	testOpen(t, dsn)
 }
 

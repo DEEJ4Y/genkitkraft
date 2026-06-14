@@ -5,27 +5,21 @@ package mysqlprovider_test
 import (
 	"context"
 	"database/sql"
-	"os"
 	"testing"
 
 	mysqldb "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_db"
 	mysqlprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_provider"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
+	"github.com/DEEJ4Y/genkitkraft/resources/test/containers"
 )
 
 func TestProviderRepositoryMySQL(t *testing.T) {
-	dsn := os.Getenv("TEST_MYSQL_URL")
-	if dsn == "" {
-		t.Skip("TEST_MYSQL_URL not set")
-	}
+	dsn := containers.StartMySQLDSN(t)
 	testProviderRepository(t, mysqldb.Open, dsn)
 }
 
 func TestProviderRepositoryMariaDB(t *testing.T) {
-	dsn := os.Getenv("TEST_MARIADB_URL")
-	if dsn == "" {
-		t.Skip("TEST_MARIADB_URL not set")
-	}
+	dsn := containers.StartMariaDBDSN(t)
 	testProviderRepository(t, mysqldb.Open, dsn)
 }
 

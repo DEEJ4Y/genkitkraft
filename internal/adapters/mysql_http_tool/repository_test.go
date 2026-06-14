@@ -5,28 +5,22 @@ package mysqlhttptool_test
 import (
 	"context"
 	"database/sql"
-	"os"
 	"testing"
 
 	mysqldb "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_db"
 	mysqlhttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_http_tool"
 	httptool "github.com/DEEJ4Y/genkitkraft/internal/domain/http_tool"
+	"github.com/DEEJ4Y/genkitkraft/resources/test/containers"
 	"github.com/google/uuid"
 )
 
 func TestHttpToolRepositoryMySQL(t *testing.T) {
-	dsn := os.Getenv("TEST_MYSQL_URL")
-	if dsn == "" {
-		t.Skip("TEST_MYSQL_URL not set")
-	}
+	dsn := containers.StartMySQLDSN(t)
 	testHttpToolRepository(t, mysqldb.Open, dsn)
 }
 
 func TestHttpToolRepositoryMariaDB(t *testing.T) {
-	dsn := os.Getenv("TEST_MARIADB_URL")
-	if dsn == "" {
-		t.Skip("TEST_MARIADB_URL not set")
-	}
+	dsn := containers.StartMariaDBDSN(t)
 	testHttpToolRepository(t, mysqldb.Open, dsn)
 }
 

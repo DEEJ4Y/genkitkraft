@@ -4,20 +4,17 @@ package postgresprompt_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
 	postgresprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_prompt"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/prompt"
+	"github.com/DEEJ4Y/genkitkraft/resources/test/containers"
 	"github.com/google/uuid"
 )
 
 func TestPromptRepositoryPostgres(t *testing.T) {
-	url := os.Getenv("TEST_POSTGRES_URL")
-	if url == "" {
-		t.Skip("TEST_POSTGRES_URL not set")
-	}
+	url := containers.StartPostgresDSN(t)
 
 	db, err := postgresdb.Open(url)
 	if err != nil {

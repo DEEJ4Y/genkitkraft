@@ -5,28 +5,22 @@ package mysqlagent_test
 import (
 	"context"
 	"database/sql"
-	"os"
 	"testing"
 
 	mysqlagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_agent"
 	mysqldb "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_db"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/agent"
+	"github.com/DEEJ4Y/genkitkraft/resources/test/containers"
 	"github.com/google/uuid"
 )
 
 func TestAgentRepositoryMySQL(t *testing.T) {
-	dsn := os.Getenv("TEST_MYSQL_URL")
-	if dsn == "" {
-		t.Skip("TEST_MYSQL_URL not set")
-	}
+	dsn := containers.StartMySQLDSN(t)
 	testAgentRepository(t, mysqldb.Open, dsn)
 }
 
 func TestAgentRepositoryMariaDB(t *testing.T) {
-	dsn := os.Getenv("TEST_MARIADB_URL")
-	if dsn == "" {
-		t.Skip("TEST_MARIADB_URL not set")
-	}
+	dsn := containers.StartMariaDBDSN(t)
 	testAgentRepository(t, mysqldb.Open, dsn)
 }
 

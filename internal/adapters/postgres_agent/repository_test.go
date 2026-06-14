@@ -4,20 +4,17 @@ package postgresagent_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	postgresagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_agent"
 	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/agent"
+	"github.com/DEEJ4Y/genkitkraft/resources/test/containers"
 	"github.com/google/uuid"
 )
 
 func TestAgentRepositoryPostgres(t *testing.T) {
-	url := os.Getenv("TEST_POSTGRES_URL")
-	if url == "" {
-		t.Skip("TEST_POSTGRES_URL not set")
-	}
+	url := containers.StartPostgresDSN(t)
 
 	db, err := postgresdb.Open(url)
 	if err != nil {

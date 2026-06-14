@@ -4,19 +4,16 @@ package postgresperson_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
 	postgresperson "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_provider"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
+	"github.com/DEEJ4Y/genkitkraft/resources/test/containers"
 )
 
 func TestProviderRepositoryPostgres(t *testing.T) {
-	url := os.Getenv("TEST_POSTGRES_URL")
-	if url == "" {
-		t.Skip("TEST_POSTGRES_URL not set")
-	}
+	url := containers.StartPostgresDSN(t)
 
 	db, err := postgresdb.Open(url)
 	if err != nil {

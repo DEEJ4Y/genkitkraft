@@ -5,28 +5,22 @@ package mysqlmcpserver_test
 import (
 	"context"
 	"database/sql"
-	"os"
 	"testing"
 
 	mysqldb "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_db"
 	mysqlmcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_mcp_server"
 	mcpserver "github.com/DEEJ4Y/genkitkraft/internal/domain/mcp_server"
+	"github.com/DEEJ4Y/genkitkraft/resources/test/containers"
 	"github.com/google/uuid"
 )
 
 func TestMcpServerRepositoryMySQL(t *testing.T) {
-	dsn := os.Getenv("TEST_MYSQL_URL")
-	if dsn == "" {
-		t.Skip("TEST_MYSQL_URL not set")
-	}
+	dsn := containers.StartMySQLDSN(t)
 	testMcpServerRepository(t, mysqldb.Open, dsn)
 }
 
 func TestMcpServerRepositoryMariaDB(t *testing.T) {
-	dsn := os.Getenv("TEST_MARIADB_URL")
-	if dsn == "" {
-		t.Skip("TEST_MARIADB_URL not set")
-	}
+	dsn := containers.StartMariaDBDSN(t)
 	testMcpServerRepository(t, mysqldb.Open, dsn)
 }
 
