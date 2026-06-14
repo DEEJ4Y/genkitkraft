@@ -20,6 +20,8 @@ import (
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	mcpdiscoveryadapter "github.com/DEEJ4Y/genkitkraft/internal/adapters/mcp_discovery"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
+	mysqldb "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_db"
+	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
 	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
 	sqliteagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent"
 	sqliteagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent_tool"
@@ -120,11 +122,23 @@ func NewServer(cfg config.Config) (*Server, error) {
 	}
 
 	// Open database and run migrations
-	db, err := sqlitedb.Open(cfg.Database.Path)
-	if err != nil {
-		return nil, fmt.Errorf("opening database: %w", err)
+	if cfg.Database.Provider != "sqlite" && cfg.Database.URL == "" {
+		return nil, fmt.Errorf("DATABASE_URL is required when DATABASE_PROVIDER is %q", cfg.Database.Provider)
 	}
-	log.Printf("Database opened at %s", cfg.Database.Path)
+
+	var db *sql.DB
+	switch cfg.Database.Provider {
+	case "postgres":
+		db, err = postgresdb.Open(cfg.Database.URL)
+	case "mysql", "mariadb":
+		db, err = mysqldb.Open(cfg.Database.URL)
+	default:
+		db, err = sqlitedb.Open(cfg.Database.Path)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("opening database (%s): %w", cfg.Database.Provider, err)
+	}
+	log.Printf("Database opened (provider: %s)", cfg.Database.Provider)
 
 	// Create provider adapters
 	providerRepo := sqliteprovider.NewProviderRepository(db)
