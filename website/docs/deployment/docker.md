@@ -51,7 +51,88 @@ Then: `docker compose up -d`
 
 ## Persistent Storage
 
-GenKitKraft stores all data in a SQLite database. The default path is `/data/app.db`. Mount a Docker volume or bind mount to `/data` to persist data across container restarts.
+By default, GenKitKraft stores all data in a SQLite database at `/data/app.db`. Mount a Docker volume or bind mount to `/data` to persist data across container restarts.
+
+For multi-instance deployments, switch to PostgreSQL, MySQL, or MariaDB using the `DATABASE_PROVIDER` and `DATABASE_URL` environment variables. See [Environment Variables](/docs/configuration/environment-variables) for the full reference.
+
+### PostgreSQL
+
+```yaml
+services:
+  genkitkraft:
+    image: ghcr.io/deej4y/genkitkraft:latest
+    ports:
+      - "8080:8080"
+    environment:
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      AUTH_CREDENTIALS: ${AUTH_CREDENTIALS}
+      DATABASE_PROVIDER: postgres
+      DATABASE_URL: postgres://genkitkraft:${DB_PASSWORD}@db:5432/genkitkraft?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: genkitkraft
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: genkitkraft
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U genkitkraft"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db-data:
+```
+
+### MySQL / MariaDB
+
+Replace the `db` service image with `mysql:8` or `mariadb:11` and set `DATABASE_PROVIDER` accordingly:
+
+```yaml
+services:
+  genkitkraft:
+    image: ghcr.io/deej4y/genkitkraft:latest
+    ports:
+      - "8080:8080"
+    environment:
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      AUTH_CREDENTIALS: ${AUTH_CREDENTIALS}
+      DATABASE_PROVIDER: mysql   # or mariadb
+      DATABASE_URL: genkitkraft:${DB_PASSWORD}@tcp(db:3306)/genkitkraft?parseTime=true
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mysql:8
+    environment:
+      MYSQL_USER: genkitkraft
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: genkitkraft
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-data:
+```
+
+:::note parseTime=true
+The `parseTime=true` parameter is required in the MySQL/MariaDB DSN for correct timestamp handling.
+:::
 
 ## Health Checks
 
