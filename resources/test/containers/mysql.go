@@ -53,7 +53,7 @@ func StartMariaDBDSN(t *testing.T) string {
 			"MARIADB_USER":          "test",
 			"MARIADB_PASSWORD":      "test",
 		}),
-		testcontainers.WithWaitStrategy(wait.ForListeningPort("3306/tcp")),
+		testcontainers.WithWaitStrategy(wait.ForLog("ready for connections").WithOccurrence(2)),
 	)
 	if err != nil {
 		t.Fatalf("start mariadb container: %v", err)
