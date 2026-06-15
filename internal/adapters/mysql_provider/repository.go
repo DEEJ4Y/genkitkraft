@@ -80,7 +80,7 @@ func (r *ProviderRepository) GetByType(ctx context.Context, pt provider.Provider
 
 func (r *ProviderRepository) Create(ctx context.Context, p *provider.Provider) error {
 	p.ID = uuid.New().String()
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	p.CreatedAt = now
 	p.UpdatedAt = now
 
@@ -104,7 +104,7 @@ func (r *ProviderRepository) Create(ctx context.Context, p *provider.Provider) e
 }
 
 func (r *ProviderRepository) Update(ctx context.Context, p *provider.Provider) error {
-	p.UpdatedAt = time.Now().UTC()
+	p.UpdatedAt = time.Now().UTC().Truncate(time.Microsecond)
 
 	rawConfig := p.RawConfig
 	if len(rawConfig) == 0 {

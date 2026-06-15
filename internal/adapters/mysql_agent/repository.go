@@ -90,7 +90,7 @@ func (r *AgentRepository) GetByID(ctx context.Context, id string) (*agent.Agent,
 
 func (r *AgentRepository) Create(ctx context.Context, a *agent.Agent) error {
 	a.ID = uuid.New().String()
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	a.CreatedAt = now
 	a.UpdatedAt = now
 
@@ -109,7 +109,7 @@ func (r *AgentRepository) Create(ctx context.Context, a *agent.Agent) error {
 }
 
 func (r *AgentRepository) Update(ctx context.Context, a *agent.Agent) error {
-	a.UpdatedAt = time.Now().UTC()
+	a.UpdatedAt = time.Now().UTC().Truncate(time.Microsecond)
 
 	result, err := r.db.ExecContext(ctx,
 		`UPDATE agents SET name = ?, provider_id = ?, model_id = ?, system_prompt_id = ?,

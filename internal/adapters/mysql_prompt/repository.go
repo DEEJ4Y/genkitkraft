@@ -70,7 +70,7 @@ func (r *PromptRepository) GetByID(ctx context.Context, id string) (*prompt.Prom
 
 func (r *PromptRepository) Create(ctx context.Context, p *prompt.Prompt) error {
 	p.ID = uuid.New().String()
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	p.CreatedAt = now
 	p.UpdatedAt = now
 
@@ -85,7 +85,7 @@ func (r *PromptRepository) Create(ctx context.Context, p *prompt.Prompt) error {
 }
 
 func (r *PromptRepository) Update(ctx context.Context, p *prompt.Prompt) error {
-	p.UpdatedAt = time.Now().UTC()
+	p.UpdatedAt = time.Now().UTC().Truncate(time.Microsecond)
 
 	result, err := r.db.ExecContext(ctx,
 		`UPDATE prompts SET name = ?, content = ?, updated_at = ? WHERE id = ?`,

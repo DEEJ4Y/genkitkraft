@@ -72,7 +72,7 @@ func (r *McpServerRepository) GetByID(ctx context.Context, id string) (*mcpserve
 
 func (r *McpServerRepository) Create(ctx context.Context, s *mcpserver.McpServer) error {
 	s.ID = uuid.New().String()
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	s.CreatedAt = now
 	s.UpdatedAt = now
 
@@ -92,7 +92,7 @@ func (r *McpServerRepository) Create(ctx context.Context, s *mcpserver.McpServer
 }
 
 func (r *McpServerRepository) Update(ctx context.Context, s *mcpserver.McpServer) error {
-	s.UpdatedAt = time.Now().UTC()
+	s.UpdatedAt = time.Now().UTC().Truncate(time.Microsecond)
 
 	headersJSON, err := json.Marshal(s.Headers)
 	if err != nil {

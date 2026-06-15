@@ -72,7 +72,7 @@ func (r *HttpToolRepository) GetByID(ctx context.Context, id string) (*httptool.
 
 func (r *HttpToolRepository) Create(ctx context.Context, t *httptool.HttpTool) error {
 	t.ID = uuid.New().String()
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	t.CreatedAt = now
 	t.UpdatedAt = now
 
@@ -92,7 +92,7 @@ func (r *HttpToolRepository) Create(ctx context.Context, t *httptool.HttpTool) e
 }
 
 func (r *HttpToolRepository) Update(ctx context.Context, t *httptool.HttpTool) error {
-	t.UpdatedAt = time.Now().UTC()
+	t.UpdatedAt = time.Now().UTC().Truncate(time.Microsecond)
 
 	headersJSON, err := json.Marshal(t.Headers)
 	if err != nil {

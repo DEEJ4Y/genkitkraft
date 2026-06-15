@@ -27,7 +27,7 @@ func NewPlaygroundRepository(db *sql.DB) *PlaygroundRepository {
 
 func (r *PlaygroundRepository) CreateSession(ctx context.Context, s *playground.Session) error {
 	s.ID = uuid.New().String()
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	s.CreatedAt = now
 	s.UpdatedAt = now
 
@@ -99,7 +99,7 @@ func (r *PlaygroundRepository) DeleteSession(ctx context.Context, id string) err
 func (r *PlaygroundRepository) UpdateSessionTitle(ctx context.Context, id, title string) error {
 	result, err := r.db.ExecContext(ctx,
 		`UPDATE playground_sessions SET title = ?, updated_at = ? WHERE id = ?`,
-		title, time.Now().UTC(), id)
+		title, time.Now().UTC().Truncate(time.Microsecond), id)
 	if err != nil {
 		return apperrors.NewAppErrorf(apperrors.Internal, "updating session title: %v", err)
 	}
@@ -116,7 +116,7 @@ func (r *PlaygroundRepository) UpdateSessionTitle(ctx context.Context, id, title
 
 func (r *PlaygroundRepository) CreateMessage(ctx context.Context, m *playground.Message) error {
 	m.ID = uuid.New().String()
-	m.CreatedAt = time.Now().UTC()
+	m.CreatedAt = time.Now().UTC().Truncate(time.Microsecond)
 
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO playground_messages (id, session_id, role, content, created_at)
