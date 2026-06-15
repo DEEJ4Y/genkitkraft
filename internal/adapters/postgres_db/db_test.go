@@ -4,13 +4,14 @@ package postgresdb_test
 
 import (
 	"database/sql"
+	"os"
+	"strings"
 	"testing"
 
 	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
 	"github.com/DEEJ4Y/genkitkraft/resources/test/containers"
 )
 
-// expectedTables lists every table created by the 11 migrations.
 var expectedTables = []string{
 	"providers",
 	"prompts",
@@ -24,8 +25,6 @@ var expectedTables = []string{
 	"agent_mcp_server_tools",
 	"agent_builtin_tools",
 }
-
-const totalMigrations = 11
 
 func TestOpen(t *testing.T) {
 	url := containers.StartPostgresDSN(t)
@@ -63,15 +62,31 @@ func assertTablesExist(t *testing.T, db *sql.DB) {
 	}
 }
 
+func countMigrationFiles(t *testing.T) int {
+	t.Helper()
+	entries, err := os.ReadDir("migrations")
+	if err != nil {
+		t.Fatalf("reading migrations dir: %v", err)
+	}
+	var n int
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sql") {
+			n++
+		}
+	}
+	return n
+}
+
 func assertMigrationCount(t *testing.T, db *sql.DB) {
 	t.Helper()
 	t.Run("migration_count", func(t *testing.T) {
-		var n int
-		if err := db.QueryRow("SELECT COUNT(*) FROM goose_db_version WHERE is_applied = true AND version_id > 0").Scan(&n); err != nil {
+		want := countMigrationFiles(t)
+		var got int
+		if err := db.QueryRow("SELECT COUNT(*) FROM goose_db_version WHERE is_applied = true AND version_id > 0").Scan(&got); err != nil {
 			t.Fatalf("querying goose_db_version: %v", err)
 		}
-		if n != totalMigrations {
-			t.Errorf("expected %d applied migrations, got %d", totalMigrations, n)
+		if got != want {
+			t.Errorf("expected %d applied migrations, got %d", want, got)
 		}
 	})
 }
