@@ -1,16 +1,53 @@
 services:
+  # postgres:
+  #   image: postgres:16
+  #   environment:
+  #     POSTGRES_USER: genkitkraft
+  #     POSTGRES_PASSWORD: genkitkraft
+  #     POSTGRES_DB: genkitkraft
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U genkitkraft"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_USER: genkitkraft
+      MYSQL_PASSWORD: genkitkraft
+      MYSQL_DATABASE: genkitkraft
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "genkitkraft", "-pgenkitkraft"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   genkitkraft:
     build: .
     ports:
       - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
     environment:
       - PORT=8080
-      - DATABASE_PATH=/data/app.db
+      - DATABASE_PROVIDER=mysql
+      - DATABASE_URL=genkitkraft:genkitkraft@tcp(mysql:3306)/genkitkraft?parseTime=true
       - ENCRYPTION_KEY=your-encryption-key
       # Uncomment and set credentials to enable authentication
       # - AUTH_CREDENTIALS=admin:changeme
-    volumes:
-      - genkitkraft-data:/data
 
 volumes:
-  genkitkraft-data:
+  # postgres-data:
+  mysql-data:
+  # genkitkraft-data:

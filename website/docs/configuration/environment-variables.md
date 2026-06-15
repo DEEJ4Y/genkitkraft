@@ -11,7 +11,9 @@ GenKitKraft is configured entirely through environment variables. No config file
 | Variable | Description | Default | Required |
 |---|---|---|---|
 | `PORT` | HTTP server port | `8080` | No |
+| `DATABASE_PROVIDER` | Database engine: `sqlite`, `postgres`, `mysql`, `mariadb` | `sqlite` | No |
 | `DATABASE_PATH` | Path to SQLite database file | `/data/app.db` | No |
+| `DATABASE_URL` | Connection URL/DSN for non-SQLite providers | — | When `DATABASE_PROVIDER` ≠ `sqlite` |
 | `ENCRYPTION_KEY` | Secret key for encrypting provider API keys at rest | — | **Yes** |
 | `AUTH_CREDENTIALS` | Comma-separated `username:password` pairs | _(unset — auth disabled)_ | No |
 | `PUBLIC_API_KEY` | Comma-separated API keys for deploy endpoints | _(unset — deploy is public)_ | No |
@@ -20,9 +22,64 @@ GenKitKraft is configured entirely through environment variables. No config file
 
 The port the HTTP server listens on. Both the API and the embedded UI are served on this port.
 
+### `DATABASE_PROVIDER`
+
+Selects the database engine. Defaults to `sqlite`.
+
+| Value | Engine | Use case |
+|---|---|---|
+| `sqlite` | SQLite (default) | Single-node, zero-config |
+| `postgres` | PostgreSQL 14+ | Multi-instance, recommended for production |
+| `mysql` | MySQL 8.0+ | Multi-instance |
+| `mariadb` | MariaDB 10.6+ | Multi-instance |
+
+Database migrations run automatically on startup. If a migration fails, the server will not start.
+
+SQLite is write-serialised (`MaxOpenConns=1`) and unsuitable for multiple instances sharing storage. Switch to `postgres`, `mysql`, or `mariadb` for horizontal scaling.
+
+### `DATABASE_URL`
+
+Connection string for non-SQLite providers. Required when `DATABASE_PROVIDER` is anything other than `sqlite` — the server will refuse to start if it is missing.
+
+**PostgreSQL**
+
+```bash
+DATABASE_URL=postgres://user:password@host:5432/dbname?sslmode=require
+```
+
+For local or internal networks without TLS:
+
+```bash
+DATABASE_URL=postgres://user:password@host:5432/dbname?sslmode=disable
+```
+
+**MySQL**
+
+```bash
+# parseTime=true is required for correct timestamp handling
+DATABASE_URL=user:password@tcp(host:3306)/dbname?parseTime=true
+```
+
+**MariaDB**
+
+```bash
+DATABASE_URL=user:password@tcp(host:3306)/dbname?parseTime=true
+```
+
+Non-SQLite providers use a connection pool (25 max open, 5 max idle). Size this according to your database server's `max_connections` limit.
+
 ### `DATABASE_PATH`
 
-File path for the SQLite database. When running in Docker, ensure this path is on a persistent volume (`/data` by default) to prevent data loss on container recreation.
+File path for the SQLite database. Only used when `DATABASE_PROVIDER=sqlite` (the default).
+
+When running in Docker, mount this path on a persistent volume to prevent data loss on container recreation:
+
+```yaml
+environment:
+  - DATABASE_PATH=/data/app.db
+volumes:
+  - genkitkraft-data:/data
+```
 
 ### `ENCRYPTION_KEY`
 

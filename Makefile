@@ -1,4 +1,4 @@
-.PHONY: generate generate-spec generate-go generate-ts build
+.PHONY: generate generate-spec generate-go generate-ts build test-integration
 
 generate: generate-spec generate-go generate-ts
 
@@ -13,3 +13,6 @@ generate-ts:
 
 build:
 	go build ./cmd/server/...
+
+test-integration:
+	go test -tags integration -v ./...

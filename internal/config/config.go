@@ -14,7 +14,9 @@ type Config struct {
 }
 
 type DatabaseConfig struct {
-	Path string
+	Provider string // "sqlite" (default), "postgres", "mysql", "mariadb"
+	Path     string // SQLite only
+	URL      string // required for non-SQLite providers
 }
 
 type EncryptionConfig struct {
@@ -45,7 +47,9 @@ func Load() Config {
 		},
 		Auth: loadAuthConfig(),
 		Database: DatabaseConfig{
-			Path: getEnv("DATABASE_PATH", "/data/app.db"),
+			Provider: getEnv("DATABASE_PROVIDER", "sqlite"),
+			Path:     getEnv("DATABASE_PATH", "/data/app.db"),
+			URL:      os.Getenv("DATABASE_URL"),
 		},
 		Encryption: EncryptionConfig{
 			Key: os.Getenv("ENCRYPTION_KEY"),

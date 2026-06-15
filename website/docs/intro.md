@@ -9,12 +9,13 @@ GenKitKraft is a self-hostable platform for configuring and running LLM agents, 
 
 ## Features
 
-- **Agent Builder UI** — Create agents with custom system instructions
+- **Agent Builder UI** — Create agents with custom system instructions, model selection, temperature, and tool call limits
+- **Built-in Tools** — `web_fetch` fetches any URL and converts it to Markdown; no external setup required
 - **MCP Server** — Manage everything via Model Context Protocol from Claude Desktop, Cursor, or any MCP client
 - **MCP Tool Support** — Connect MCP tool servers to your agents for external integrations
 - **Multi-Provider LLM Access** — Use OpenAI, Anthropic, Google, and more
 - **OpenAI-Compatible API** — Expose configured agents via a standard API
-- **Single Binary Deployment** — Server and UI ship as one binary
+- **Flexible Storage** — SQLite by default (zero external dependencies); PostgreSQL, MySQL, and MariaDB supported for multi-instance deployments
 
 ## Getting Started
 

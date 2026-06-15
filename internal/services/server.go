@@ -20,6 +20,22 @@ import (
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	mcpdiscoveryadapter "github.com/DEEJ4Y/genkitkraft/internal/adapters/mcp_discovery"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
+	mysqlagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_agent"
+	mysqlagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_agent_tool"
+	mysqlhttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_http_tool"
+	mysqlmcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_mcp_server"
+	mysqlplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_playground"
+	mysqlprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_prompt"
+	mysqlprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_provider"
+	mysqldb "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_db"
+	postgresagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_agent"
+	postgresagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_agent_tool"
+	postgreshttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_http_tool"
+	postgresmcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_mcp_server"
+	postgresplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_playground"
+	postgresprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_prompt"
+	postgresperson "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_provider"
+	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
 	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
 	sqliteagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent"
 	sqliteagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent_tool"
@@ -38,8 +54,15 @@ import (
 	httphandler "github.com/DEEJ4Y/genkitkraft/internal/handlers/http_handler"
 	"github.com/DEEJ4Y/genkitkraft/internal/handlers/http_handler/interceptors"
 	mcphandler "github.com/DEEJ4Y/genkitkraft/internal/handlers/mcp_handler"
+	agentrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_repo"
+	agenttoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_tool_repo"
 	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/hasher"
+	httptoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/http_tool_repo"
+	mcpserverrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/mcp_server_repo"
+	playgroundrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/playground_repo"
+	promptrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/prompt_repo"
+	providerrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/provider_repo"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/session"
 )
 
@@ -120,14 +143,60 @@ func NewServer(cfg config.Config) (*Server, error) {
 	}
 
 	// Open database and run migrations
-	db, err := sqlitedb.Open(cfg.Database.Path)
-	if err != nil {
-		return nil, fmt.Errorf("opening database: %w", err)
+	if cfg.Database.Provider != "sqlite" && cfg.Database.URL == "" {
+		return nil, fmt.Errorf("DATABASE_URL is required when DATABASE_PROVIDER is %q", cfg.Database.Provider)
 	}
-	log.Printf("Database opened at %s", cfg.Database.Path)
 
-	// Create provider adapters
-	providerRepo := sqliteprovider.NewProviderRepository(db)
+	var db *sql.DB
+	switch cfg.Database.Provider {
+	case "postgres":
+		db, err = postgresdb.Open(cfg.Database.URL)
+	case "mysql", "mariadb":
+		db, err = mysqldb.Open(cfg.Database.URL)
+	default:
+		db, err = sqlitedb.Open(cfg.Database.Path)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("opening database (%s): %w", cfg.Database.Provider, err)
+	}
+	log.Printf("Database opened (provider: %s)", cfg.Database.Provider)
+
+	var (
+		providerRepo   providerrepo.ProviderRepository
+		promptRepo     promptrepo.PromptRepository
+		agentRepo      agentrepo.AgentRepository
+		httpToolRepo   httptoolrepo.HttpToolRepository
+		mcpServerRepo  mcpserverrepo.McpServerRepository
+		playgroundRepo playgroundrepo.PlaygroundRepository
+		agentToolRepo  agenttoolrepo.AgentToolRepository
+	)
+	switch cfg.Database.Provider {
+	case "postgres":
+		providerRepo = postgresperson.NewProviderRepository(db)
+		promptRepo = postgresprompt.NewPromptRepository(db)
+		agentRepo = postgresagent.NewAgentRepository(db)
+		httpToolRepo = postgreshttptool.NewHttpToolRepository(db)
+		mcpServerRepo = postgresmcpserver.NewMcpServerRepository(db)
+		playgroundRepo = postgresplayground.NewPlaygroundRepository(db)
+		agentToolRepo = postgresagenttool.NewRepository(db)
+	case "mysql", "mariadb":
+		providerRepo = mysqlprovider.NewProviderRepository(db)
+		promptRepo = mysqlprompt.NewPromptRepository(db)
+		agentRepo = mysqlagent.NewAgentRepository(db)
+		httpToolRepo = mysqlhttptool.NewHttpToolRepository(db)
+		mcpServerRepo = mysqlmcpserver.NewMcpServerRepository(db)
+		playgroundRepo = mysqlplayground.NewPlaygroundRepository(db)
+		agentToolRepo = mysqlagenttool.NewRepository(db)
+	default:
+		providerRepo = sqliteprovider.NewProviderRepository(db)
+		promptRepo = sqliteprompt.NewPromptRepository(db)
+		agentRepo = sqliteagent.NewAgentRepository(db)
+		httpToolRepo = sqlitehttptool.NewHttpToolRepository(db)
+		mcpServerRepo = sqlitemcpserver.NewMcpServerRepository(db)
+		playgroundRepo = sqliteplayground.NewPlaygroundRepository(db)
+		agentToolRepo = sqliteagenttool.NewRepository(db)
+	}
+
 	providerTester := httpprovidertester.NewTester()
 
 	// Create provider commands
@@ -156,9 +225,6 @@ func NewServer(cfg config.Config) (*Server, error) {
 		},
 	}
 
-	// Create prompt adapters
-	promptRepo := sqliteprompt.NewPromptRepository(db)
-
 	// Create prompt commands
 	createPromptCmd := commands.NewCreatePromptCommand(promptRepo)
 	updatePromptCmd := commands.NewUpdatePromptCommand(promptRepo)
@@ -181,12 +247,6 @@ func NewServer(cfg config.Config) (*Server, error) {
 		},
 	}
 
-	// Create agent adapters
-	agentRepo := sqliteagent.NewAgentRepository(db)
-
-	// Create HTTP tool adapters
-	httpToolRepo := sqlitehttptool.NewHttpToolRepository(db)
-
 	// Create HTTP tool commands
 	createHttpToolCmd := commands.NewCreateHttpToolCommand(httpToolRepo)
 	updateHttpToolCmd := commands.NewUpdateHttpToolCommand(httpToolRepo)
@@ -208,9 +268,6 @@ func NewServer(cfg config.Config) (*Server, error) {
 			GetHttpTool:   decorators.ApplyLogging(getHttpToolQuery, "GetHttpTool", logger),
 		},
 	}
-
-	// Create MCP server adapters
-	mcpServerRepo := sqlitemcpserver.NewMcpServerRepository(db)
 
 	// Create MCP server commands
 	createMcpServerCmd := commands.NewCreateMcpServerCommand(mcpServerRepo)
@@ -256,9 +313,6 @@ func NewServer(cfg config.Config) (*Server, error) {
 		},
 	}
 
-	// Create agent tool adapters
-	agentToolRepo := sqliteagenttool.NewRepository(db)
-
 	// Create agent tool commands and queries
 	updateAgentToolsCmd := commands.NewUpdateAgentToolsCommand(agentToolRepo)
 	getAgentToolsQuery := queries.NewGetAgentToolsQuery(agentToolRepo)
@@ -280,8 +334,6 @@ func NewServer(cfg config.Config) (*Server, error) {
 		},
 	}
 
-	// Create playground adapters
-	playgroundRepo := sqliteplayground.NewPlaygroundRepository(db)
 	chatProvider := genkitchatprovider.NewChatProvider(cacheStore.Scope("web_fetch"))
 
 	// Create playground commands

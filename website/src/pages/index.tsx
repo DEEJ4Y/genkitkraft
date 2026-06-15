@@ -49,7 +49,7 @@ const FeatureList: FeatureItem[] = [
     icon: '📦',
     title: 'Single Binary Deployment',
     description:
-      'Server and UI ship as one binary. Deploy with Docker in minutes with SQLite storage and zero external dependencies.',
+      'Server and UI ship as one binary. SQLite by default — zero external dependencies. Switch to PostgreSQL, MySQL, or MariaDB for multi-instance deployments.',
   },
 ];
 
