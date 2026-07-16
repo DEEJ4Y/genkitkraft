@@ -14,6 +14,8 @@ GenKitKraft is configured entirely through environment variables. No config file
 | `DATABASE_PROVIDER` | Database engine: `sqlite`, `postgres`, `mysql`, `mariadb` | `sqlite` | No |
 | `DATABASE_PATH` | Path to SQLite database file | `/data/app.db` | No |
 | `DATABASE_URL` | Connection URL/DSN for non-SQLite providers | — | When `DATABASE_PROVIDER` ≠ `sqlite` |
+| `CACHE_PROVIDER` | Cache backend: `memory`, `redis`, `valkey` | `memory` | No |
+| `CACHE_URL` | Connection URL for non-memory providers | — | When `CACHE_PROVIDER` ≠ `memory` |
 | `ENCRYPTION_KEY` | Secret key for encrypting provider API keys at rest | — | **Yes** |
 | `AUTH_CREDENTIALS` | Comma-separated `username:password` pairs | _(unset — auth disabled)_ | No |
 | `PUBLIC_API_KEY` | Comma-separated API keys for deploy endpoints | _(unset — deploy is public)_ | No |
@@ -79,6 +81,57 @@ environment:
   - DATABASE_PATH=/data/app.db
 volumes:
   - genkitkraft-data:/data
+```
+
+### `CACHE_PROVIDER`
+
+Selects the backend for cached state. Defaults to `memory`.
+
+| Value | Backend | Use case |
+|---|---|---|
+| `memory` | In-process (default) | Single-node, zero-config |
+| `redis` | Redis 6+ | Multi-instance |
+| `valkey` | Valkey 7+ | Multi-instance |
+
+The cache holds three kinds of state:
+
+- **Session tokens** (24h TTL) — issued on login and checked on every authenticated request.
+- **Login rate-limit counters** (1 minute window) — at most 5 failed attempts per IP.
+- **Web-fetch responses** — cached results for the built-in web-fetch tool.
+
+With `memory`, all three are process-local. That is correct for a single instance, but **running more than one instance on `memory` breaks authentication**: a login served by instance A is unknown to instance B, so the next request returns `401`. Rate limiting degrades the same way — each instance counts failures separately, so N instances allow roughly N times the intended attempts.
+
+Set `CACHE_PROVIDER` to `redis` or `valkey` for any multi-instance deployment. Both speak the same protocol and are handled identically; the two values exist only to describe your infrastructure.
+
+An unrecognised value is rejected at startup rather than falling back to `memory`, since a silent fallback would reintroduce exactly the problems above.
+
+:::note
+The cache is not durable storage. Losing it logs users out and clears rate-limit counters, but no application data is affected — that lives in the database. Persistence and eviction policy are not required, though an eviction policy of `noeviction` or `volatile-ttl` is recommended so session tokens are not dropped while still valid.
+:::
+
+### `CACHE_URL`
+
+Connection URL for non-memory providers. Required when `CACHE_PROVIDER` is anything other than `memory` — the server refuses to start without it. The connection is verified at startup, so a wrong URL fails immediately rather than at the first request.
+
+**Redis**
+
+```bash
+CACHE_URL=redis://host:6379
+```
+
+With a password, a database index, or TLS:
+
+```bash
+CACHE_URL=redis://:password@host:6379/0
+CACHE_URL=rediss://:password@host:6379/0   # TLS
+```
+
+**Valkey**
+
+Valkey accepts the same `redis://` URLs. The `valkey://` and `valkeys://` schemes are also accepted and treated as equivalent to `redis://` and `rediss://`:
+
+```bash
+CACHE_URL=valkey://host:6379
 ```
 
 ### `ENCRYPTION_KEY`

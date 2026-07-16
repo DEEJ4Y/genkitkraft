@@ -27,3 +27,11 @@ func (s *scopedCache) Set(ctx context.Context, key string, value string, ttl tim
 func (s *scopedCache) Delete(ctx context.Context, key string) error {
 	return s.inner.Delete(ctx, s.prefix+key)
 }
+
+func (s *scopedCache) Increment(ctx context.Context, key string, ttl time.Duration) (int64, error) {
+	return s.inner.Increment(ctx, s.prefix+key, ttl)
+}
+
+func (s *scopedCache) Decrement(ctx context.Context, key string) error {
+	return s.inner.Decrement(ctx, s.prefix+key)
+}
