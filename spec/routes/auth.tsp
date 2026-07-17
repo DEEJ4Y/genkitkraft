@@ -28,6 +28,9 @@ namespace Auth {
   } | {
     @statusCode statusCode: 429;
     @body body: ErrorResponse;
+  } | {
+    @statusCode statusCode: 503;
+    @body body: ErrorResponse;
   };
 
   /** End the current session. Clears the session cookie. */

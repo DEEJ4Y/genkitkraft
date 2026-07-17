@@ -47,9 +47,11 @@ func (d *RateLimitingLoginDecorator) Execute(ctx context.Context, params command
 	if err != nil {
 		// Fail closed. A cache outage already breaks session validation, so
 		// admitting unlimited attempts would surrender brute-force protection
-		// without making the service usable.
+		// without making the service usable. Report it as an outage rather than a
+		// rate limit: this caller is not over its budget, and saying it is would
+		// both mislead the user and hide the outage from whoever is on call.
 		d.logger.Error().Err(err).Str("ip", params.ClientIP).Msg("rate_limit: cache unavailable, denying login")
-		return commands.LoginResult{}, errors.NewAppError(errors.TooManyRequests, "too many login attempts, try again later")
+		return commands.LoginResult{}, errors.NewAppError(errors.Unavailable, "login is temporarily unavailable, try again later")
 	}
 	if count > rateLimitMaxFails {
 		return commands.LoginResult{}, errors.NewAppError(errors.TooManyRequests, "too many login attempts, try again later")

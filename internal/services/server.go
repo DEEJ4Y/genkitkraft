@@ -84,7 +84,11 @@ type Server struct {
 	chatProvider   chatprovider.ChatProvider
 	sessionStore   session.Store
 	cacheStore     cache.Store
-	db             *sql.DB
+	// webFetchStore backs the built-in web_fetch tool. It is deliberately a
+	// separate store from cacheStore — see the wiring below — and is held here so
+	// that separation is assertable rather than merely intended.
+	webFetchStore cache.Store
+	db            *sql.DB
 }
 
 // NewServer wires all dependencies and returns a ready-to-start Server.
@@ -359,7 +363,16 @@ func NewServer(cfg config.Config) (*Server, error) {
 		},
 	}
 
-	chatProvider := genkitchatprovider.NewChatProvider(cacheStore.Scope("web_fetch"))
+	// web_fetch is always backed by a dedicated, process-local store — never the
+	// configured one, and not even when that happens to be the in-memory adapter.
+	// Its keys are URLs chosen by the model and its values are whole fetched pages,
+	// so sharing a store would let agent traffic evict session tokens or exhaust the
+	// cache that authentication depends on. Keeping it independent of CACHE_PROVIDER
+	// means the isolation holds under every configuration; the cost is one extra
+	// store and a cold fetch per instance, and a stale cached page is harmless in a
+	// way a dropped session is not.
+	webFetchStore := inmemorycache.NewCache(10 * time.Minute)
+	chatProvider := genkitchatprovider.NewChatProvider(webFetchStore.Scope("web_fetch"))
 
 	// Create playground commands
 	createSessionCmd := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)
@@ -401,6 +414,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 		chatProvider:   chatProvider,
 		sessionStore:   sessionStore,
 		cacheStore:     cacheStore,
+		webFetchStore:  webFetchStore,
 		db:             db,
 	}, nil
 }

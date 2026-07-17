@@ -40,6 +40,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Models.ErrorResponse'
+        '503':
+          description: Service unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
       tags:
         - Auth
       requestBody:

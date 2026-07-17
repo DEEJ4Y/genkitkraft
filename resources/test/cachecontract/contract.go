@@ -189,10 +189,26 @@ func Run(t *testing.T, newStore func(t *testing.T) cache.Store) {
 		}
 	})
 
+	// Asserting only a nil error is not enough: it passes on a backend whose
+	// Decrement creates the key (Redis DECR creates it at -1), which both invents a
+	// counter and leaves it with no expiry — a key that never expires, one per
+	// affected IP. The absence has to be asserted directly.
 	t.Run("DecrementAbsentIsNoOp", func(t *testing.T) {
 		c := newStore(t).Scope("ns")
-		if err := c.Decrement(context.Background(), "absent"); err != nil {
+		ctx := context.Background()
+
+		if err := c.Decrement(ctx, "absent"); err != nil {
 			t.Errorf("Decrement on absent key: %v", err)
+		}
+		if _, ok := c.Get(ctx, "absent"); ok {
+			t.Error("Decrement on an absent key created it")
+		}
+		n, err := c.Increment(ctx, "absent", time.Minute)
+		if err != nil {
+			t.Fatalf("Increment: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Increment after Decrement on an absent key = %d, want 1", n)
 		}
 	})
 
@@ -217,16 +233,102 @@ func Run(t *testing.T, newStore func(t *testing.T) cache.Store) {
 		}
 	})
 
-	// Counters and strings share a keyspace; each adapter must keep Get's contract
-	// (a string or a miss) rather than panicking on a counter value.
-	t.Run("GetOnCounterDoesNotPanic", func(t *testing.T) {
+	// Counters and strings share a keyspace. Redis cannot distinguish them — INCR
+	// and SET both produce a string — so the decimal form is the only behaviour
+	// both adapters can offer. Leaving it unspecified would also make "Get missed"
+	// unreliable as proof that a key is absent, which DecrementAbsentIsNoOp needs.
+	t.Run("GetOnCounterReturnsDecimalString", func(t *testing.T) {
 		c := newStore(t).Scope("ns")
 		ctx := context.Background()
 
-		if _, err := c.Increment(ctx, "counter", time.Minute); err != nil {
+		for i := 0; i < 3; i++ {
+			if _, err := c.Increment(ctx, "counter", time.Minute); err != nil {
+				t.Fatalf("Increment: %v", err)
+			}
+		}
+		got, ok := c.Get(ctx, "counter")
+		if !ok {
+			t.Fatal("Get on a counter: want found, got miss")
+		}
+		if got != "3" {
+			t.Errorf("Get on a counter = %q, want %q", got, "3")
+		}
+	})
+
+	// A zero TTL means "no expiration" (see cache.Cache). Redis deletes a key given
+	// a non-positive expiry, so a PEXPIRE applied unconditionally would drop the
+	// counter on every create — pinning it at 1 and stopping a rate limit built on
+	// this from ever firing.
+	t.Run("IncrementWithZeroTTLDoesNotExpire", func(t *testing.T) {
+		c := newStore(t).Scope("ns")
+		ctx := context.Background()
+
+		for i := int64(1); i <= 3; i++ {
+			n, err := c.Increment(ctx, "counter", 0)
+			if err != nil {
+				t.Fatalf("Increment %d: %v", i, err)
+			}
+			if n != i {
+				t.Fatalf("Increment #%d with a zero TTL = %d, want %d", i, n, i)
+			}
+		}
+		// A fixed sleep is safe here: the assertion is that the counter SURVIVES, so
+		// a slow machine only makes survival more certain. Do not turn this into an
+		// eventually() poll — the failure mode is one-directional.
+		time.Sleep(200 * time.Millisecond)
+		n, err := c.Increment(ctx, "counter", 0)
+		if err != nil {
 			t.Fatalf("Increment: %v", err)
 		}
-		c.Get(ctx, "counter") // value is unspecified; must not panic
+		if n != 4 {
+			t.Errorf("Increment after a pause with a zero TTL = %d, want 4 (the counter expired)", n)
+		}
+	})
+
+	// A non-counter under a counter key can only come from a bug or an outside
+	// writer, but it has to be recoverable: on Redis a leftover string may carry no
+	// TTL, so nothing would ever clear it and the caller would be stuck for good.
+	t.Run("IncrementRecoversFromNonCounterValue", func(t *testing.T) {
+		c := newStore(t).Scope("ns")
+		ctx := context.Background()
+
+		if err := c.Set(ctx, "counter", "not-a-number", time.Minute); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+		n, err := c.Increment(ctx, "counter", time.Minute)
+		if err != nil {
+			t.Fatalf("Increment over a non-counter value: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("Increment over a non-counter value = %d, want 1 (a fresh counter)", n)
+		}
+		n, err = c.Increment(ctx, "counter", time.Minute)
+		if err != nil {
+			t.Fatalf("Increment: %v", err)
+		}
+		if n != 2 {
+			t.Errorf("second Increment after recovery = %d, want 2", n)
+		}
+	})
+
+	// The replacement counter must carry the TTL, or healing a corrupt key would
+	// just trade a stuck value for one that never expires.
+	t.Run("IncrementRecoveryAppliesTTL", func(t *testing.T) {
+		c := newStore(t).Scope("ns")
+		ctx := context.Background()
+
+		if err := c.Set(ctx, "counter", "not-a-number", time.Minute); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+		if _, err := c.Increment(ctx, "counter", 100*time.Millisecond); err != nil {
+			t.Fatalf("Increment: %v", err)
+		}
+		if !eventually(t, 2*time.Second, func() bool {
+			n, err := c.Increment(ctx, "counter", 100*time.Millisecond)
+			return err == nil && n == 1
+		}) {
+			t.Error("counter healed from a non-counter value never expired; the TTL was not applied on reset")
+		}
 	})
 }
 

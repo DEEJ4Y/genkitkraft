@@ -37,7 +37,10 @@ services:
     ports:
       - "6379:6379"
     # Sessions and rate-limit counters are not durable state, so no volume is
-    # mounted — a restart just means logging in again.
+    # mounted — a restart just means logging in again. No maxmemory is set, so the
+    # eviction policy never comes into play; see the deployment docs before setting
+    # one, as every key here has a TTL and volatile-ttl would evict rate-limit
+    # counters first.
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
       interval: 5s

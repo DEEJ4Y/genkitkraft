@@ -20,9 +20,11 @@ type DatabaseConfig struct {
 	URL      string // required for non-SQLite providers
 }
 
-// CacheConfig selects the backing store for sessions, login rate limiting, and
-// web-fetch caching. The default is process-local; multi-instance deployments
-// need a shared provider so state is visible to every instance.
+// CacheConfig selects the backing store for sessions and login rate limiting.
+// The default is process-local; multi-instance deployments need a shared provider
+// so state is visible to every instance. Web-fetch results are deliberately not
+// covered by this setting — they stay process-local so agent tool traffic cannot
+// exhaust the cache that authentication depends on.
 type CacheConfig struct {
 	Provider string // "memory" (default), "redis", "valkey"
 	URL      string // required for non-memory providers

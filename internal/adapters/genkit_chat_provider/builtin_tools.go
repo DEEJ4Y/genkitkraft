@@ -82,10 +82,11 @@ func fetchAsMarkdown(rawURL string) (string, error) {
 		return fmt.Sprintf("Fetch failed with status %d", resp.StatusCode), nil
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
 		return "", fmt.Errorf("reading body: %w", err)
 	}
+	truncated := len(body) == maxResponseBytes
 
 	converter := md.NewConverter("", true, nil)
 	markdown, err := converter.ConvertString(string(body))
@@ -95,6 +96,12 @@ func fetchAsMarkdown(rawURL string) (string, error) {
 
 	if strings.TrimSpace(markdown) == "" {
 		return "No content received. Page may be dynamically rendered.", nil
+	}
+
+	if truncated {
+		// Say so explicitly: this text goes to a model that will summarize it, and a
+		// silently truncated article reads as a complete one.
+		markdown += "\n\n[Content truncated: the page exceeded the 1MB fetch limit.]"
 	}
 
 	return markdown, nil

@@ -143,7 +143,7 @@ The `parseTime=true` parameter is required in the MySQL/MariaDB DSN for correct 
 
 ## Shared Cache
 
-Session tokens, login rate-limit counters, and web-fetch results are cached in-process by default. Running more than one instance that way breaks authentication — a login handled by one instance is unknown to the others, so subsequent requests return `401`.
+Session tokens and login rate-limit counters are cached in-process by default. Running more than one instance that way breaks authentication — a login handled by one instance is unknown to the others, so subsequent requests return `401`.
 
 Point every instance at one Redis or Valkey server to fix that. Add the service alongside your database:
 
@@ -169,7 +169,7 @@ services:
 
   cache:
     image: valkey/valkey:8-alpine
-    command: ["valkey-server", "--maxmemory-policy", "volatile-ttl"]
+    command: ["valkey-server", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
@@ -180,7 +180,11 @@ services:
 
 Swap the image for `redis:7-alpine` (and the healthcheck for `redis-cli ping`) to use Redis instead — set `CACHE_PROVIDER: redis` and a `redis://` URL. The two are interchangeable.
 
-No volume is mounted: the cache holds no durable data, and losing it only logs users out. Do configure an eviction policy of `volatile-ttl` or `noeviction` so valid session tokens are not evicted under memory pressure.
+No volume is mounted: the cache holds no durable data, and losing it only logs users out.
+
+`noeviction` is deliberate. Every key here already has a TTL — 24h for sessions, 1 minute for rate-limit counters — so `volatile-ttl` protects nothing, and because it evicts the shortest TTLs first it would drop rate-limit counters before sessions, quietly resetting brute-force protection under memory pressure. With `noeviction` a full cache keeps serving reads, so existing sessions stay valid, and fails writes, so new logins return `503` rather than users being silently logged out. See [`CACHE_PROVIDER`](/docs/configuration/environment-variables) for sizing.
+
+Results from the built-in web-fetch tool are **not** stored here — they stay in a process-local cache, so agent tool traffic cannot exhaust the cache that authentication depends on.
 
 The connection is checked at startup, so a misconfigured `CACHE_URL` fails immediately rather than after traffic arrives.
 

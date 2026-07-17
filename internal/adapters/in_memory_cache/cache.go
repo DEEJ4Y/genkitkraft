@@ -3,6 +3,7 @@ package inmemorycache
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -50,8 +51,18 @@ func (r *rawCache) Get(_ context.Context, key string) (string, bool) {
 	if !found {
 		return "", false
 	}
-	str, ok := val.(string)
-	return str, ok
+	switch v := val.(type) {
+	case string:
+		return v, true
+	case int64:
+		// Counters read back as their decimal form. Redis keeps INCR counters and
+		// SET strings in one string keyspace and cannot tell them apart, so matching
+		// that here is what keeps the two adapters interchangeable — and it makes a
+		// Get miss reliable proof that a key is absent.
+		return strconv.FormatInt(v, 10), true
+	default:
+		return "", false
+	}
 }
 
 func (r *rawCache) Set(_ context.Context, key string, value string, ttl time.Duration) error {
@@ -68,21 +79,21 @@ func (r *rawCache) Increment(_ context.Context, key string, ttl time.Duration) (
 	r.owner.counterMu.Lock()
 	defer r.owner.counterMu.Unlock()
 
-	// IncrementInt64 mutates the value in place, so the entry keeps the expiry it
-	// was created with. It errors when the key is absent, expired, or holds a
-	// non-int64 — distinguish the last case, since that is a real bug rather than
-	// a first increment.
-	if existing, found := r.owner.store.Get(key); found {
-		if _, ok := existing.(int64); !ok {
-			return 0, fmt.Errorf("cache: key %q holds %T, not a counter", key, existing)
-		}
-		n, err := r.owner.store.IncrementInt64(key, 1)
-		if err != nil {
-			return 0, fmt.Errorf("cache: incrementing %q: %w", key, err)
-		}
+	// Increment in place first. A found-check beforehand would be a TOCTOU:
+	// counterMu serializes callers but not go-cache's time-based expiry, so an
+	// entry can lapse between the check and the increment — and IncrementInt64 runs
+	// its own expiry check, so it would then report "not found" and the limiter
+	// would reject a legitimate attempt right at the window boundary.
+	//
+	// In-place mutation also means the entry keeps the expiry it was created with,
+	// so the window runs from the first increment rather than sliding forward.
+	if n, err := r.owner.store.IncrementInt64(key, 1); err == nil {
 		return n, nil
 	}
-
+	// IncrementInt64 fails when the key is absent, expired, or holds a non-int64.
+	// All three start a fresh window: for the first two that is the contract, and
+	// for the last it is self-healing — a stuck non-counter has no way to clear
+	// itself, so erroring would lock the IP out for good.
 	r.owner.store.Set(key, int64(1), ttl)
 	return 1, nil
 }
@@ -91,11 +102,14 @@ func (r *rawCache) Decrement(_ context.Context, key string) error {
 	r.owner.counterMu.Lock()
 	defer r.owner.counterMu.Unlock()
 
-	// A missing key means the window already expired; there is nothing to undo.
-	if _, found := r.owner.store.Get(key); !found {
-		return nil
-	}
 	if _, err := r.owner.store.DecrementInt64(key, 1); err != nil {
+		// DecrementInt64 fails when the key is absent, expired, or holds a non-int64.
+		// A missing key means the window already expired and there is nothing to
+		// undo. Check after the fact rather than before, so expiry cannot race the
+		// check; if the key lapsed in between, the no-op is correct anyway.
+		if _, found := r.owner.store.Get(key); !found {
+			return nil
+		}
 		return fmt.Errorf("cache: decrementing %q: %w", key, err)
 	}
 	return nil

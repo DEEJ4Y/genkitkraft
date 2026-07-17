@@ -71,6 +71,17 @@ func assertTooManyRequests(t *testing.T, err error) {
 	}
 }
 
+func assertUnavailable(t *testing.T, err error) {
+	t.Helper()
+	appErr, ok := errors.IsAppError(err)
+	if !ok {
+		t.Fatalf("want *errors.AppError, got %T: %v", err, err)
+	}
+	if appErr.Code() != errors.Unavailable {
+		t.Errorf("error code = %v, want %v (Unavailable)", appErr.Code(), errors.Unavailable)
+	}
+}
+
 func TestAllowsUpToTheLimitThenBlocks(t *testing.T) {
 	inner := &stubLogin{err: badCredentials()}
 	d := newDecorator(inner, newSharedCache(t).Scope("rate_limit"))
@@ -217,12 +228,14 @@ func (f *failingCache) Increment(context.Context, string, time.Duration) (int64,
 func (f *failingCache) Decrement(context.Context, string) error { return f.err }
 
 // With the cache down, sessions cannot be validated anyway, so the limiter fails
-// closed rather than handing out unlimited attempts.
+// closed rather than handing out unlimited attempts. It must say so honestly: the
+// caller is not over its budget, and reporting a rate limit would both mislead the
+// user and disguise an outage as ordinary throttling.
 func TestCacheFailureDeniesLogin(t *testing.T) {
 	inner := &stubLogin{}
 	d := newDecorator(inner, &failingCache{err: io.ErrUnexpectedEOF})
 
-	assertTooManyRequests(t, login(t, d))
+	assertUnavailable(t, login(t, d))
 	if inner.calls != 0 {
 		t.Errorf("inner called %d times while the cache was down, want 0", inner.calls)
 	}

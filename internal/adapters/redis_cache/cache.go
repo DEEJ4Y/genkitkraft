@@ -25,12 +25,42 @@ const pingTimeout = 5 * time.Second
 // created. INCR and PEXPIRE must run as one unit: as two round trips, a crash or
 // a lost connection between them leaves a counter with no expiry, which would
 // lock an IP out permanently.
+//
+// A non-positive TTL means "no expiration" (see cache.Cache), so PEXPIRE is
+// skipped in that case — Redis deletes a key given a non-positive expiry, which
+// would drop the counter on every create, pin it at 1, and stop the limiter from
+// ever firing.
+//
+// INCR runs through pcall because the key may hold a non-counter. That can only
+// come from a bug or an outside writer, but it has to be recoverable: a leftover
+// string may carry no TTL, so nothing would ever clear it and erroring would lock
+// the IP out for good. Reset it and start a fresh window instead.
 var incrementScript = redis.NewScript(`
-local n = redis.call('INCR', KEYS[1])
-if n == 1 then
-  redis.call('PEXPIRE', KEYS[1], ARGV[1])
+local ttl = tonumber(ARGV[1])
+local n = redis.pcall('INCR', KEYS[1])
+if type(n) == 'table' and n.err then
+  if ttl > 0 then
+    redis.call('SET', KEYS[1], 1, 'PX', ttl)
+  else
+    redis.call('SET', KEYS[1], 1)
+  end
+  return 1
+end
+if n == 1 and ttl > 0 then
+  redis.call('PEXPIRE', KEYS[1], ttl)
 end
 return n
+`)
+
+// decrementScript decrements only an existing counter. A plain DECR creates a
+// missing key at -1 with no expiry — a key that never expires, one per affected
+// IP — but the port makes Decrement a no-op on an absent key. EXISTS and DECR run
+// as one script, so this is not a check-then-decrement race.
+var decrementScript = redis.NewScript(`
+if redis.call('EXISTS', KEYS[1]) == 0 then
+  return 0
+end
+return redis.call('DECR', KEYS[1])
 `)
 
 // Cache is the Redis-backed backing store. It does not implement cache.Cache
@@ -117,5 +147,8 @@ func (r *rawCache) Increment(ctx context.Context, key string, ttl time.Duration)
 }
 
 func (r *rawCache) Decrement(ctx context.Context, key string) error {
-	return r.client.Decr(ctx, key).Err()
+	if err := decrementScript.Run(ctx, r.client, []string{key}).Err(); err != nil {
+		return fmt.Errorf("cache: decrementing %q: %w", key, err)
+	}
+	return nil
 }

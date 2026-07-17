@@ -93,20 +93,29 @@ Selects the backend for cached state. Defaults to `memory`.
 | `redis` | Redis 6+ | Multi-instance |
 | `valkey` | Valkey 7+ | Multi-instance |
 
-The cache holds three kinds of state:
+The cache holds two kinds of state:
 
 - **Session tokens** (24h TTL) — issued on login and checked on every authenticated request.
 - **Login rate-limit counters** (1 minute window) — at most 5 failed attempts per IP.
-- **Web-fetch responses** — cached results for the built-in web-fetch tool.
 
-With `memory`, all three are process-local. That is correct for a single instance, but **running more than one instance on `memory` breaks authentication**: a login served by instance A is unknown to instance B, so the next request returns `401`. Rate limiting degrades the same way — each instance counts failures separately, so N instances allow roughly N times the intended attempts.
+Web-fetch results are **not** kept here. The built-in web-fetch tool caches into a process-local store regardless of `CACHE_PROVIDER`, so agent tool traffic can never evict session tokens or consume the shared cache's memory. Each instance keeps its own web-fetch cache; a repeated fetch on a cold instance simply fetches again.
+
+With `memory`, both are process-local. That is correct for a single instance, but **running more than one instance on `memory` breaks authentication**: a login served by instance A is unknown to instance B, so the next request returns `401`. Rate limiting degrades the same way — each instance counts failures separately, so N instances allow roughly N times the intended attempts.
 
 Set `CACHE_PROVIDER` to `redis` or `valkey` for any multi-instance deployment. Both speak the same protocol and are handled identically; the two values exist only to describe your infrastructure.
 
 An unrecognised value is rejected at startup rather than falling back to `memory`, since a silent fallback would reintroduce exactly the problems above.
 
 :::note
-The cache is not durable storage. Losing it logs users out and clears rate-limit counters, but no application data is affected — that lives in the database. Persistence and eviction policy are not required, though an eviction policy of `noeviction` or `volatile-ttl` is recommended so session tokens are not dropped while still valid.
+The cache is not durable storage. Losing it logs users out and clears rate-limit counters, but no application data is affected — that lives in the database. Persistence is not required.
+
+**Use `noeviction`** (the Redis/Valkey default) and size `maxmemory` for your expected number of concurrent sessions.
+
+`volatile-ttl` offers session tokens no protection here: every key GenKitKraft writes has a TTL, so the "only evict volatile keys" carve-out excludes nothing and the policy evicts from the whole keyspace. It is in fact the worse choice — `volatile-ttl` evicts the shortest remaining TTL first, and the shortest TTLs are the 1-minute rate-limit counters. Under memory pressure it quietly resets brute-force protection before it starts dropping sessions, and then drops sessions too.
+
+With `noeviction`, reads keep working when the cache is full, so existing sessions stay valid; writes fail, so new logins return `503` until memory frees up. That is a visible, honest failure rather than a silent one.
+
+Sizing: a session is roughly 200 bytes including overhead, so even `maxmemory 64mb` holds far more concurrent sessions than a self-hosted instance is likely to see.
 :::
 
 ### `CACHE_URL`
