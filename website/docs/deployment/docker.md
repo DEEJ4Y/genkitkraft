@@ -53,7 +53,14 @@ Then: `docker compose up -d`
 
 By default, GenKitKraft stores all data in a SQLite database at `/data/app.db`. Mount a Docker volume or bind mount to `/data` to persist data across container restarts.
 
-For multi-instance deployments, switch to PostgreSQL, MySQL, or MariaDB using the `DATABASE_PROVIDER` and `DATABASE_URL` environment variables. See [Environment Variables](/docs/configuration/environment-variables) for the full reference.
+Multi-instance deployments need two shared backends, not one:
+
+- **A shared database** — PostgreSQL, MySQL, or MariaDB via `DATABASE_PROVIDER` and `DATABASE_URL`.
+- **A shared cache** — Redis or Valkey via `CACHE_PROVIDER` and `CACHE_URL`. See [Shared Cache](#shared-cache) below.
+
+Both are required. A shared database alone still leaves sessions process-local, so logins will appear to fail at random as requests land on different instances.
+
+See [Environment Variables](/docs/configuration/environment-variables) for the full reference.
 
 ### PostgreSQL
 
@@ -133,6 +140,53 @@ volumes:
 :::note parseTime=true
 The `parseTime=true` parameter is required in the MySQL/MariaDB DSN for correct timestamp handling.
 :::
+
+## Shared Cache
+
+Session tokens and login rate-limit counters are cached in-process by default. Running more than one instance that way breaks authentication — a login handled by one instance is unknown to the others, so subsequent requests return `401`.
+
+Point every instance at one Redis or Valkey server to fix that. Add the service alongside your database:
+
+```yaml
+services:
+  genkitkraft:
+    image: ghcr.io/deej4y/genkitkraft:latest
+    ports:
+      - "8080:8080"
+    environment:
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      AUTH_CREDENTIALS: ${AUTH_CREDENTIALS}
+      DATABASE_PROVIDER: postgres
+      DATABASE_URL: postgres://genkitkraft:${DB_PASSWORD}@db:5432/genkitkraft?sslmode=disable
+      CACHE_PROVIDER: valkey   # or redis
+      CACHE_URL: valkey://cache:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    restart: unless-stopped
+
+  cache:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+```
+
+Swap the image for `redis:7-alpine` (and the healthcheck for `redis-cli ping`) to use Redis instead — set `CACHE_PROVIDER: redis` and a `redis://` URL. The two are interchangeable.
+
+No volume is mounted: the cache holds no durable data, and losing it only logs users out.
+
+`noeviction` is deliberate. Every key here already has a TTL — 24h for sessions, 1 minute for rate-limit counters — so `volatile-ttl` protects nothing, and because it evicts the shortest TTLs first it would drop rate-limit counters before sessions, quietly resetting brute-force protection under memory pressure. With `noeviction` a full cache keeps serving reads, so existing sessions stay valid, and fails writes, so new logins return `503` rather than users being silently logged out. See [`CACHE_PROVIDER`](/docs/configuration/environment-variables) for sizing.
+
+Results from the built-in web-fetch tool are **not** stored here — they stay in a process-local cache, so agent tool traffic cannot exhaust the cache that authentication depends on.
+
+The connection is checked at startup, so a misconfigured `CACHE_URL` fails immediately rather than after traffic arrives.
 
 ## Health Checks
 

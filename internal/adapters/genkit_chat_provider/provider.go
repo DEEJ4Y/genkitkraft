@@ -30,6 +30,11 @@ var _ chatprovider.ChatProvider = (*ChatProvider)(nil)
 
 var httpClient = &http.Client{Timeout: 30 * time.Second}
 
+// maxResponseBytes caps how much of an HTTP response body the tools will read.
+// These bodies are not under our control — web_fetch's URL is chosen by the model
+// itself — so the read is bounded rather than trusted.
+const maxResponseBytes = 1 << 20 // 1MB
+
 // ChatProvider implements chatprovider.ChatProvider using the Genkit Go SDK.
 type ChatProvider struct {
 	cache cache.Cache
@@ -428,7 +433,7 @@ func executeHttpTool(ctx context.Context, ht chatprovider.HttpToolDefinition, ar
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1MB limit
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
 		return nil, fmt.Errorf("reading HTTP tool response: %w", err)
 	}

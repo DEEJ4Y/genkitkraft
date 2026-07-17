@@ -2,8 +2,6 @@ package decorators
 
 import (
 	"context"
-	"encoding/json"
-	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -22,12 +20,18 @@ const (
 // Compile-time check that RateLimitingLoginDecorator implements the login executor interface.
 var _ executors.ExecutorWithReturn[commands.LoginParams, commands.LoginResult] = (*RateLimitingLoginDecorator)(nil)
 
-// RateLimitingLoginDecorator wraps a login executor with per-IP rate limiting.
+// RateLimitingLoginDecorator wraps a login executor with per-IP rate limiting:
+// at most rateLimitMaxFails failed attempts per rateLimitWindow.
+//
+// Counting is delegated to the cache port's atomic Increment, so when the cache
+// is shared (Redis/Valkey) the limit holds across every instance rather than
+// per-process. This is a fixed window — it resets rateLimitWindow after the
+// first attempt, not on a rolling basis — which permits a brief burst across a
+// window boundary but keeps the sustained rate at rateLimitMaxFails per window.
 type RateLimitingLoginDecorator struct {
 	inner  executors.ExecutorWithReturn[commands.LoginParams, commands.LoginResult]
 	cache  cache.Cache
 	logger zerolog.Logger
-	mu     sync.Mutex
 }
 
 func NewRateLimitingLoginDecorator(
@@ -39,19 +43,28 @@ func NewRateLimitingLoginDecorator(
 }
 
 func (d *RateLimitingLoginDecorator) Execute(ctx context.Context, params commands.LoginParams) (commands.LoginResult, error) {
-	ts, ok := d.checkAndRecord(ctx, params.ClientIP)
-	if !ok {
+	count, err := d.cache.Increment(ctx, params.ClientIP, rateLimitWindow)
+	if err != nil {
+		// Fail closed. A cache outage already breaks session validation, so
+		// admitting unlimited attempts would surrender brute-force protection
+		// without making the service usable. Report it as an outage rather than a
+		// rate limit: this caller is not over its budget, and saying it is would
+		// both mislead the user and hide the outage from whoever is on call.
+		d.logger.Error().Err(err).Str("ip", params.ClientIP).Msg("rate_limit: cache unavailable, denying login")
+		return commands.LoginResult{}, errors.NewAppError(errors.Unavailable, "login is temporarily unavailable, try again later")
+	}
+	if count > rateLimitMaxFails {
 		return commands.LoginResult{}, errors.NewAppError(errors.TooManyRequests, "too many login attempts, try again later")
 	}
 
 	completed := false
 	defer func() {
 		if !completed {
-			// inner.Execute panicked; remove only the slot we pre-recorded so prior
-			// failures for this IP remain counted.
-			d.mu.Lock()
-			d.removeAttempt(ctx, params.ClientIP, ts)
-			d.mu.Unlock()
+			// inner.Execute panicked; give back only the attempt we just counted
+			// so prior failures for this IP remain counted.
+			if err := d.cache.Decrement(ctx, params.ClientIP); err != nil {
+				d.logger.Warn().Err(err).Str("ip", params.ClientIP).Msg("rate_limit: releasing attempt after panic failed")
+			}
 		}
 	}()
 
@@ -63,82 +76,8 @@ func (d *RateLimitingLoginDecorator) Execute(ctx context.Context, params command
 	}
 
 	// Successful login — clear the failure count for this IP.
-	d.mu.Lock()
-	_ = d.cache.Delete(ctx, params.ClientIP)
-	d.mu.Unlock()
+	if err := d.cache.Delete(ctx, params.ClientIP); err != nil {
+		d.logger.Warn().Err(err).Str("ip", params.ClientIP).Msg("rate_limit: clearing count after successful login failed")
+	}
 	return result, nil
-}
-
-// checkAndRecord atomically checks whether the IP is under the rate limit and,
-// if so, pre-records the attempt. Returns the recorded timestamp and true if
-// allowed, or zero and false if the limit is already reached.
-// The lock is not held during inner.Execute so slow operations (e.g. bcrypt) do
-// not block concurrent requests from other IPs.
-func (d *RateLimitingLoginDecorator) checkAndRecord(ctx context.Context, ip string) (int64, bool) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	attempts := d.getAttempts(ctx, ip)
-	attempts = prune(attempts)
-	if len(attempts) >= rateLimitMaxFails {
-		return 0, false
-	}
-	ts := time.Now().UnixNano()
-	attempts = append(attempts, ts)
-	d.setAttempts(ctx, ip, attempts)
-	return ts, true
-}
-
-// removeAttempt removes the single entry with timestamp ts for ip. Called on
-// panic to undo the pre-recorded slot without erasing prior failures.
-func (d *RateLimitingLoginDecorator) removeAttempt(ctx context.Context, ip string, ts int64) {
-	attempts := d.getAttempts(ctx, ip)
-	out := attempts[:0]
-	removed := false
-	for _, t := range attempts {
-		if !removed && t == ts {
-			removed = true
-			continue
-		}
-		out = append(out, t)
-	}
-	if len(out) == 0 {
-		_ = d.cache.Delete(ctx, ip)
-	} else {
-		d.setAttempts(ctx, ip, out)
-	}
-}
-
-func (d *RateLimitingLoginDecorator) getAttempts(ctx context.Context, ip string) []int64 {
-	val, ok := d.cache.Get(ctx, ip)
-	if !ok {
-		return nil
-	}
-	var attempts []int64
-	if err := json.Unmarshal([]byte(val), &attempts); err != nil {
-		d.logger.Warn().Err(err).Str("ip", ip).Msg("rate_limit: corrupt attempts data, resetting count")
-		return nil
-	}
-	return attempts
-}
-
-func (d *RateLimitingLoginDecorator) setAttempts(ctx context.Context, ip string, attempts []int64) {
-	data, err := json.Marshal(attempts)
-	if err != nil {
-		return
-	}
-	_ = d.cache.Set(ctx, ip, string(data), rateLimitWindow)
-}
-
-// prune removes attempt timestamps that fall outside the rolling window.
-func prune(attempts []int64) []int64 {
-	cutoff := time.Now().Add(-rateLimitWindow).UnixNano()
-	i := 0
-	for _, t := range attempts {
-		if t > cutoff {
-			attempts[i] = t
-			i++
-		}
-	}
-	return attempts[:i]
 }

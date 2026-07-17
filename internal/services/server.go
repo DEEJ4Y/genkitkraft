@@ -3,6 +3,7 @@ package services
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	mcpdiscoveryadapter "github.com/DEEJ4Y/genkitkraft/internal/adapters/mcp_discovery"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
+	rediscache "github.com/DEEJ4Y/genkitkraft/internal/adapters/redis_cache"
 	mysqlagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_agent"
 	mysqlagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_agent_tool"
 	mysqlhttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_http_tool"
@@ -63,6 +65,7 @@ import (
 	playgroundrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/playground_repo"
 	promptrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/prompt_repo"
 	providerrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/provider_repo"
+	"github.com/DEEJ4Y/genkitkraft/internal/ports/cache"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/session"
 )
 
@@ -80,7 +83,12 @@ type Server struct {
 	builtInToolApp *app.BuiltInToolApp
 	chatProvider   chatprovider.ChatProvider
 	sessionStore   session.Store
-	db             *sql.DB
+	cacheStore     cache.Store
+	// webFetchStore backs the built-in web_fetch tool. It is deliberately a
+	// separate store from cacheStore — see the wiring below — and is held here so
+	// that separation is assertable rather than merely intended.
+	webFetchStore cache.Store
+	db            *sql.DB
 }
 
 // NewServer wires all dependencies and returns a ready-to-start Server.
@@ -96,7 +104,28 @@ func NewServer(cfg config.Config) (*Server, error) {
 	cfg.Encryption.Key = ""
 
 	// Create shared cache store — all scoped caches derive from this single backing store.
-	cacheStore := inmemorycache.NewCache(10 * time.Minute)
+	if cfg.Cache.Provider != "memory" && cfg.Cache.URL == "" {
+		return nil, fmt.Errorf("CACHE_URL is required when CACHE_PROVIDER is %q", cfg.Cache.Provider)
+	}
+
+	var cacheStore cache.Store
+	switch cfg.Cache.Provider {
+	case "redis", "valkey":
+		// Valkey is protocol-compatible with Redis, so both share one adapter.
+		redisStore, err := rediscache.NewCache(cfg.Cache.URL)
+		if err != nil {
+			return nil, fmt.Errorf("opening cache (%s): %w", cfg.Cache.Provider, err)
+		}
+		cacheStore = redisStore
+	case "memory":
+		cacheStore = inmemorycache.NewCache(10 * time.Minute)
+	default:
+		// Deliberately not falling back to memory: a typo would silently give each
+		// instance its own sessions and rate-limit counters, which is the exact
+		// multi-instance bug a shared cache exists to prevent.
+		return nil, fmt.Errorf("unknown CACHE_PROVIDER %q (want %q, %q, or %q)", cfg.Cache.Provider, "memory", "redis", "valkey")
+	}
+	log.Printf("Cache opened (provider: %s)", cfg.Cache.Provider)
 
 	// Create adapters
 	passwordHasher := bcrypthasher.NewBcryptHasher()
@@ -334,7 +363,16 @@ func NewServer(cfg config.Config) (*Server, error) {
 		},
 	}
 
-	chatProvider := genkitchatprovider.NewChatProvider(cacheStore.Scope("web_fetch"))
+	// web_fetch is always backed by a dedicated, process-local store — never the
+	// configured one, and not even when that happens to be the in-memory adapter.
+	// Its keys are URLs chosen by the model and its values are whole fetched pages,
+	// so sharing a store would let agent traffic evict session tokens or exhaust the
+	// cache that authentication depends on. Keeping it independent of CACHE_PROVIDER
+	// means the isolation holds under every configuration; the cost is one extra
+	// store and a cold fetch per instance, and a stale cached page is harmless in a
+	// way a dropped session is not.
+	webFetchStore := inmemorycache.NewCache(10 * time.Minute)
+	chatProvider := genkitchatprovider.NewChatProvider(webFetchStore.Scope("web_fetch"))
 
 	// Create playground commands
 	createSessionCmd := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)
@@ -375,6 +413,8 @@ func NewServer(cfg config.Config) (*Server, error) {
 		builtInToolApp: builtInToolApp,
 		chatProvider:   chatProvider,
 		sessionStore:   sessionStore,
+		cacheStore:     cacheStore,
+		webFetchStore:  webFetchStore,
 		db:             db,
 	}, nil
 }
@@ -411,6 +451,11 @@ func (s *Server) Start() error {
 func (s *Server) Stop() {
 	if s.db != nil {
 		s.db.Close()
+	}
+	// Only externally-backed cache stores hold resources worth releasing, so the
+	// port does not require a Close — ask for one instead of mandating a no-op.
+	if closer, ok := s.cacheStore.(io.Closer); ok {
+		closer.Close()
 	}
 }
 

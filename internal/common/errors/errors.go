@@ -12,6 +12,11 @@ const (
 	Unauthorized
 	Forbidden
 	TooManyRequests
+	// Unavailable marks a dependency outage: the request could not be served, but
+	// the client did nothing wrong and retrying the same request may well work.
+	// Appended last on purpose — these are iota values, and Internal must stay 0 so
+	// a zero-valued ErrorCode keeps meaning "internal error".
+	Unavailable
 )
 
 type AppError struct {
@@ -44,6 +49,8 @@ func IsAppError(err error) (*AppError, bool) {
 
 func HTTPStatusCode(code ErrorCode) int {
 	switch code {
+	case Internal:
+		return 500
 	case InvalidInput:
 		return 400
 	case Unauthorized:
@@ -56,7 +63,11 @@ func HTTPStatusCode(code ErrorCode) int {
 		return 409
 	case TooManyRequests:
 		return 429
+	case Unavailable:
+		return 503
 	default:
+		// An unmapped code is a programming error, not an Internal one; 500 is the
+		// safe answer either way.
 		return 500
 	}
 }

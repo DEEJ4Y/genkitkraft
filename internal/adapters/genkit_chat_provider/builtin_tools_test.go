@@ -3,8 +3,32 @@ package genkitchatprovider
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
+
+// The URL is chosen by the model, so the response size is attacker-influenced: the
+// body must be capped rather than read whole into memory.
+func TestFetchAsMarkdown_CapsLargeBody(t *testing.T) {
+	body := "<html><body><p>" + strings.Repeat("a", 4<<20) + "</p></body></html>"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(body))
+	}))
+	defer server.Close()
+
+	got, err := fetchAsMarkdown(server.URL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) > maxResponseBytes+200 {
+		t.Errorf("markdown is %d bytes from a %d-byte body; want at most ~%d — the read was not capped",
+			len(got), len(body), maxResponseBytes)
+	}
+	if !strings.Contains(got, "[Content truncated") {
+		t.Error("a truncated fetch must say so; a model summarizing this would present a partial page as complete")
+	}
+}
 
 func TestFetchAsMarkdown_Non2xxStatus(t *testing.T) {
 	tests := []struct {

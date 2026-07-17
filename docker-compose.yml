@@ -32,6 +32,21 @@ services:
       timeout: 5s
       retries: 10
 
+  valkey:
+    image: valkey/valkey:8-alpine
+    ports:
+      - "6379:6379"
+    # Sessions and rate-limit counters are not durable state, so no volume is
+    # mounted — a restart just means logging in again. No maxmemory is set, so the
+    # eviction policy never comes into play; see the deployment docs before setting
+    # one, as every key here has a TTL and volatile-ttl would evict rate-limit
+    # counters first.
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   genkitkraft:
     build: .
     ports:
@@ -39,10 +54,16 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      valkey:
+        condition: service_healthy
     environment:
       - PORT=8080
       - DATABASE_PROVIDER=mysql
       - DATABASE_URL=genkitkraft:genkitkraft@tcp(mysql:3306)/genkitkraft?parseTime=true
+      # Required to run more than one instance: shares sessions and rate-limit
+      # counters. Drop both to fall back to the process-local default.
+      - CACHE_PROVIDER=valkey
+      - CACHE_URL=valkey://valkey:6379
       - ENCRYPTION_KEY=your-encryption-key
       # Uncomment and set credentials to enable authentication
       # - AUTH_CREDENTIALS=admin:changeme

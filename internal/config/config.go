@@ -9,6 +9,7 @@ type Config struct {
 	Server     ServerConfig
 	Auth       AuthConfig
 	Database   DatabaseConfig
+	Cache      CacheConfig
 	Encryption EncryptionConfig
 	Deploy     DeployConfig
 }
@@ -17,6 +18,16 @@ type DatabaseConfig struct {
 	Provider string // "sqlite" (default), "postgres", "mysql", "mariadb"
 	Path     string // SQLite only
 	URL      string // required for non-SQLite providers
+}
+
+// CacheConfig selects the backing store for sessions and login rate limiting.
+// The default is process-local; multi-instance deployments need a shared provider
+// so state is visible to every instance. Web-fetch results are deliberately not
+// covered by this setting — they stay process-local so agent tool traffic cannot
+// exhaust the cache that authentication depends on.
+type CacheConfig struct {
+	Provider string // "memory" (default), "redis", "valkey"
+	URL      string // required for non-memory providers
 }
 
 type EncryptionConfig struct {
@@ -50,6 +61,10 @@ func Load() Config {
 			Provider: getEnv("DATABASE_PROVIDER", "sqlite"),
 			Path:     getEnv("DATABASE_PATH", "/data/app.db"),
 			URL:      os.Getenv("DATABASE_URL"),
+		},
+		Cache: CacheConfig{
+			Provider: getEnv("CACHE_PROVIDER", "memory"),
+			URL:      os.Getenv("CACHE_URL"),
 		},
 		Encryption: EncryptionConfig{
 			Key: os.Getenv("ENCRYPTION_KEY"),
