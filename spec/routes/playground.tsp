@@ -64,4 +64,26 @@ namespace Playground {
     @statusCode statusCode: 404;
     @body body: ErrorResponse;
   };
+
+  /** Reconnect to the assistant reply currently (or most recently) streaming for this session. Send a `Last-Event-ID` header with the last SSE `id:` received to resume from the next token instead of replaying the whole reply. Response is an SSE stream. */
+  @get
+  @route("/api/v1/agents/{agentId}/playground/sessions/{sessionId}/stream")
+  @summary("Reconnect to playground chat stream")
+  @operationId("playgroundChatStream")
+  op playgroundChatStream(@path agentId: string, @path sessionId: string): PlaygroundMessageResponse | {
+    @statusCode statusCode: 404;
+    @body body: ErrorResponse;
+  };
+
+  /** Stop the assistant reply currently streaming for this session, if any. Best-effort: a no-op if generation already finished or is running on a different instance. */
+  @post
+  @route("/api/v1/agents/{agentId}/playground/sessions/{sessionId}/stream/cancel")
+  @summary("Cancel playground chat stream")
+  @operationId("cancelPlaygroundStream")
+  op cancelPlaygroundStream(@path agentId: string, @path sessionId: string): {
+    @statusCode statusCode: 204;
+  } | {
+    @statusCode statusCode: 404;
+    @body body: ErrorResponse;
+  };
 }

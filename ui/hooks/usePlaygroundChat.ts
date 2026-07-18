@@ -30,12 +30,22 @@ interface UsePlaygroundChatOptions {
   onSessionTitleUpdate?: () => void
 }
 
+// SSE read outcomes: 'done'/'error' are terminal sentinels from the server,
+// 'aborted' means the user stopped generation (stopStreaming), and
+// 'incomplete' means the connection dropped without either — the case that
+// triggers a reconnect via Last-Event-ID.
+type SSEOutcome = 'done' | 'error' | 'aborted' | 'incomplete'
+
+const MAX_RECONNECT_ATTEMPTS = 5
+const RECONNECT_DELAY_MS = 500
+
 export function usePlaygroundChat({ agentId, sessionId, streaming = true, config, onSessionTitleUpdate }: UsePlaygroundChatOptions) {
   const [messages, setMessages] = useState<Message[]>([])
   const [streamingContent, setStreamingContent] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const lastSeqRef = useRef(0)
 
   const loadMessages = useCallback(async (sid: string) => {
     try {
@@ -56,6 +66,62 @@ export function usePlaygroundChat({ agentId, sessionId, streaming = true, config
     }
   }, [agentId])
 
+  // Reads one SSE response body, appending content deltas onto contentRef and
+  // mirroring them into streamingContent as they arrive. Shared by both the
+  // initial POST response and any Last-Event-ID reconnect GET response.
+  const readSSEBody = useCallback(async (
+    body: ReadableStream<Uint8Array>,
+    contentRef: { current: string },
+    signal: AbortSignal
+  ): Promise<SSEOutcome> => {
+    const reader = body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let pendingId: number | null = null
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+
+        for (const line of lines) {
+          if (line.startsWith('id: ')) {
+            const n = parseInt(line.slice(4), 10)
+            if (!Number.isNaN(n)) pendingId = n
+            continue
+          }
+          if (!line.startsWith('data: ')) continue
+          const data = line.slice(6)
+
+          if (data === '[DONE]') return 'done'
+          if (data.startsWith('[ERROR]')) {
+            setError(data.slice(8))
+            return 'error'
+          }
+
+          if (pendingId !== null) {
+            lastSeqRef.current = pendingId
+            pendingId = null
+          }
+          contentRef.current += data
+          setStreamingContent(contentRef.current)
+        }
+      }
+    } catch (err: any) {
+      if (signal.aborted || err?.name === 'AbortError') return 'aborted'
+      return 'incomplete'
+    }
+
+    // The reader finished (`done`) without ever seeing a [DONE]/[ERROR]
+    // sentinel — the connection dropped mid-stream.
+    return 'incomplete'
+  }, [])
+
   const sendMessage = useCallback(async (content: string) => {
     if (!sessionId || !content.trim() || isStreaming) return
 
@@ -67,6 +133,7 @@ export function usePlaygroundChat({ agentId, sessionId, streaming = true, config
     setMessages((prev) => [...prev, userMsg])
     setIsStreaming(true)
     setStreamingContent('')
+    lastSeqRef.current = 0
 
     const abortController = new AbortController()
     abortRef.current = abortController
@@ -114,42 +181,38 @@ export function usePlaygroundChat({ agentId, sessionId, streaming = true, config
           ])
         }
       } else {
-        // Streaming: parse SSE
-        const reader = res.body!.getReader()
-        const decoder = new TextDecoder()
-        let fullContent = ''
-        let buffer = ''
+        // Streaming: parse SSE, reconnecting via Last-Event-ID if the
+        // connection drops before a terminal sentinel arrives.
+        const contentRef = { current: '' }
+        let outcome = await readSSEBody(res.body!, contentRef, abortController.signal)
 
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+        let attempts = 0
+        while (outcome === 'incomplete' && attempts < MAX_RECONNECT_ATTEMPTS) {
+          attempts += 1
+          await new Promise((resolve) => setTimeout(resolve, RECONNECT_DELAY_MS))
+          if (abortController.signal.aborted) break
 
-          buffer += decoder.decode(value, { stream: true })
-
-          // Process complete SSE lines
-          const lines = buffer.split('\n')
-          buffer = lines.pop() ?? '' // Keep incomplete line in buffer
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue
-            const data = line.slice(6)
-
-            if (data === '[DONE]') continue
-            if (data.startsWith('[ERROR]')) {
-              setError(data.slice(8))
-              continue
-            }
-
-            fullContent += data
-            setStreamingContent(fullContent)
+          try {
+            const reconnectRes = await fetch(
+              `/api/v1/agents/${agentId}/playground/sessions/${sessionId}/stream`,
+              {
+                credentials: 'include',
+                headers: { 'Last-Event-ID': String(lastSeqRef.current) },
+                signal: abortController.signal,
+              }
+            )
+            if (!reconnectRes.ok || !reconnectRes.body) break
+            outcome = await readSSEBody(reconnectRes.body, contentRef, abortController.signal)
+          } catch {
+            break
           }
         }
 
         // Add assistant message
-        if (fullContent) {
+        if (contentRef.current) {
           setMessages((prev) => [
             ...prev,
-            { id: `assistant-${Date.now()}`, role: 'assistant', content: fullContent },
+            { id: `assistant-${Date.now()}`, role: 'assistant', content: contentRef.current },
           ])
         }
       }
@@ -167,11 +230,19 @@ export function usePlaygroundChat({ agentId, sessionId, streaming = true, config
       setStreamingContent('')
       abortRef.current = null
     }
-  }, [agentId, sessionId, isStreaming, messages.length, streaming, config, onSessionTitleUpdate])
+  }, [agentId, sessionId, isStreaming, messages.length, streaming, config, onSessionTitleUpdate, readSSEBody])
 
   const stopStreaming = useCallback(() => {
     abortRef.current?.abort()
-  }, [])
+    // Aborting the fetch only ends this response; generation itself runs
+    // detached from any single request, so it must be canceled explicitly.
+    if (sessionId) {
+      fetch(`/api/v1/agents/${agentId}/playground/sessions/${sessionId}/stream/cancel`, {
+        method: 'POST',
+        credentials: 'include',
+      }).catch(() => {})
+    }
+  }, [agentId, sessionId])
 
   const clearMessages = useCallback(() => {
     setMessages([])

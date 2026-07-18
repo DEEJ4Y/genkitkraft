@@ -123,6 +123,93 @@ func testPlaygroundRepository(t *testing.T, open func(string) (*sql.DB, error), 
 		}
 	})
 
+	t.Run("StreamingMessageLifecycle", func(t *testing.T) {
+		msg, err := repo.CreateStreamingMessage(ctx, s.ID)
+		if err != nil {
+			t.Fatalf("CreateStreamingMessage: %v", err)
+		}
+		if msg.Status != playground.MessageStatusStreaming {
+			t.Errorf("Status: got %q, want %q", msg.Status, playground.MessageStatusStreaming)
+		}
+		if msg.Content != "" {
+			t.Errorf("expected empty initial content, got %q", msg.Content)
+		}
+
+		seq1, err := repo.AppendMessageChunk(ctx, msg.ID, "Hello")
+		if err != nil {
+			t.Fatalf("AppendMessageChunk 1: %v", err)
+		}
+		if seq1 != 1 {
+			t.Errorf("seq1: got %d, want 1", seq1)
+		}
+
+		seq2, err := repo.AppendMessageChunk(ctx, msg.ID, " world")
+		if err != nil {
+			t.Fatalf("AppendMessageChunk 2: %v", err)
+		}
+		if seq2 != 2 {
+			t.Errorf("seq2: got %d, want 2", seq2)
+		}
+
+		chunks, err := repo.GetMessageChunksSince(ctx, msg.ID, 0)
+		if err != nil {
+			t.Fatalf("GetMessageChunksSince: %v", err)
+		}
+		if len(chunks) != 2 || chunks[0].Content != "Hello" || chunks[1].Content != " world" {
+			t.Fatalf("unexpected chunks: %+v", chunks)
+		}
+
+		sinceChunks, err := repo.GetMessageChunksSince(ctx, msg.ID, 1)
+		if err != nil {
+			t.Fatalf("GetMessageChunksSince(since=1): %v", err)
+		}
+		if len(sinceChunks) != 1 || sinceChunks[0].Seq != 2 {
+			t.Fatalf("expected only seq 2 after sinceSeq=1, got %+v", sinceChunks)
+		}
+
+		got, err := repo.GetMessage(ctx, msg.ID)
+		if err != nil {
+			t.Fatalf("GetMessage: %v", err)
+		}
+		if got.Content != "Hello world" {
+			t.Errorf("Content: got %q, want %q", got.Content, "Hello world")
+		}
+
+		latest, err := repo.GetLatestMessageBySession(ctx, s.ID)
+		if err != nil {
+			t.Fatalf("GetLatestMessageBySession: %v", err)
+		}
+		if latest.ID != msg.ID {
+			t.Errorf("GetLatestMessageBySession: got %q, want %q", latest.ID, msg.ID)
+		}
+
+		if err := repo.CompleteMessage(ctx, msg.ID); err != nil {
+			t.Fatalf("CompleteMessage: %v", err)
+		}
+		got, err = repo.GetMessage(ctx, msg.ID)
+		if err != nil {
+			t.Fatalf("GetMessage after complete: %v", err)
+		}
+		if got.Status != playground.MessageStatusComplete {
+			t.Errorf("Status after complete: got %q, want %q", got.Status, playground.MessageStatusComplete)
+		}
+
+		// CompleteMessage/FailMessage are guarded by status='streaming', so a
+		// second call after the message already reached a terminal status must
+		// be a no-op — this is what keeps a slow, late FailMessage from
+		// clobbering a message that had already completed successfully.
+		if err := repo.FailMessage(ctx, msg.ID); err != nil {
+			t.Fatalf("FailMessage (post-complete no-op): %v", err)
+		}
+		got, err = repo.GetMessage(ctx, msg.ID)
+		if err != nil {
+			t.Fatalf("GetMessage after no-op FailMessage: %v", err)
+		}
+		if got.Status != playground.MessageStatusComplete {
+			t.Errorf("Status should remain %q after no-op FailMessage, got %q", playground.MessageStatusComplete, got.Status)
+		}
+	})
+
 	t.Run("NotFound", func(t *testing.T) {
 		if _, err := repo.GetSession(ctx, "nonexistent-id"); err == nil {
 			t.Error("expected error for nonexistent session, got nil")
