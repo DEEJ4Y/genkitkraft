@@ -6,11 +6,13 @@ package rediscache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
 
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/cache"
 )
@@ -35,6 +37,11 @@ const pingTimeout = 5 * time.Second
 // come from a bug or an outside writer, but it has to be recoverable: a leftover
 // string may carry no TTL, so nothing would ever clear it and erroring would lock
 // the IP out for good. Reset it and start a fresh window instead.
+//
+// The script returns {n, healed} rather than a bare n so the caller can report
+// that reset. A heal and an ordinary first create both yield n == 1, so the count
+// alone cannot tell them apart, and healing silently would destroy the only
+// evidence that something else is writing to this keyspace.
 var incrementScript = redis.NewScript(`
 local ttl = tonumber(ARGV[1])
 local n = redis.pcall('INCR', KEYS[1])
@@ -44,12 +51,12 @@ if type(n) == 'table' and n.err then
   else
     redis.call('SET', KEYS[1], 1)
   end
-  return 1
+  return {1, 1}
 end
 if n == 1 and ttl > 0 then
   redis.call('PEXPIRE', KEYS[1], ttl)
 end
-return n
+return {n, 0}
 `)
 
 // decrementScript decrements only an existing counter. A plain DECR creates a
@@ -67,11 +74,12 @@ return redis.call('DECR', KEYS[1])
 // directly; use Scope to obtain a namespace-isolated cache.Cache.
 type Cache struct {
 	client *redis.Client
+	logger zerolog.Logger
 }
 
 // NewCache connects to the Redis/Valkey server at rawURL and verifies the
 // connection before returning.
-func NewCache(rawURL string) (*Cache, error) {
+func NewCache(rawURL string, logger zerolog.Logger) (*Cache, error) {
 	opts, err := redis.ParseURL(normalizeURL(rawURL))
 	if err != nil {
 		return nil, fmt.Errorf("parsing cache URL: %w", err)
@@ -86,7 +94,7 @@ func NewCache(rawURL string) (*Cache, error) {
 		return nil, fmt.Errorf("pinging cache: %w", err)
 	}
 
-	return &Cache{client: client}, nil
+	return &Cache{client: client, logger: logger}, nil
 }
 
 // normalizeURL maps the Valkey URL schemes onto their Redis equivalents.
@@ -110,23 +118,28 @@ func (c *Cache) Close() error {
 
 // Scope returns a Cache where every key is prefixed with "<namespace>:".
 func (c *Cache) Scope(namespace string) cache.Cache {
-	return cache.Scope(&rawCache{client: c.client}, namespace)
+	return cache.Scope(&rawCache{client: c.client, logger: c.logger}, namespace)
 }
 
 // rawCache is unexported — it implements cache.Cache and is only used via Scope.
 type rawCache struct {
 	client *redis.Client
+	logger zerolog.Logger
 }
 
-// Get reports a miss for any error, including a connection failure. The port
-// signature has no error return, so an outage is indistinguishable from an
-// expired key here: sessions fail closed and the user is asked to log in again.
-func (r *rawCache) Get(ctx context.Context, key string) (string, bool) {
+// Get separates a genuine miss (redis.Nil) from a failure to reach the server.
+// The split is the whole point: an outage reported as a miss makes session
+// validation answer "log in again", which cannot succeed while the store backing
+// sessions is down — and hides the outage from whoever is on call.
+func (r *rawCache) Get(ctx context.Context, key string) (string, bool, error) {
 	val, err := r.client.Get(ctx, key).Result()
-	if err != nil {
-		return "", false
+	if errors.Is(err, redis.Nil) {
+		return "", false, nil
 	}
-	return val, true
+	if err != nil {
+		return "", false, fmt.Errorf("cache: getting %q: %w", key, err)
+	}
+	return val, true, nil
 }
 
 func (r *rawCache) Set(ctx context.Context, key string, value string, ttl time.Duration) error {
@@ -139,11 +152,22 @@ func (r *rawCache) Delete(ctx context.Context, key string) error {
 }
 
 func (r *rawCache) Increment(ctx context.Context, key string, ttl time.Duration) (int64, error) {
-	n, err := incrementScript.Run(ctx, r.client, []string{key}, ttl.Milliseconds()).Int64()
+	res, err := incrementScript.Run(ctx, r.client, []string{key}, ttl.Milliseconds()).Int64Slice()
 	if err != nil {
 		return 0, fmt.Errorf("cache: incrementing %q: %w", key, err)
 	}
-	return n, nil
+	if len(res) != 2 {
+		return 0, fmt.Errorf("cache: incrementing %q: script returned %d values, want 2", key, len(res))
+	}
+	if res[1] == 1 {
+		// The key is fully qualified (e.g. "rate_limit:1.2.3.4"), so the namespace
+		// identifies the writer. Only rate_limit keys are ever incremented; were that
+		// to change, a namespace holding secrets would need the key elided.
+		r.logger.Warn().
+			Str("key", key).
+			Msg("cache: key held a non-counter value; reset to a fresh counter")
+	}
+	return res[0], nil
 }
 
 func (r *rawCache) Decrement(ctx context.Context, key string) error {

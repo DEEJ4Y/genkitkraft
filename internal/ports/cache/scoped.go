@@ -16,7 +16,7 @@ func Scope(c Cache, namespace string) Cache {
 	return &scopedCache{inner: c, prefix: namespace + ":"}
 }
 
-func (s *scopedCache) Get(ctx context.Context, key string) (string, bool) {
+func (s *scopedCache) Get(ctx context.Context, key string) (string, bool, error) {
 	return s.inner.Get(ctx, s.prefix+key)
 }
 

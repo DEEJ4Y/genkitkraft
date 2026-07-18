@@ -43,7 +43,7 @@ func newDecorator(inner *stubLogin, c cache.Cache) *decorators.RateLimitingLogin
 
 func newSharedCache(t *testing.T) cache.Store {
 	t.Helper()
-	return inmemorycache.NewCache(time.Minute)
+	return inmemorycache.NewCache(time.Minute, zerolog.New(io.Discard))
 }
 
 func badCredentials() error {
@@ -217,7 +217,7 @@ func TestPanicReleasesItsAttempt(t *testing.T) {
 // failingCache stands in for a cache backend that is down.
 type failingCache struct{ err error }
 
-func (f *failingCache) Get(context.Context, string) (string, bool) { return "", false }
+func (f *failingCache) Get(context.Context, string) (string, bool, error) { return "", false, f.err }
 func (f *failingCache) Set(context.Context, string, string, time.Duration) error {
 	return f.err
 }

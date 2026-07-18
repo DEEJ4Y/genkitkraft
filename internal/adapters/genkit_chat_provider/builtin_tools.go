@@ -1,6 +1,7 @@
 package genkitchatprovider
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -50,20 +51,31 @@ func (cp *ChatProvider) buildWebFetchTool() ai.Tool {
 			return nil, fmt.Errorf("invalid arguments: 'url' is required and must be a string")
 		}
 
-		if cached, ok := cp.cache.Get(toolCtx.Context, url); ok {
-			return cached, nil
-		}
-
-		result, err := fetchAsMarkdown(url)
-		if err != nil {
-			return nil, err
-		}
-
-		_ = cp.cache.Set(toolCtx.Context, url, result, time.Hour)
-		return result, nil
+		return cp.webFetch(toolCtx.Context, url)
 	}
 
 	return ai.NewTool(name, description, toolFn, ai.WithInputSchema(inputSchema))
+}
+
+// webFetch is split out of the tool closure so the cache path is reachable from a
+// test without standing up Genkit's action machinery.
+//
+// A cache error is treated as a miss and the page re-fetched. This cache is a
+// latency optimisation, not a source of truth, so an outage should cost a round
+// trip rather than fail the tool call — unlike session lookup, where a miss and an
+// outage mean genuinely different things.
+func (cp *ChatProvider) webFetch(ctx context.Context, url string) (string, error) {
+	if cached, ok, err := cp.cache.Get(ctx, url); err == nil && ok {
+		return cached, nil
+	}
+
+	result, err := fetchAsMarkdown(url)
+	if err != nil {
+		return "", err
+	}
+
+	_ = cp.cache.Set(ctx, url, result, time.Hour)
+	return result, nil
 }
 
 func fetchAsMarkdown(rawURL string) (string, error) {

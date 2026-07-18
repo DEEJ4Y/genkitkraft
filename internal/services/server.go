@@ -93,6 +93,8 @@ type Server struct {
 
 // NewServer wires all dependencies and returns a ready-to-start Server.
 func NewServer(cfg config.Config) (*Server, error) {
+	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
+
 	if cfg.Encryption.Key == "" {
 		return nil, fmt.Errorf("ENCRYPTION_KEY environment variable is required")
 	}
@@ -112,13 +114,13 @@ func NewServer(cfg config.Config) (*Server, error) {
 	switch cfg.Cache.Provider {
 	case "redis", "valkey":
 		// Valkey is protocol-compatible with Redis, so both share one adapter.
-		redisStore, err := rediscache.NewCache(cfg.Cache.URL)
+		redisStore, err := rediscache.NewCache(cfg.Cache.URL, logger)
 		if err != nil {
 			return nil, fmt.Errorf("opening cache (%s): %w", cfg.Cache.Provider, err)
 		}
 		cacheStore = redisStore
 	case "memory":
-		cacheStore = inmemorycache.NewCache(10 * time.Minute)
+		cacheStore = inmemorycache.NewCache(10*time.Minute, logger)
 	default:
 		// Deliberately not falling back to memory: a typo would silently give each
 		// instance its own sessions and rate-limit counters, which is the exact
@@ -139,8 +141,6 @@ func NewServer(cfg config.Config) (*Server, error) {
 	cfg.Auth.Credentials = nil
 
 	authRequired := len(users) > 0
-
-	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 
 	// Create commands
 	loginCmd := commands.NewLoginCommand(users, sessionStore, passwordHasher)
@@ -371,7 +371,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 	// means the isolation holds under every configuration; the cost is one extra
 	// store and a cold fetch per instance, and a stale cached page is harmless in a
 	// way a dropped session is not.
-	webFetchStore := inmemorycache.NewCache(10 * time.Minute)
+	webFetchStore := inmemorycache.NewCache(10*time.Minute, logger)
 	chatProvider := genkitchatprovider.NewChatProvider(webFetchStore.Scope("web_fetch"))
 
 	// Create playground commands

@@ -1,10 +1,15 @@
 package inmemorycache_test
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/rs/zerolog"
 
 	inmemorycache "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_cache"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/cache"
@@ -13,14 +18,84 @@ import (
 
 func TestInMemoryCache(t *testing.T) {
 	cachecontract.Run(t, func(t *testing.T) cache.Store {
-		return inmemorycache.NewCache(time.Minute)
+		return inmemorycache.NewCache(time.Minute, zerolog.New(io.Discard))
 	})
+}
+
+// A non-counter under a counter key means either a bug or another writer on the
+// keyspace. Healing it is right, but healing it silently destroys the only
+// evidence it ever happened — the whole point of the reset being observable.
+func TestIncrementLogsWhenHealingANonCounter(t *testing.T) {
+	var buf bytes.Buffer
+	c := inmemorycache.NewCache(time.Minute, zerolog.New(&buf)).Scope("rate_limit")
+	ctx := context.Background()
+
+	if err := c.Set(ctx, "1.2.3.4", "not-a-number", time.Minute); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if _, err := c.Increment(ctx, "1.2.3.4", time.Minute); err != nil {
+		t.Fatalf("Increment: %v", err)
+	}
+
+	logged := buf.String()
+	if !strings.Contains(logged, "non-counter") {
+		t.Errorf("heal was not logged; log = %q", logged)
+	}
+	// The fully-qualified key is what tells an operator which namespace was written
+	// to, which is the first thing they need to find the offending writer.
+	if !strings.Contains(logged, "rate_limit:1.2.3.4") {
+		t.Errorf("heal log does not name the fully-qualified key; log = %q", logged)
+	}
+}
+
+// The counterpart to the test above, and the one that keeps the heal log worth
+// reading. Increment creates the key on the first attempt from every client, so
+// logging that path would Warn on every first login from every IP and bury the
+// real signal in noise.
+func TestIncrementDoesNotLogWhenCreatingACounter(t *testing.T) {
+	var buf bytes.Buffer
+	c := inmemorycache.NewCache(time.Minute, zerolog.New(&buf)).Scope("rate_limit")
+
+	if _, err := c.Increment(context.Background(), "1.2.3.4", time.Minute); err != nil {
+		t.Fatalf("Increment: %v", err)
+	}
+
+	if buf.Len() != 0 {
+		t.Errorf("creating a counter logged %q, want nothing", buf.String())
+	}
+}
+
+// An expired counter reaches the same reset path as a corrupt one, and is just as
+// ordinary as a first create: windows are meant to lapse.
+func TestIncrementDoesNotLogWhenCounterExpired(t *testing.T) {
+	var buf bytes.Buffer
+	c := inmemorycache.NewCache(time.Millisecond, zerolog.New(&buf)).Scope("rate_limit")
+	ctx := context.Background()
+
+	if _, err := c.Increment(ctx, "1.2.3.4", 50*time.Millisecond); err != nil {
+		t.Fatalf("Increment: %v", err)
+	}
+	// A fixed sleep is safe here because it is one-directional: oversleeping only
+	// makes expiry more certain. Polling would not work — each poll is an Increment,
+	// which would recreate the very counter being waited on.
+	time.Sleep(150 * time.Millisecond)
+
+	n, err := c.Increment(ctx, "1.2.3.4", 50*time.Millisecond)
+	if err != nil {
+		t.Fatalf("Increment after expiry: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("Increment after expiry = %d, want 1 (a fresh window)", n)
+	}
+	if buf.Len() != 0 {
+		t.Errorf("an expired counter logged %q, want nothing", buf.String())
+	}
 }
 
 // Increment must not lose counts under concurrent callers — the rate limit
 // depends on every attempt being observed exactly once.
 func TestIncrementIsAtomicUnderConcurrency(t *testing.T) {
-	c := inmemorycache.NewCache(time.Minute).Scope("ns")
+	c := inmemorycache.NewCache(time.Minute, zerolog.New(io.Discard)).Scope("ns")
 	ctx := context.Background()
 
 	const goroutines = 50
@@ -62,7 +137,7 @@ func TestIncrementIsAtomicUnderConcurrency(t *testing.T) {
 // Verified by mutation: against the old check-then-increment this observes ~270
 // errors per second; against the current implementation it observes zero.
 func TestIncrementNeverErrorsAtTheWindowBoundary(t *testing.T) {
-	c := inmemorycache.NewCache(time.Millisecond).Scope("ns")
+	c := inmemorycache.NewCache(time.Millisecond, zerolog.New(io.Discard)).Scope("ns")
 	ctx := context.Background()
 
 	const (
