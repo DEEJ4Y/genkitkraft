@@ -1,11 +1,9 @@
 package httphandler
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -577,45 +575,56 @@ func (h *Handler) PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId
 		return
 	}
 
-	// Streaming path: SSE response
-	tokenCh, errCh := h.chatProvider.ChatStream(r.Context(), chatReq)
-
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		writeAppError(w, errors.NewAppError(errors.Internal, "streaming not supported"))
+	// Streaming path: SSE response. Generation runs detached from this
+	// request (see StartPlaygroundStreamCommand) so a client disconnect
+	// doesn't abort it; this handler just tails the persisted chunks.
+	startResult, err := h.playgroundApp.Commands.StartStream.Execute(r.Context(), commands.StartPlaygroundStreamParams{
+		SessionID:   req.SessionId,
+		ChatRequest: chatReq,
+	})
+	if err != nil {
+		writeAppError(w, err)
 		return
 	}
 
-	var fullResponse strings.Builder
+	h.streamMessage(w, r, req.SessionId, startResult.MessageID, 0)
+}
 
-	for token := range tokenCh {
-		fullResponse.WriteString(token)
-		fmt.Fprintf(w, "data: %s\n\n", escapeSSEData(token))
-		flusher.Flush()
-	}
-
-	// Check for streaming errors
-	if streamErr := <-errCh; streamErr != nil {
-		fmt.Fprintf(w, "data: [ERROR] %s\n\n", streamErr.Error())
-		flusher.Flush()
+// PlaygroundChatStream reconnects to the assistant reply currently (or most
+// recently) streaming for a session. A Last-Event-ID header resumes from the
+// next token instead of replaying the whole reply.
+func (h *Handler) PlaygroundChatStream(w http.ResponseWriter, r *http.Request, agentId string, sessionId string) {
+	if _, err := h.playgroundApp.Queries.GetSession.Execute(r.Context(), queries.GetPlaygroundSessionParams{
+		SessionID: sessionId,
+		AgentID:   agentId,
+	}); err != nil {
+		writeAppError(w, err)
 		return
 	}
 
-	fmt.Fprintf(w, "data: [DONE]\n\n")
-	flusher.Flush()
+	h.streamMessage(w, r, sessionId, "", parseLastEventID(r))
+}
 
-	// Save assistant message
-	if fullResponse.Len() > 0 {
-		_, _ = h.playgroundApp.Commands.SaveMessage.Execute(r.Context(), commands.SavePlaygroundMessageParams{
-			SessionID: req.SessionId,
-			Role:      "assistant",
-			Content:   fullResponse.String(),
-		})
+// CancelPlaygroundStream stops the assistant reply currently streaming for a
+// session, if any. Best-effort: a no-op if generation already finished or is
+// running on a different instance.
+func (h *Handler) CancelPlaygroundStream(w http.ResponseWriter, r *http.Request, agentId string, sessionId string) {
+	if _, err := h.playgroundApp.Queries.GetSession.Execute(r.Context(), queries.GetPlaygroundSessionParams{
+		SessionID: sessionId,
+		AgentID:   agentId,
+	}); err != nil {
+		writeAppError(w, err)
+		return
 	}
+
+	if err := h.playgroundApp.Commands.CancelStream.Execute(r.Context(), commands.CancelPlaygroundStreamParams{
+		SessionID: sessionId,
+	}); err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) DeployChatCompletions(w http.ResponseWriter, r *http.Request, agentId string) {
@@ -897,8 +906,17 @@ func (h *Handler) DeploySessionChatCompletions(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Streaming response
-	tokenCh, errCh := h.chatProvider.ChatStream(r.Context(), chatReq)
+	// Streaming response. Generation runs detached from this request (see
+	// StartPlaygroundStreamCommand) so a client disconnect doesn't abort it;
+	// this handler just tails the persisted chunks.
+	startResult, err := h.playgroundApp.Commands.StartStream.Execute(r.Context(), commands.StartPlaygroundStreamParams{
+		SessionID:   sessionId,
+		ChatRequest: chatReq,
+	})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -927,70 +945,55 @@ func (h *Handler) DeploySessionChatCompletions(w http.ResponseWriter, r *http.Re
 	fmt.Fprintf(w, "data: %s\n\n", roleData)
 	flusher.Flush()
 
-	// Content chunks
-	var fullResponse strings.Builder
-	for token := range tokenCh {
-		fullResponse.WriteString(token)
-		chunk := deployChatCompletionChunk{
-			ID:      completionID,
-			Object:  "chat.completion.chunk",
-			Created: created,
-			Model:   model,
-			Choices: []deployChatCompletionChunkChoice{
-				{
-					Index: 0,
-					Delta: deployChatDelta{Content: &token},
-				},
-			},
-		}
-		data, _ := json.Marshal(chunk)
-		fmt.Fprintf(w, "data: %s\n\n", data)
-		flusher.Flush()
-	}
+	h.streamDeployCompletion(w, r, sessionId, startResult.MessageID, completionID, model, created, 0)
+}
 
-	if streamErr := <-errCh; streamErr != nil {
-		errData, _ := json.Marshal(map[string]interface{}{
-			"error": map[string]string{
-				"message": streamErr.Error(),
-				"type":    "server_error",
-			},
-		})
-		fmt.Fprintf(w, "data: %s\n\n", errData)
-		flusher.Flush()
+// DeploySessionChatCompletionsStream reconnects to the assistant reply
+// currently (or most recently) streaming for a session. A Last-Event-ID
+// header resumes from the next token instead of replaying the whole reply.
+func (h *Handler) DeploySessionChatCompletionsStream(w http.ResponseWriter, r *http.Request, agentId string, sessionId string) {
+	if _, err := h.playgroundApp.Queries.GetSession.Execute(r.Context(), queries.GetPlaygroundSessionParams{
+		SessionID: sessionId,
+		AgentID:   agentId,
+	}); err != nil {
+		writeAppError(w, err)
 		return
 	}
 
-	// Save assistant reply using a detached context so client disconnect doesn't cancel the save
-	if fullResponse.Len() > 0 {
-		saveCtx := context.WithoutCancel(r.Context())
-		_, _ = h.playgroundApp.Commands.SaveMessage.Execute(saveCtx, commands.SavePlaygroundMessageParams{
-			SessionID: sessionId,
-			Role:      "assistant",
-			Content:   fullResponse.String(),
-		})
+	completionID := "chatcmpl-" + uuid.New().String()
+	created := time.Now().Unix()
+
+	configResult, err := h.playgroundApp.Queries.ResolveConfig.Execute(r.Context(), queries.ResolvePlaygroundConfigParams{
+		AgentID: agentId,
+	})
+	if err != nil {
+		writeAppError(w, err)
+		return
 	}
 
-	// Final chunk with finish_reason
-	stopReason := "stop"
-	finishChunk := deployChatCompletionChunk{
-		ID:      completionID,
-		Object:  "chat.completion.chunk",
-		Created: created,
-		Model:   model,
-		Choices: []deployChatCompletionChunkChoice{
-			{
-				Index:        0,
-				Delta:        deployChatDelta{},
-				FinishReason: &stopReason,
-			},
-		},
-	}
-	finishData, _ := json.Marshal(finishChunk)
-	fmt.Fprintf(w, "data: %s\n\n", finishData)
-	flusher.Flush()
+	h.streamDeployCompletion(w, r, sessionId, "", completionID, configResult.ChatRequest.ModelID, created, parseLastEventID(r))
+}
 
-	fmt.Fprintf(w, "data: [DONE]\n\n")
-	flusher.Flush()
+// CancelDeploySessionChatCompletions stops the assistant reply currently
+// streaming for a session, if any. Best-effort: a no-op if generation already
+// finished or is running on a different instance.
+func (h *Handler) CancelDeploySessionChatCompletions(w http.ResponseWriter, r *http.Request, agentId string, sessionId string) {
+	if _, err := h.playgroundApp.Queries.GetSession.Execute(r.Context(), queries.GetPlaygroundSessionParams{
+		SessionID: sessionId,
+		AgentID:   agentId,
+	}); err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	if err := h.playgroundApp.Commands.CancelStream.Execute(r.Context(), commands.CancelPlaygroundStreamParams{
+		SessionID: sessionId,
+	}); err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func strPtr(s string) *string {
