@@ -7,8 +7,15 @@ import (
 
 // Cache defines the contract for key-value caching with TTL support.
 type Cache interface {
-	// Get retrieves a value by key. Returns the value and whether it was found and unexpired.
-	Get(ctx context.Context, key string) (string, bool)
+	// Get retrieves a value by key. It reports whether the key was found and
+	// unexpired, and returns a non-nil error only when the backing store could not
+	// answer at all — a connection failure, say.
+	//
+	// A miss and an outage are different facts and must not be conflated: found is
+	// false for both, but only an error means "we do not know". A caller that fails
+	// closed on a miss — session validation above all — would otherwise report a
+	// dependency outage as an expired session. Check the error before the flag.
+	Get(ctx context.Context, key string) (string, bool, error)
 	// Set stores a value with the given TTL. A zero TTL means no expiration.
 	Set(ctx context.Context, key string, value string, ttl time.Duration) error
 	// Delete removes the entry for key. No-op if the key does not exist.

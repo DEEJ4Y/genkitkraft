@@ -41,6 +41,9 @@ namespace Auth {
   op logout(): LogoutResponse | {
     @statusCode statusCode: 401;
     @body body: ErrorResponse;
+  } | {
+    @statusCode statusCode: 503;
+    @body body: ErrorResponse;
   };
 
   /** Get the currently authenticated user. */
@@ -50,6 +53,9 @@ namespace Auth {
   @operationId("getMe")
   op me(): MeResponse | {
     @statusCode statusCode: 401;
+    @body body: ErrorResponse;
+  } | {
+    @statusCode statusCode: 503;
     @body body: ErrorResponse;
   };
 }

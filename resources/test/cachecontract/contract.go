@@ -25,7 +25,10 @@ func Run(t *testing.T, newStore func(t *testing.T) cache.Store) {
 		if err := c.Set(ctx, "key", "value", time.Minute); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
-		got, ok := c.Get(ctx, "key")
+		got, ok, err := c.Get(ctx, "key")
+		if err != nil {
+			t.Fatalf("Get: %v", err)
+		}
 		if !ok {
 			t.Fatal("Get: want found, got miss")
 		}
@@ -34,9 +37,17 @@ func Run(t *testing.T, newStore func(t *testing.T) cache.Store) {
 		}
 	})
 
+	// A miss and an outage are different facts. An adapter reporting an absent key as
+	// an error would make every caller read "not cached" as a dependency failure;
+	// one reporting an outage as a miss is the bug this error return exists to
+	// prevent, and only a networked adapter can exhibit it.
 	t.Run("GetMissing", func(t *testing.T) {
 		c := newStore(t).Scope("ns")
-		if _, ok := c.Get(context.Background(), "absent"); ok {
+		_, ok, err := c.Get(context.Background(), "absent")
+		if err != nil {
+			t.Fatalf("Get on an absent key: want a nil error, got %v", err)
+		}
+		if ok {
 			t.Error("Get on absent key: want miss, got found")
 		}
 	})
@@ -51,7 +62,9 @@ func Run(t *testing.T, newStore func(t *testing.T) cache.Store) {
 		if err := c.Delete(ctx, "key"); err != nil {
 			t.Fatalf("Delete: %v", err)
 		}
-		if _, ok := c.Get(ctx, "key"); ok {
+		if _, ok, err := c.Get(ctx, "key"); err != nil {
+			t.Fatalf("Get after Delete: %v", err)
+		} else if ok {
 			t.Error("Get after Delete: want miss, got found")
 		}
 	})
@@ -70,12 +83,14 @@ func Run(t *testing.T, newStore func(t *testing.T) cache.Store) {
 		if err := c.Set(ctx, "key", "value", 100*time.Millisecond); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
-		if _, ok := c.Get(ctx, "key"); !ok {
+		if _, ok, err := c.Get(ctx, "key"); err != nil {
+			t.Fatalf("Get before TTL: %v", err)
+		} else if !ok {
 			t.Fatal("Get before TTL: want found, got miss")
 		}
 		if !eventually(t, 2*time.Second, func() bool {
-			_, ok := c.Get(ctx, "key")
-			return !ok
+			_, ok, err := c.Get(ctx, "key")
+			return err == nil && !ok
 		}) {
 			t.Error("key still present well after its TTL elapsed")
 		}
@@ -89,14 +104,19 @@ func Run(t *testing.T, newStore func(t *testing.T) cache.Store) {
 		if err := a.Set(ctx, "key", "from-alpha", time.Minute); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
-		if _, ok := b.Get(ctx, "key"); ok {
+		if _, ok, err := b.Get(ctx, "key"); err != nil {
+			t.Fatalf("Get: %v", err)
+		} else if ok {
 			t.Error("key written in one namespace is visible in another")
 		}
 
 		if err := b.Set(ctx, "key", "from-beta", time.Minute); err != nil {
 			t.Fatalf("Set: %v", err)
 		}
-		got, ok := a.Get(ctx, "key")
+		got, ok, err := a.Get(ctx, "key")
+		if err != nil {
+			t.Fatalf("Get: %v", err)
+		}
 		if !ok || got != "from-alpha" {
 			t.Errorf("alpha key = (%q, %v) after beta wrote the same key, want (%q, true)", got, ok, "from-alpha")
 		}
@@ -200,7 +220,9 @@ func Run(t *testing.T, newStore func(t *testing.T) cache.Store) {
 		if err := c.Decrement(ctx, "absent"); err != nil {
 			t.Errorf("Decrement on absent key: %v", err)
 		}
-		if _, ok := c.Get(ctx, "absent"); ok {
+		if _, ok, err := c.Get(ctx, "absent"); err != nil {
+			t.Fatalf("Get: %v", err)
+		} else if ok {
 			t.Error("Decrement on an absent key created it")
 		}
 		n, err := c.Increment(ctx, "absent", time.Minute)
@@ -246,7 +268,10 @@ func Run(t *testing.T, newStore func(t *testing.T) cache.Store) {
 				t.Fatalf("Increment: %v", err)
 			}
 		}
-		got, ok := c.Get(ctx, "counter")
+		got, ok, err := c.Get(ctx, "counter")
+		if err != nil {
+			t.Fatalf("Get on a counter: %v", err)
+		}
 		if !ok {
 			t.Fatal("Get on a counter: want found, got miss")
 		}

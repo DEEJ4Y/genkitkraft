@@ -9,6 +9,7 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/api/gen"
 	"github.com/DEEJ4Y/genkitkraft/internal/app"
 	"github.com/DEEJ4Y/genkitkraft/internal/app/queries"
+	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
 )
 
 type contextKey string
@@ -63,7 +64,7 @@ func AuthMiddleware(authApp *app.AuthApp) func(http.Handler) http.Handler {
 
 			result, err := authApp.Queries.GetMe.Execute(r.Context(), queries.GetMeParams{Token: cookie.Value})
 			if err != nil {
-				writeUnauthorized(w)
+				writeAuthError(w, err)
 				return
 			}
 
@@ -79,6 +80,23 @@ func isPublicPath(path string) bool {
 		return true
 	}
 	return false
+}
+
+// writeAuthError surfaces a dependency outage and fails closed on everything else.
+//
+// A cache outage is not a bad credential: answering 401 sends the user to a login
+// that returns 503 anyway, so the two halves of the API would describe different
+// failures. Every other code deliberately collapses to 401 rather than going
+// through writeAppError — this is the auth gate, and a session lookup has no
+// business returning a 404 or a 409 to an unauthenticated caller.
+func writeAuthError(w http.ResponseWriter, err error) {
+	if appErr, ok := errors.IsAppError(err); ok && appErr.Code() == errors.Unavailable {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(errors.HTTPStatusCode(appErr.Code()))
+		json.NewEncoder(w).Encode(gen.ModelsErrorResponse{Error: appErr.Error()})
+		return
+	}
+	writeUnauthorized(w)
 }
 
 func writeUnauthorized(w http.ResponseWriter) {

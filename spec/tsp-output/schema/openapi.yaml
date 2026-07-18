@@ -73,6 +73,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Models.ErrorResponse'
+        '503':
+          description: Service unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
       tags:
         - Auth
   /api/auth/me:
@@ -90,6 +96,12 @@ paths:
                 $ref: '#/components/schemas/Models.MeResponse'
         '401':
           description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+        '503':
+          description: Service unavailable.
           content:
             application/json:
               schema:

@@ -35,7 +35,13 @@ func (s *MemoryStore) Create(ctx context.Context, username string) (string, erro
 }
 
 func (s *MemoryStore) Validate(ctx context.Context, token string) (string, error) {
-	username, ok := s.cache.Get(ctx, token)
+	username, ok, err := s.cache.Get(ctx, token)
+	if err != nil {
+		// An outage is not an invalid session. Unauthorized would send the user to a
+		// login that cannot succeed while the store backing sessions is down — and it
+		// would disguise the outage as an ordinary expiry.
+		return "", errors.NewAppError(errors.Unavailable, "session store is temporarily unavailable, try again later")
+	}
 	if !ok {
 		return "", errors.NewAppError(errors.Unauthorized, "invalid or expired session")
 	}

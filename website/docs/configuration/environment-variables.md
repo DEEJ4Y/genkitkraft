@@ -106,6 +106,12 @@ Set `CACHE_PROVIDER` to `redis` or `valkey` for any multi-instance deployment. B
 
 An unrecognised value is rejected at startup rather than falling back to `memory`, since a silent fallback would reintroduce exactly the problems above.
 
+### Behaviour during a cache outage
+
+If the configured cache becomes unreachable, both login and authenticated requests return `503`. Sessions live in the cache, so while it is down there is no way to tell a valid session from an expired one — reporting `401` would send users to a login page that cannot succeed either, and would disguise an outage as an ordinary logout. A `401` therefore continues to mean what it says: the session is genuinely absent or expired. Unauthenticated routes are unaffected.
+
+A corrupt rate-limit counter — a value under a `rate_limit:` key that is not a counter — is reset automatically and logged at `WARN`. Only GenKitKraft writes that namespace, so if you see one, something else is writing to the same keyspace: check for a shared cache instance or a stray client.
+
 :::note
 The cache is not durable storage. Losing it logs users out and clears rate-limit counters, but no application data is affected — that lives in the database. Persistence is not required.
 
