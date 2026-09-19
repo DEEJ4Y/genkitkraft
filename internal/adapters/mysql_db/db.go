@@ -42,7 +42,9 @@ func runMigrations(db *sql.DB) error {
 		return fmt.Errorf("creating migrations sub-FS: %w", err)
 	}
 
-	provider, err := goose.NewProvider(goose.DialectMySQL, db, migFS)
+	provider, err := goose.NewProvider(goose.DialectMySQL, db, migFS,
+		goose.WithSessionLocker(newMySQLSessionLocker()),
+	)
 	if err != nil {
 		return fmt.Errorf("setting up goose provider: %w", err)
 	}
