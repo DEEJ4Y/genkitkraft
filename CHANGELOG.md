@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.2 — Cache-backed cross-instance stream cancellation
+
+### Fixes
+
+- **Playground "stop generation" now reaches other instances** — the SSE stream-cancellation registry was process-local only, so a "stop" request landing on a different instance than the one running the generation silently no-op'd, with no config to fix it. It's now backed by the same pluggable cache port used by sessions and login rate limiting (`internal/adapters/cache_stream_registry`): the actual cancel still runs locally (a `context.CancelFunc` can't cross a process boundary), but a short-TTL signal relayed through the shared cache lets the owning instance notice a remote cancel request. `CACHE_PROVIDER=redis`/`valkey` now makes cross-instance "stop" work; `CACHE_PROVIDER=memory` (the default) degrades to the previous process-local behavior for free.
+
 ## v0.5.1 — Fix concurrent migration race on multi-instance startup
 
 ### Fixes

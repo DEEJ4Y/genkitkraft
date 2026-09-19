@@ -16,9 +16,9 @@ import (
 
 	aesgcmencryptor "github.com/DEEJ4Y/genkitkraft/internal/adapters/aesgcm_encryptor"
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
+	cachestreamregistry "github.com/DEEJ4Y/genkitkraft/internal/adapters/cache_stream_registry"
 	genkitchatprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/genkit_chat_provider"
 	inmemorycache "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_cache"
-	inmemorystreamregistry "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_stream_registry"
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	mcpdiscoveryadapter "github.com/DEEJ4Y/genkitkraft/internal/adapters/mcp_discovery"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
@@ -374,7 +374,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 	// way a dropped session is not.
 	webFetchStore := inmemorycache.NewCache(10*time.Minute, logger)
 	chatProvider := genkitchatprovider.NewChatProvider(webFetchStore.Scope("web_fetch"))
-	streamRegistry := inmemorystreamregistry.NewRegistry()
+	streamRegistry := cachestreamregistry.NewRegistry(cacheStore.Scope("stream_cancel"), cachestreamregistry.DefaultPollInterval, logger)
 
 	// Create playground commands
 	createSessionCmd := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)

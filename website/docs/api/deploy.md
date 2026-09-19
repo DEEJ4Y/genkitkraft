@@ -342,7 +342,7 @@ Omit `Last-Event-ID` (or send `0`) to replay the reply from the beginning.
 POST /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/cancel
 ```
 
-Stops the assistant reply currently generating for the session, if any. Returns `204 No Content` whether or not a stream was actually in progress — this is a best-effort call, not something to poll for confirmation.
+Stops the assistant reply currently generating for the session, if any. Returns `204 No Content` whether or not a stream was actually in progress — this is a best-effort call, not something to poll for confirmation. In a multi-instance deployment with a shared cache (`CACHE_PROVIDER=redis` or `valkey`), this reaches the generation even when it lands on a different instance than the one running it; see [`CACHE_PROVIDER`](/docs/configuration/environment-variables) for the underlying mechanism and its TTL.
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/cancel \
