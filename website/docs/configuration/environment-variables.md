@@ -93,14 +93,15 @@ Selects the backend for cached state. Defaults to `memory`.
 | `redis` | Redis 6+ | Multi-instance |
 | `valkey` | Valkey 7+ | Multi-instance |
 
-The cache holds two kinds of state:
+The cache holds three kinds of state:
 
 - **Session tokens** (24h TTL) — issued on login and checked on every authenticated request.
 - **Login rate-limit counters** (1 minute window) — at most 5 failed attempts per IP.
+- **Stream-cancellation signals** (~10s TTL) — relays a playground "stop generation" request to whichever instance is actually running that stream.
 
 Web-fetch results are **not** kept here. The built-in web-fetch tool caches into a process-local store regardless of `CACHE_PROVIDER`, so agent tool traffic can never evict session tokens or consume the shared cache's memory. Each instance keeps its own web-fetch cache; a repeated fetch on a cold instance simply fetches again.
 
-With `memory`, both are process-local. That is correct for a single instance, but **running more than one instance on `memory` breaks authentication**: a login served by instance A is unknown to instance B, so the next request returns `401`. Rate limiting degrades the same way — each instance counts failures separately, so N instances allow roughly N times the intended attempts.
+With `memory`, all three are process-local. That is correct for a single instance, but **running more than one instance on `memory` breaks authentication**: a login served by instance A is unknown to instance B, so the next request returns `401`. Rate limiting degrades the same way — each instance counts failures separately, so N instances allow roughly N times the intended attempts. Stream cancellation degrades more gracefully: a "stop" request that lands on the instance running the stream always works instantly, since that path never touches the cache — only a "stop" landing on a *different* instance needs a shared cache to reach the one that owns the stream.
 
 Set `CACHE_PROVIDER` to `redis` or `valkey` for any multi-instance deployment. Both speak the same protocol and are handled identically; the two values exist only to describe your infrastructure.
 
@@ -110,14 +111,16 @@ An unrecognised value is rejected at startup rather than falling back to `memory
 
 If the configured cache becomes unreachable, both login and authenticated requests return `503`. Sessions live in the cache, so while it is down there is no way to tell a valid session from an expired one — reporting `401` would send users to a login page that cannot succeed either, and would disguise an outage as an ordinary logout. A `401` therefore continues to mean what it says: the session is genuinely absent or expired. Unauthenticated routes are unaffected.
 
+Stream cancellation fails open rather than erroring: an outage only prevents the cross-instance signal from being written or read, so a "stop" landing on the owning instance still works, and one landing elsewhere is retried on the next poll rather than surfacing an error to the user.
+
 A corrupt rate-limit counter — a value under a `rate_limit:` key that is not a counter — is reset automatically and logged at `WARN`. Only GenKitKraft writes that namespace, so if you see one, something else is writing to the same keyspace: check for a shared cache instance or a stray client.
 
 :::note
-The cache is not durable storage. Losing it logs users out and clears rate-limit counters, but no application data is affected — that lives in the database. Persistence is not required.
+The cache is not durable storage. Losing it logs users out, clears rate-limit counters, and drops in-flight stream-cancellation signals, but no application data is affected — that lives in the database. Persistence is not required.
 
 **Use `noeviction`** (the Redis/Valkey default) and size `maxmemory` for your expected number of concurrent sessions.
 
-`volatile-ttl` offers session tokens no protection here: every key GenKitKraft writes has a TTL, so the "only evict volatile keys" carve-out excludes nothing and the policy evicts from the whole keyspace. It is in fact the worse choice — `volatile-ttl` evicts the shortest remaining TTL first, and the shortest TTLs are the 1-minute rate-limit counters. Under memory pressure it quietly resets brute-force protection before it starts dropping sessions, and then drops sessions too.
+`volatile-ttl` offers session tokens no protection here: every key GenKitKraft writes has a TTL, so the "only evict volatile keys" carve-out excludes nothing and the policy evicts from the whole keyspace. It is in fact the worse choice — `volatile-ttl` evicts the shortest remaining TTL first, and the shortest TTLs belong to the ~10s stream-cancellation signals, followed by the 1-minute rate-limit counters. Under memory pressure it quietly breaks cross-instance "stop" and resets brute-force protection before it starts dropping sessions, and then drops sessions too.
 
 With `noeviction`, reads keep working when the cache is full, so existing sessions stay valid; writes fail, so new logins return `503` until memory frees up. That is a visible, honest failure rather than a silent one.
 

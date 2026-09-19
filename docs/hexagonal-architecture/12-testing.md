@@ -50,9 +50,17 @@ resources/test/
     └── notification.go
 ```
 
+## Manual Smoke Tests
+
+Some behavior only shows up across process boundaries — e.g. a feature backed by a shared cache
+that needs proving over two *actual* live server instances, not just a Go test binary. These live
+as runbooks under `docs/manual-testing/`, e.g.
+[`01-cross-instance-stream-cancellation.md`](../manual-testing/01-cross-instance-stream-cancellation.md).
+
 ## Rules
 
 - **Unit tests** mock ports — fast, no infrastructure needed.
 - **Integration tests** use test containers for real infrastructure — slower, validates adapter correctness.
+- **Manual smoke tests** run real built binaries against shared infrastructure — for behavior that only manifests across separate processes.
 - Mocks live in a shared `resources/test/mock/` directory.
 - Compile-time interface checks (`var _ Port = (*Mock)(nil)`) ensure mocks stay in sync with ports.

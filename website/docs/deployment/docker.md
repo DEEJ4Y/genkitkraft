@@ -143,7 +143,7 @@ The `parseTime=true` parameter is required in the MySQL/MariaDB DSN for correct 
 
 ## Shared Cache
 
-Session tokens and login rate-limit counters are cached in-process by default. Running more than one instance that way breaks authentication — a login handled by one instance is unknown to the others, so subsequent requests return `401`.
+Session tokens, login rate-limit counters, and playground stream-cancellation signals are cached in-process by default. Running more than one instance that way breaks authentication — a login handled by one instance is unknown to the others, so subsequent requests return `401`. Stream cancellation degrades more gracefully: "stop generation" still works instantly when it lands on the instance running the stream, and only silently no-ops when it lands on a different one.
 
 Point every instance at one Redis or Valkey server to fix that. Add the service alongside your database:
 
@@ -182,7 +182,7 @@ Swap the image for `redis:7-alpine` (and the healthcheck for `redis-cli ping`) t
 
 No volume is mounted: the cache holds no durable data, and losing it only logs users out.
 
-`noeviction` is deliberate. Every key here already has a TTL — 24h for sessions, 1 minute for rate-limit counters — so `volatile-ttl` protects nothing, and because it evicts the shortest TTLs first it would drop rate-limit counters before sessions, quietly resetting brute-force protection under memory pressure. With `noeviction` a full cache keeps serving reads, so existing sessions stay valid, and fails writes, so new logins return `503` rather than users being silently logged out. See [`CACHE_PROVIDER`](/docs/configuration/environment-variables) for sizing.
+`noeviction` is deliberate. Every key here already has a TTL — 24h for sessions, 1 minute for rate-limit counters, ~10s for stream-cancellation signals — so `volatile-ttl` protects nothing, and because it evicts the shortest TTLs first it would drop stream-cancellation signals, then rate-limit counters, before sessions, quietly breaking cross-instance "stop" and resetting brute-force protection under memory pressure. With `noeviction` a full cache keeps serving reads, so existing sessions stay valid, and fails writes, so new logins return `503` rather than users being silently logged out. See [`CACHE_PROVIDER`](/docs/configuration/environment-variables) for sizing.
 
 Results from the built-in web-fetch tool are **not** stored here — they stay in a process-local cache, so agent tool traffic cannot exhaust the cache that authentication depends on.
 

@@ -10,11 +10,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rs/zerolog"
 
 	aesgcmencryptor "github.com/DEEJ4Y/genkitkraft/internal/adapters/aesgcm_encryptor"
-	inmemorystreamregistry "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_stream_registry"
+	cachestreamregistry "github.com/DEEJ4Y/genkitkraft/internal/adapters/cache_stream_registry"
+	inmemorycache "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_cache"
 	sqliteagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent"
 	sqliteagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent_tool"
 	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
@@ -120,7 +122,11 @@ func setupTestEnv(t *testing.T) *testEnv {
 	saveMessage := commands.NewSavePlaygroundMessageCommand(playgroundRepo)
 	createSession := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)
 	deleteSession := commands.NewDeletePlaygroundSessionCommand(playgroundRepo)
-	streamRegistry := inmemorystreamregistry.NewRegistry()
+	streamRegistry := cachestreamregistry.NewRegistry(
+		inmemorycache.NewCache(time.Minute, zerolog.Nop()).Scope("stream_cancel"),
+		cachestreamregistry.DefaultPollInterval,
+		zerolog.Nop(),
+	)
 	startStream := commands.NewStartPlaygroundStreamCommand(playgroundRepo, mockCP, streamRegistry, zerolog.Nop())
 	cancelStream := commands.NewCancelPlaygroundStreamCommand(playgroundRepo, streamRegistry)
 	failStream := commands.NewFailPlaygroundStreamCommand(playgroundRepo)
