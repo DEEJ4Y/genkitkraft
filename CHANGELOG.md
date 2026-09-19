@@ -1,14 +1,10 @@
 # Changelog
 
-## v0.5.2 — Cache-backed cross-instance stream cancellation
+## v0.6.0 — Cache-backed cross-instance stream cancellation and migration locking
 
 ### Fixes
 
 - **Playground "stop generation" now reaches other instances** — the SSE stream-cancellation registry was process-local only, so a "stop" request landing on a different instance than the one running the generation silently no-op'd, with no config to fix it. It's now backed by the same pluggable cache port used by sessions and login rate limiting (`internal/adapters/cache_stream_registry`): the actual cancel still runs locally (a `context.CancelFunc` can't cross a process boundary), but a short-TTL signal relayed through the shared cache lets the owning instance notice a remote cancel request. `CACHE_PROVIDER=redis`/`valkey` now makes cross-instance "stop" work; `CACHE_PROVIDER=memory` (the default) degrades to the previous process-local behavior for free.
-
-## v0.5.1 — Fix concurrent migration race on multi-instance startup
-
-### Fixes
 
 - **Migration locking** — Multiple instances starting simultaneously against a PostgreSQL, MySQL, or MariaDB database with pending migrations no longer race and crash. `postgres_db` now uses goose's built-in session-level advisory lock; `mysql_db`/`mariadb` use a new `GET_LOCK()`/`RELEASE_LOCK()`-based session locker. Losing instances block until the migrating instance finishes, then proceed normally — none exit. SQLite is unaffected (single-node by design).
 
