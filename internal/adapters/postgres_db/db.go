@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
+	"github.com/pressly/goose/v3/lock"
 )
 
 //go:embed migrations/*.sql
@@ -41,7 +42,14 @@ func runMigrations(db *sql.DB) error {
 		return fmt.Errorf("creating migrations sub-FS: %w", err)
 	}
 
-	provider, err := goose.NewProvider(goose.DialectPostgres, db, migFS)
+	locker, err := lock.NewPostgresSessionLocker()
+	if err != nil {
+		return fmt.Errorf("creating session locker: %w", err)
+	}
+
+	provider, err := goose.NewProvider(goose.DialectPostgres, db, migFS,
+		goose.WithSessionLocker(locker),
+	)
 	if err != nil {
 		return fmt.Errorf("setting up goose provider: %w", err)
 	}

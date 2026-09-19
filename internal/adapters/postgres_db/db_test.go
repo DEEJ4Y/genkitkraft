@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
@@ -41,6 +42,49 @@ func TestOpen(t *testing.T) {
 
 	assertTablesExist(t, db)
 	assertMigrationCount(t, db)
+}
+
+// TestOpenConcurrent guards against #37: multiple instances starting
+// simultaneously against a database with pending migrations must all
+// succeed, with no duplicate goose_db_version rows.
+func TestOpenConcurrent(t *testing.T) {
+	url := containers.StartPostgresDSN(t)
+
+	const n = 20
+	var wg sync.WaitGroup
+	errs := make([]error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			db, err := postgresdb.Open(url)
+			errs[i] = err
+			if db != nil {
+				db.Close()
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("instance %d: Open: %v", i, err)
+		}
+	}
+
+	db, err := postgresdb.Open(url)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer db.Close()
+
+	var total, distinct int
+	if err := db.QueryRow("SELECT COUNT(*), COUNT(DISTINCT version_id) FROM goose_db_version").Scan(&total, &distinct); err != nil {
+		t.Fatalf("querying goose_db_version: %v", err)
+	}
+	if total != distinct {
+		t.Errorf("goose_db_version has duplicate versions: %d rows, %d distinct", total, distinct)
+	}
 }
 
 func assertTablesExist(t *testing.T, db *sql.DB) {

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.1 — Fix concurrent migration race on multi-instance startup
+
+### Fixes
+
+- **Migration locking** — Multiple instances starting simultaneously against a PostgreSQL, MySQL, or MariaDB database with pending migrations no longer race and crash. `postgres_db` now uses goose's built-in session-level advisory lock; `mysql_db`/`mariadb` use a new `GET_LOCK()`/`RELEASE_LOCK()`-based session locker. Losing instances block until the migrating instance finishes, then proceed normally — none exit. SQLite is unaffected (single-node by design).
+
 ## v0.5.0 — Pluggable database adapters
 
 ### New features
