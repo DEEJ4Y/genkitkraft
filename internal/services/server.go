@@ -18,6 +18,7 @@ import (
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
 	genkitchatprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/genkit_chat_provider"
 	inmemorycache "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_cache"
+	inmemorystreamregistry "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_stream_registry"
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
 	mcpdiscoveryadapter "github.com/DEEJ4Y/genkitkraft/internal/adapters/mcp_discovery"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
@@ -373,17 +374,22 @@ func NewServer(cfg config.Config) (*Server, error) {
 	// way a dropped session is not.
 	webFetchStore := inmemorycache.NewCache(10*time.Minute, logger)
 	chatProvider := genkitchatprovider.NewChatProvider(webFetchStore.Scope("web_fetch"))
+	streamRegistry := inmemorystreamregistry.NewRegistry()
 
 	// Create playground commands
 	createSessionCmd := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)
 	deleteSessionCmd := commands.NewDeletePlaygroundSessionCommand(playgroundRepo)
 	saveMessageCmd := commands.NewSavePlaygroundMessageCommand(playgroundRepo)
+	startStreamCmd := commands.NewStartPlaygroundStreamCommand(playgroundRepo, chatProvider, streamRegistry, logger)
+	cancelStreamCmd := commands.NewCancelPlaygroundStreamCommand(playgroundRepo, streamRegistry)
+	failStreamCmd := commands.NewFailPlaygroundStreamCommand(playgroundRepo)
 
 	// Create playground queries
 	listSessionsQuery := queries.NewListPlaygroundSessionsQuery(playgroundRepo)
 	getSessionQuery := queries.NewGetPlaygroundSessionQuery(playgroundRepo)
 	listMessagesQuery := queries.NewListPlaygroundMessagesQuery(playgroundRepo)
 	resolveConfigQuery := queries.NewResolvePlaygroundConfigQuery(agentRepo, providerRepo, promptRepo, enc, agentToolRepo, httpToolRepo, mcpServerRepo)
+	getStreamChunksQuery := queries.NewGetPlaygroundStreamChunksQuery(playgroundRepo)
 
 	// Build playground application
 	playgroundApp := &app.PlaygroundApp{
@@ -391,12 +397,16 @@ func NewServer(cfg config.Config) (*Server, error) {
 			CreateSession: decorators.ApplyLogging(createSessionCmd, "CreatePlaygroundSession", logger),
 			DeleteSession: decorators.ApplyLoggingExecutor(deleteSessionCmd, "DeletePlaygroundSession", logger),
 			SaveMessage:   decorators.ApplyLogging(saveMessageCmd, "SavePlaygroundMessage", logger),
+			StartStream:   decorators.ApplyLogging(startStreamCmd, "StartPlaygroundStream", logger),
+			CancelStream:  decorators.ApplyLoggingExecutor(cancelStreamCmd, "CancelPlaygroundStream", logger),
+			FailStream:    decorators.ApplyLoggingExecutor(failStreamCmd, "FailPlaygroundStream", logger),
 		},
 		Queries: app.PlaygroundQueries{
-			ListSessions:  decorators.ApplyLogging(listSessionsQuery, "ListPlaygroundSessions", logger),
-			GetSession:    decorators.ApplyLogging(getSessionQuery, "GetPlaygroundSession", logger),
-			ListMessages:  decorators.ApplyLogging(listMessagesQuery, "ListPlaygroundMessages", logger),
-			ResolveConfig: decorators.ApplyLogging(resolveConfigQuery, "ResolvePlaygroundConfig", logger),
+			ListSessions:    decorators.ApplyLogging(listSessionsQuery, "ListPlaygroundSessions", logger),
+			GetSession:      decorators.ApplyLogging(getSessionQuery, "GetPlaygroundSession", logger),
+			ListMessages:    decorators.ApplyLogging(listMessagesQuery, "ListPlaygroundMessages", logger),
+			ResolveConfig:   decorators.ApplyLogging(resolveConfigQuery, "ResolvePlaygroundConfig", logger),
+			GetStreamChunks: decorators.ApplyLogging(getStreamChunksQuery, "GetPlaygroundStreamChunks", logger),
 		},
 	}
 

@@ -47,6 +47,12 @@ type ServerInterface interface {
 	// Deploy session chat completions
 	// (POST /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions)
 	DeploySessionChatCompletions(w http.ResponseWriter, r *http.Request, agentId string, sessionId string)
+	// Cancel deploy session chat completions stream
+	// (POST /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/cancel)
+	CancelDeploySessionChatCompletions(w http.ResponseWriter, r *http.Request, agentId string, sessionId string)
+	// Reconnect to deploy session chat completions stream
+	// (GET /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/stream)
+	DeploySessionChatCompletionsStream(w http.ResponseWriter, r *http.Request, agentId string, sessionId string)
 	// Playground chat
 	// (POST /api/v1/agents/{agentId}/playground/chat)
 	PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId string)
@@ -62,6 +68,12 @@ type ServerInterface interface {
 	// List playground messages
 	// (GET /api/v1/agents/{agentId}/playground/sessions/{sessionId}/messages)
 	ListPlaygroundMessages(w http.ResponseWriter, r *http.Request, agentId string, sessionId string)
+	// Reconnect to playground chat stream
+	// (GET /api/v1/agents/{agentId}/playground/sessions/{sessionId}/stream)
+	PlaygroundChatStream(w http.ResponseWriter, r *http.Request, agentId string, sessionId string)
+	// Cancel playground chat stream
+	// (POST /api/v1/agents/{agentId}/playground/sessions/{sessionId}/stream/cancel)
+	CancelPlaygroundStream(w http.ResponseWriter, r *http.Request, agentId string, sessionId string)
 	// Get agent tools
 	// (GET /api/v1/agents/{agentId}/tools)
 	GetAgentTools(w http.ResponseWriter, r *http.Request, agentId string)
@@ -423,6 +435,74 @@ func (siw *ServerInterfaceWrapper) DeploySessionChatCompletions(w http.ResponseW
 	handler.ServeHTTP(w, r)
 }
 
+// CancelDeploySessionChatCompletions operation middleware
+func (siw *ServerInterfaceWrapper) CancelDeploySessionChatCompletions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CancelDeploySessionChatCompletions(w, r, agentId, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeploySessionChatCompletionsStream operation middleware
+func (siw *ServerInterfaceWrapper) DeploySessionChatCompletionsStream(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeploySessionChatCompletionsStream(w, r, agentId, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // PlaygroundChat operation middleware
 func (siw *ServerInterfaceWrapper) PlaygroundChat(w http.ResponseWriter, r *http.Request) {
 
@@ -557,6 +637,74 @@ func (siw *ServerInterfaceWrapper) ListPlaygroundMessages(w http.ResponseWriter,
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListPlaygroundMessages(w, r, agentId, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PlaygroundChatStream operation middleware
+func (siw *ServerInterfaceWrapper) PlaygroundChatStream(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PlaygroundChatStream(w, r, agentId, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CancelPlaygroundStream operation middleware
+func (siw *ServerInterfaceWrapper) CancelPlaygroundStream(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CancelPlaygroundStream(w, r, agentId, sessionId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1403,11 +1551,15 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}", wrapper.DeleteDeploySession)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}", wrapper.GetDeploySession)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions", wrapper.DeploySessionChatCompletions)
+	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/cancel", wrapper.CancelDeploySessionChatCompletions)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/stream", wrapper.DeploySessionChatCompletionsStream)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/playground/chat", wrapper.PlaygroundChat)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions", wrapper.ListPlaygroundSessions)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions", wrapper.CreatePlaygroundSession)
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions/{sessionId}", wrapper.DeletePlaygroundSession)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions/{sessionId}/messages", wrapper.ListPlaygroundMessages)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions/{sessionId}/stream", wrapper.PlaygroundChatStream)
+	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions/{sessionId}/stream/cancel", wrapper.CancelPlaygroundStream)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/tools", wrapper.GetAgentTools)
 	m.HandleFunc("PUT "+options.BaseURL+"/api/v1/agents/{agentId}/tools", wrapper.UpdateAgentTools)
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/agents/{id}", wrapper.DeleteAgent)

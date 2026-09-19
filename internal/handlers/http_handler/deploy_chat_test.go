@@ -11,7 +11,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rs/zerolog"
+
 	aesgcmencryptor "github.com/DEEJ4Y/genkitkraft/internal/adapters/aesgcm_encryptor"
+	inmemorystreamregistry "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_stream_registry"
 	sqliteagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent"
 	sqliteagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent_tool"
 	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
@@ -28,15 +31,17 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/prompt"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
 	httphandler "github.com/DEEJ4Y/genkitkraft/internal/handlers/http_handler"
+	playgroundrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/playground_repo"
 	mockchat "github.com/DEEJ4Y/genkitkraft/resources/test/mock"
 )
 
 // testEnv holds the wired-up test dependencies.
 type testEnv struct {
-	handler  *httphandler.Handler
-	mux      *http.ServeMux
-	agentID  string
-	mockChat *mockchat.ChatProvider
+	handler        *httphandler.Handler
+	mux            *http.ServeMux
+	agentID        string
+	mockChat       *mockchat.ChatProvider
+	playgroundRepo playgroundrepo.PlaygroundRepository
 }
 
 // setupTestEnv creates a fully wired test environment with a real SQLite DB,
@@ -105,32 +110,41 @@ func setupTestEnv(t *testing.T) *testEnv {
 		t.Fatalf("create agent: %v", err)
 	}
 
+	mockCP := &mockchat.ChatProvider{
+		ChatResponse: "Hello from mock!",
+		StreamTokens: []string{"Hello", " from", " mock", "!"},
+	}
+
 	// Build app layer (minimal — only what deploy handler needs)
 	resolveConfig := queries.NewResolvePlaygroundConfigQuery(agentRepo, providerRepo, promptRepo, enc, agentToolRepo, httpToolRepo, mcpServerRepo)
 	saveMessage := commands.NewSavePlaygroundMessageCommand(playgroundRepo)
 	createSession := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)
 	deleteSession := commands.NewDeletePlaygroundSessionCommand(playgroundRepo)
+	streamRegistry := inmemorystreamregistry.NewRegistry()
+	startStream := commands.NewStartPlaygroundStreamCommand(playgroundRepo, mockCP, streamRegistry, zerolog.Nop())
+	cancelStream := commands.NewCancelPlaygroundStreamCommand(playgroundRepo, streamRegistry)
+	failStream := commands.NewFailPlaygroundStreamCommand(playgroundRepo)
 	listSessions := queries.NewListPlaygroundSessionsQuery(playgroundRepo)
 	getSession := queries.NewGetPlaygroundSessionQuery(playgroundRepo)
 	listMessages := queries.NewListPlaygroundMessagesQuery(playgroundRepo)
+	getStreamChunks := queries.NewGetPlaygroundStreamChunksQuery(playgroundRepo)
 
 	playgroundApp := &app.PlaygroundApp{
 		Commands: app.PlaygroundCommands{
 			CreateSession: createSession,
 			DeleteSession: deleteSession,
 			SaveMessage:   saveMessage,
+			StartStream:   startStream,
+			CancelStream:  cancelStream,
+			FailStream:    failStream,
 		},
 		Queries: app.PlaygroundQueries{
-			ListSessions:  listSessions,
-			GetSession:    getSession,
-			ListMessages:  listMessages,
-			ResolveConfig: resolveConfig,
+			ListSessions:    listSessions,
+			GetSession:      getSession,
+			ListMessages:    listMessages,
+			ResolveConfig:   resolveConfig,
+			GetStreamChunks: getStreamChunks,
 		},
-	}
-
-	mockCP := &mockchat.ChatProvider{
-		ChatResponse: "Hello from mock!",
-		StreamTokens: []string{"Hello", " from", " mock", "!"},
 	}
 
 	handler := httphandler.NewHandler(nil, nil, nil, nil, playgroundApp, nil, nil, nil, nil, mockCP, nil)
@@ -139,10 +153,11 @@ func setupTestEnv(t *testing.T) *testEnv {
 	gen.HandlerFromMux(handler, mux)
 
 	return &testEnv{
-		handler:  handler,
-		mux:      mux,
-		agentID:  a.ID,
-		mockChat: mockCP,
+		handler:        handler,
+		mux:            mux,
+		agentID:        a.ID,
+		mockChat:       mockCP,
+		playgroundRepo: playgroundRepo,
 	}
 }
 

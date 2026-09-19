@@ -374,6 +374,76 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Models.DeployChatCompletionsRequest'
+  /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/cancel:
+    post:
+      operationId: cancelDeploySessionChatCompletions
+      summary: Cancel deploy session chat completions stream
+      description: 'Stop the assistant reply currently streaming for this session, if any. Best-effort: a no-op if generation already finished or is running on a different instance.'
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Deploy
+  /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/stream:
+    get:
+      operationId: deploySessionChatCompletionsStream
+      summary: Reconnect to deploy session chat completions stream
+      description: Reconnect to the assistant reply currently (or most recently) streaming for this session. Send a `Last-Event-ID` header with the last SSE `id:` received to resume from the next token instead of replaying the whole reply. Response is an SSE stream of `chat.completion.chunk` events.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.DeployChatCompletionResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Deploy
   /api/v1/agents/{agentId}/playground/chat:
     post:
       operationId: playgroundChat
@@ -513,6 +583,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Models.PlaygroundMessageListResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Playground
+  /api/v1/agents/{agentId}/playground/sessions/{sessionId}/stream:
+    get:
+      operationId: playgroundChatStream
+      summary: Reconnect to playground chat stream
+      description: Reconnect to the assistant reply currently (or most recently) streaming for this session. Send a `Last-Event-ID` header with the last SSE `id:` received to resume from the next token instead of replaying the whole reply. Response is an SSE stream.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.PlaygroundMessageResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Playground
+  /api/v1/agents/{agentId}/playground/sessions/{sessionId}/stream/cancel:
+    post:
+      operationId: cancelPlaygroundStream
+      summary: Cancel playground chat stream
+      description: 'Stop the assistant reply currently streaming for this session, if any. Best-effort: a no-op if generation already finished or is running on a different instance.'
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
         '404':
           description: The server cannot find the requested resource.
           content:

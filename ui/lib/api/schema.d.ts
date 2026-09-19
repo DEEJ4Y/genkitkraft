@@ -192,6 +192,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel deploy session chat completions stream
+         * @description Stop the assistant reply currently streaming for this session, if any. Best-effort: a no-op if generation already finished or is running on a different instance.
+         */
+        post: operations["cancelDeploySessionChatCompletions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reconnect to deploy session chat completions stream
+         * @description Reconnect to the assistant reply currently (or most recently) streaming for this session. Send a `Last-Event-ID` header with the last SSE `id:` received to resume from the next token instead of replaying the whole reply. Response is an SSE stream of `chat.completion.chunk` events.
+         */
+        get: operations["deploySessionChatCompletionsStream"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agents/{agentId}/playground/chat": {
         parameters: {
             query?: never;
@@ -270,6 +310,46 @@ export interface paths {
         get: operations["listPlaygroundMessages"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agentId}/playground/sessions/{sessionId}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reconnect to playground chat stream
+         * @description Reconnect to the assistant reply currently (or most recently) streaming for this session. Send a `Last-Event-ID` header with the last SSE `id:` received to resume from the next token instead of replaying the whole reply. Response is an SSE stream.
+         */
+        get: operations["playgroundChatStream"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agentId}/playground/sessions/{sessionId}/stream/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel playground chat stream
+         * @description Stop the assistant reply currently streaming for this session, if any. Best-effort: a no-op if generation already finished or is running on a different instance.
+         */
+        post: operations["cancelPlaygroundStream"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1920,6 +2000,86 @@ export interface operations {
             };
         };
     };
+    cancelDeploySessionChatCompletions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Access is unauthorized. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    deploySessionChatCompletionsStream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.DeployChatCompletionResponse"];
+                };
+            };
+            /** @description Access is unauthorized. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
     playgroundChat: {
         parameters: {
             query?: never;
@@ -2071,6 +2231,68 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Models.PlaygroundMessageListResponse"];
                 };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    playgroundChatStream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.PlaygroundMessageResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelPlaygroundStream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description There is no content to send for this request, but the headers may be useful. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The server cannot find the requested resource. */
             404: {

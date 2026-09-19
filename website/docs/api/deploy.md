@@ -306,6 +306,49 @@ The request and response formats are identical to the [stateless endpoint](#requ
 You only need to send a single message per request. The server handles the full history.
 :::
 
+### Stream Resilience (Reconnect and Cancel)
+
+Streaming generation for a session runs independently of any single HTTP request — a dropped connection does not stop it, and the assistant reply is persisted to the session as it's generated. Two additional endpoints let a client recover from a dropped connection or stop generation early.
+
+#### Reconnect
+
+```
+GET /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/stream
+```
+
+Each frame in a streaming response carries an SSE `id:` line with a monotonically increasing sequence number, in addition to the `data:` payload:
+
+```
+id: 1
+data: {"id":"chatcmpl-abc123","object":"chat.completion.chunk", ...}
+
+id: 2
+data: {"id":"chatcmpl-abc123","object":"chat.completion.chunk", ...}
+```
+
+If a streaming request is interrupted (network error, timeout, client restart), reconnect by calling this endpoint with a `Last-Event-ID` header set to the last `id:` value you received. The response resumes from the next token — already-generated content is replayed from what was persisted, and generation is **not** re-run. If the reply had already finished (or failed) before you reconnect, you'll immediately get the remaining content followed by `finish_reason`/`[DONE]` (or an error chunk).
+
+```bash
+curl -N http://localhost:8080/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/stream \
+  -H "Authorization: Bearer my-secret-key" \
+  -H "Last-Event-ID: 12"
+```
+
+Omit `Last-Event-ID` (or send `0`) to replay the reply from the beginning.
+
+#### Cancel
+
+```
+POST /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/cancel
+```
+
+Stops the assistant reply currently generating for the session, if any. Returns `204 No Content` whether or not a stream was actually in progress — this is a best-effort call, not something to poll for confirmation.
+
+```bash
+curl -X POST http://localhost:8080/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/cancel \
+  -H "Authorization: Bearer my-secret-key"
+```
+
 ### Stateful Examples
 
 #### curl — Full session flow
