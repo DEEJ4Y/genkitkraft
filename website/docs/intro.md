@@ -15,7 +15,7 @@ GenKitKraft is a self-hostable platform for configuring and running LLM agents, 
 - **MCP Tool Support** — Connect MCP tool servers to your agents for external integrations
 - **Multi-Provider LLM Access** — Use OpenAI, Anthropic, Google, and more
 - **OpenAI-Compatible API** — Expose configured agents via a standard API
-- **Flexible Storage** — SQLite by default (zero external dependencies); PostgreSQL, MySQL, and MariaDB supported for multi-instance deployments
+- **Flexible Storage** — SQLite by default (zero external dependencies); PostgreSQL, MySQL, and MariaDB supported for [multi-instance deployments](/docs/deployment/horizontal-scaling)
 
 ## Getting Started
 

@@ -6,6 +6,8 @@ sidebar_position: 1
 
 GenKitKraft is configured entirely through environment variables. No config files needed.
 
+Running more than one instance? See [Horizontal Scaling](/docs/deployment/horizontal-scaling) for the full checklist — it links back to the relevant variables below.
+
 ## Reference Table
 
 | Variable | Description | Default | Required |

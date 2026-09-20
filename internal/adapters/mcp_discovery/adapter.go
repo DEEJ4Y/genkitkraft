@@ -3,8 +3,10 @@ package mcpdiscoveryadapter
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/mcp_discovery"
 	"github.com/firebase/genkit/go/plugins/mcp"
@@ -13,6 +15,12 @@ import (
 var _ mcpdiscovery.McpDiscovery = (*Adapter)(nil)
 
 var nonAlphanumeric = regexp.MustCompile(`[^a-z0-9]+`)
+
+// httpClient bounds connections to user-configured MCP servers. The genkit
+// MCP client always dials with context.Background() internally regardless of
+// the ctx passed to ListTools, so a transport-level timeout is the only way
+// to stop a slow/unresponsive server from hanging discovery indefinitely.
+var httpClient = &http.Client{Timeout: 30 * time.Second}
 
 type Adapter struct{}
 
@@ -70,13 +78,15 @@ func connect(_ context.Context, slug, transport, url string, headers map[string]
 	switch transport {
 	case "sse":
 		opts.SSE = &mcp.SSEConfig{
-			BaseURL: url,
-			Headers: headers,
+			BaseURL:    url,
+			Headers:    headers,
+			HTTPClient: httpClient,
 		}
 	case "streamableHttp":
 		opts.StreamableHTTP = &mcp.StreamableHTTPConfig{
 			BaseURL: url,
 			Headers: headers,
+			Timeout: httpClient.Timeout,
 		}
 	default:
 		return nil, fmt.Errorf("unsupported transport: %s", transport)
