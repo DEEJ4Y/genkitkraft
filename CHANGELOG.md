@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.6.1 — MCP discovery timeout and horizontal scaling docs
+
+### Fixes
+
+- **MCP server discovery no longer hangs on an unresponsive server** — connecting to a user-configured MCP server had no timeout: the underlying genkit MCP client always dials with `context.Background()` internally, so a transport-level HTTP timeout was the only way to bound the call. Both the SSE and Streamable HTTP transports now share the same 30s-timeout client already used by `web_fetch` and the custom HTTP tool. Covered by a new integration test (`internal/adapters/mcp_discovery/timeout_test.go`).
+
+### Docs
+
+- **New Horizontal Scaling guide** — a single page tying together the three requirements for running multiple instances (shared database, shared cache, and an identical `ENCRYPTION_KEY` on every instance — the last of which wasn't documented anywhere before) and what already works with zero extra config (migration locking, cross-instance cancel, `Last-Event-ID` SSE resume).
+
 ## v0.6.0 — Cache-backed cross-instance stream cancellation and migration locking
 
 ### Fixes
