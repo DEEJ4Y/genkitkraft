@@ -20,6 +20,7 @@ import (
 	sqliteagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent"
 	sqliteagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent_tool"
 	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
+	sqlitegap "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_gap"
 	sqlitehttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_http_tool"
 	sqlitemcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_mcp_server"
 	sqliteplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_playground"
@@ -33,6 +34,8 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/prompt"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
 	httphandler "github.com/DEEJ4Y/genkitkraft/internal/handlers/http_handler"
+	agentrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_repo"
+	gaprepo "github.com/DEEJ4Y/genkitkraft/internal/ports/gap_repo"
 	playgroundrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/playground_repo"
 	mockchat "github.com/DEEJ4Y/genkitkraft/resources/test/mock"
 )
@@ -44,6 +47,9 @@ type testEnv struct {
 	agentID        string
 	mockChat       *mockchat.ChatProvider
 	playgroundRepo playgroundrepo.PlaygroundRepository
+	gapRepo        gaprepo.GapRepository
+	agentRepo      agentrepo.AgentRepository
+	providerID     string
 }
 
 // setupTestEnv creates a fully wired test environment with a real SQLite DB,
@@ -71,6 +77,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	agentToolRepo := sqliteagenttool.NewRepository(db)
 	httpToolRepo := sqlitehttptool.NewHttpToolRepository(db)
 	mcpServerRepo := sqlitemcpserver.NewMcpServerRepository(db)
+	gapRepo := sqlitegap.NewGapRepository(db)
 
 	ctx := context.Background()
 
@@ -153,7 +160,19 @@ func setupTestEnv(t *testing.T) *testEnv {
 		},
 	}
 
-	handler := httphandler.NewHandler(nil, nil, nil, nil, playgroundApp, nil, nil, nil, nil, mockCP, nil)
+	gapApp := &app.GapApp{
+		Commands: app.GapCommands{
+			DismissGap: commands.NewDismissGapCommand(gapRepo),
+			ResolveGap: commands.NewResolveGapCommand(gapRepo),
+			ReopenGap:  commands.NewReopenGapCommand(gapRepo),
+		},
+		Queries: app.GapQueries{
+			ListGaps: queries.NewListGapsQuery(gapRepo),
+			GetGap:   queries.NewGetGapQuery(gapRepo),
+		},
+	}
+
+	handler := httphandler.NewHandler(nil, nil, nil, nil, playgroundApp, nil, nil, nil, nil, gapApp, mockCP, nil)
 
 	mux := http.NewServeMux()
 	gen.HandlerFromMux(handler, mux)
@@ -164,6 +183,9 @@ func setupTestEnv(t *testing.T) *testEnv {
 		agentID:        a.ID,
 		mockChat:       mockCP,
 		playgroundRepo: playgroundRepo,
+		gapRepo:        gapRepo,
+		agentRepo:      agentRepo,
+		providerID:     p.ID,
 	}
 }
 

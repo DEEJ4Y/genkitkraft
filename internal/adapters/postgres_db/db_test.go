@@ -25,6 +25,8 @@ var expectedTables = []string{
 	"agent_mcp_servers",
 	"agent_mcp_server_tools",
 	"agent_builtin_tools",
+	"agent_gaps",
+	"agent_gap_references",
 }
 
 func TestOpen(t *testing.T) {
