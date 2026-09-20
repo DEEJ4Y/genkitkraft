@@ -47,6 +47,9 @@ model AgentResponse {
   /** Maximum number of tool call iterations per request. */
   maxToolCalls: int32;
 
+  /** Whether this agent can self-report gaps (knowledge/capability/improvement) during conversations. */
+  gapReportingEnabled: boolean;
+
   /** When this agent was created. */
   createdAt: utcDateTime;
 
@@ -88,6 +91,9 @@ model CreateAgentRequest {
 
   /** Maximum number of tool call iterations per request (default 10). */
   maxToolCalls?: int32;
+
+  /** Whether this agent can self-report gaps during conversations (default false). */
+  gapReportingEnabled?: boolean;
 }
 
 /** Request to update an existing agent. */
@@ -124,6 +130,9 @@ model UpdateAgentRequest {
 
   /** Updated maximum tool call iterations. */
   maxToolCalls?: int32;
+
+  /** Updated gap reporting enabled flag. */
+  gapReportingEnabled?: boolean;
 }
 
 /** Paginated list of agents. */

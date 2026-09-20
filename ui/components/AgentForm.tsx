@@ -44,6 +44,7 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
   const [topK, setTopK] = useState(agent?.topK ?? 40)
   const [topKEnabled, setTopKEnabled] = useState(agent?.topKEnabled ?? false)
   const [maxToolCalls, setMaxToolCalls] = useState(agent?.maxToolCalls ?? 10)
+  const [gapReportingEnabled, setGapReportingEnabled] = useState(agent?.gapReportingEnabled ?? false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -138,6 +139,7 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
             topKEnabled,
             topK,
             maxToolCalls,
+            gapReportingEnabled,
           } as any,
         })
         if (err) throw new Error((err as any).error)
@@ -155,6 +157,7 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
             topKEnabled,
             topK,
             maxToolCalls,
+            gapReportingEnabled,
           } as any,
         })
         if (err) throw new Error((err as any).error)
@@ -410,6 +413,23 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
           w={320}
           description="Maximum tool call iterations per request"
         />
+      </div>
+
+      <div>
+        <Group gap="xs">
+          <Switch
+            size="sm"
+            checked={gapReportingEnabled}
+            onChange={(e) => setGapReportingEnabled(e.currentTarget.checked)}
+          />
+          <Text size="sm" fw={500}>
+            Enable Gap Reporting
+          </Text>
+        </Group>
+        <Text size="xs" c="dimmed" mt={2}>
+          Lets this agent flag questions it couldn&apos;t answer, actions it couldn&apos;t perform, or
+          automation ideas, for review on the Gaps tab.
+        </Text>
       </div>
 
       <Group>

@@ -53,6 +53,15 @@ type ServerInterface interface {
 	// Reconnect to deploy session chat completions stream
 	// (GET /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/stream)
 	DeploySessionChatCompletionsStream(w http.ResponseWriter, r *http.Request, agentId string, sessionId string)
+	// List agent gaps
+	// (GET /api/v1/agents/{agentId}/gaps)
+	ListGaps(w http.ResponseWriter, r *http.Request, agentId string, params ListGapsParams)
+	// Get agent gap
+	// (GET /api/v1/agents/{agentId}/gaps/{gapId})
+	GetGap(w http.ResponseWriter, r *http.Request, agentId string, gapId string)
+	// Update agent gap
+	// (PUT /api/v1/agents/{agentId}/gaps/{gapId})
+	UpdateGap(w http.ResponseWriter, r *http.Request, agentId string, gapId string)
 	// Playground chat
 	// (POST /api/v1/agents/{agentId}/playground/chat)
 	PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId string)
@@ -494,6 +503,118 @@ func (siw *ServerInterfaceWrapper) DeploySessionChatCompletionsStream(w http.Res
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeploySessionChatCompletionsStream(w, r, agentId, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListGaps operation middleware
+func (siw *ServerInterfaceWrapper) ListGaps(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListGapsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListGaps(w, r, agentId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetGap operation middleware
+func (siw *ServerInterfaceWrapper) GetGap(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "gapId" -------------
+	var gapId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "gapId", r.PathValue("gapId"), &gapId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "gapId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetGap(w, r, agentId, gapId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateGap operation middleware
+func (siw *ServerInterfaceWrapper) UpdateGap(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "gapId" -------------
+	var gapId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "gapId", r.PathValue("gapId"), &gapId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "gapId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateGap(w, r, agentId, gapId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1553,6 +1674,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions", wrapper.DeploySessionChatCompletions)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/cancel", wrapper.CancelDeploySessionChatCompletions)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/stream", wrapper.DeploySessionChatCompletionsStream)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/gaps", wrapper.ListGaps)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/gaps/{gapId}", wrapper.GetGap)
+	m.HandleFunc("PUT "+options.BaseURL+"/api/v1/agents/{agentId}/gaps/{gapId}", wrapper.UpdateGap)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/playground/chat", wrapper.PlaygroundChat)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions", wrapper.ListPlaygroundSessions)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/playground/sessions", wrapper.CreatePlaygroundSession)

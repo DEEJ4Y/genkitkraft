@@ -222,21 +222,22 @@ func toProviderTypeListResponse(result queries.ListProviderTypesResult) gen.Mode
 
 func toAgentResponse(a *agent.Agent) gen.ModelsAgentResponse {
 	resp := gen.ModelsAgentResponse{
-		Id:                 a.ID,
-		Name:               a.Name,
-		ProviderId:         a.ProviderID,
-		ProviderName:       a.ProviderName,
-		ProviderType:       gen.ModelsProviderType(a.ProviderType),
-		ModelId:            a.ModelID,
-		TemperatureEnabled: a.TemperatureEnabled,
-		Temperature:        float32(a.Temperature),
-		TopPEnabled:        a.TopPEnabled,
-		TopP:               float32(a.TopP),
-		TopKEnabled:        a.TopKEnabled,
-		TopK:               int32(a.TopK),
-		MaxToolCalls:       int32(a.MaxToolCalls),
-		CreatedAt:          a.CreatedAt,
-		UpdatedAt:          a.UpdatedAt,
+		Id:                  a.ID,
+		Name:                a.Name,
+		ProviderId:          a.ProviderID,
+		ProviderName:        a.ProviderName,
+		ProviderType:        gen.ModelsProviderType(a.ProviderType),
+		ModelId:             a.ModelID,
+		TemperatureEnabled:  a.TemperatureEnabled,
+		Temperature:         float32(a.Temperature),
+		TopPEnabled:         a.TopPEnabled,
+		TopP:                float32(a.TopP),
+		TopKEnabled:         a.TopKEnabled,
+		TopK:                int32(a.TopK),
+		MaxToolCalls:        int32(a.MaxToolCalls),
+		GapReportingEnabled: a.GapReportingEnabled,
+		CreatedAt:           a.CreatedAt,
+		UpdatedAt:           a.UpdatedAt,
 	}
 	if a.SystemPromptID != "" {
 		resp.SystemPromptId = &a.SystemPromptID
@@ -288,6 +289,7 @@ func toCreateAgentParams(req gen.ModelsCreateAgentRequest) commands.CreateAgentP
 		t := int(*req.MaxToolCalls)
 		params.MaxToolCalls = &t
 	}
+	params.GapReportingEnabled = req.GapReportingEnabled
 	return params
 }
 
@@ -318,6 +320,7 @@ func toUpdateAgentParams(id string, req gen.ModelsUpdateAgentRequest) commands.U
 		t := int(*req.MaxToolCalls)
 		params.MaxToolCalls = &t
 	}
+	params.GapReportingEnabled = req.GapReportingEnabled
 	return params
 }
 
@@ -522,11 +525,11 @@ func toOpenAIChatCompletion(id, model, content string, created int64) gen.Models
 // SSE streaming chunk types (not in generated types since SSE isn't modeled in TypeSpec)
 
 type deployChatCompletionChunk struct {
-	ID      string                              `json:"id"`
-	Object  string                              `json:"object"`
-	Created int64                               `json:"created"`
-	Model   string                              `json:"model"`
-	Choices []deployChatCompletionChunkChoice    `json:"choices"`
+	ID      string                            `json:"id"`
+	Object  string                            `json:"object"`
+	Created int64                             `json:"created"`
+	Model   string                            `json:"model"`
+	Choices []deployChatCompletionChunkChoice `json:"choices"`
 }
 
 type deployChatCompletionChunkChoice struct {
@@ -614,7 +617,7 @@ func toCreateMcpServerParams(req gen.ModelsCreateMcpServerRequest) commands.Crea
 
 func toUpdateMcpServerParams(id string, req gen.ModelsUpdateMcpServerRequest) commands.UpdateMcpServerParams {
 	params := commands.UpdateMcpServerParams{
-		ID:  id,
+		ID:   id,
 		Name: req.Name,
 		URL:  req.Url,
 	}
@@ -750,5 +753,66 @@ func toBuiltInToolResponse(t builtintool.BuiltInTool) gen.ModelsBuiltInToolRespo
 		Id:          t.ID,
 		Name:        t.Name,
 		Description: t.Description,
+	}
+}
+
+func toGapResponse(g queries.GapWithReferences) gen.ModelsGapResponse {
+	resp := gen.ModelsGapResponse{
+		Id:         g.Gap.ID,
+		AgentId:    g.Gap.AgentID,
+		Category:   gen.ModelsGapCategory(g.Gap.Category),
+		Context:    g.Gap.Context,
+		Details:    g.Gap.Details,
+		Status:     gen.ModelsGapStatus(g.Gap.Status),
+		References: make([]gen.ModelsGapReference, len(g.References)),
+		CreatedAt:  g.Gap.CreatedAt,
+		UpdatedAt:  g.Gap.UpdatedAt,
+	}
+	if g.Gap.SuggestedResolution != "" {
+		resp.SuggestedResolution = &g.Gap.SuggestedResolution
+	}
+	if g.Gap.DismissalCategory != "" {
+		dc := gen.ModelsGapDismissalCategory(g.Gap.DismissalCategory)
+		resp.DismissalCategory = &dc
+	}
+	if g.Gap.DismissalReason != "" {
+		resp.DismissalReason = &g.Gap.DismissalReason
+	}
+	for i, ref := range g.References {
+		item := gen.ModelsGapReference{SessionId: ref.SessionID}
+		if ref.MessageID != "" {
+			item.MessageId = &ref.MessageID
+		}
+		resp.References[i] = item
+	}
+	return resp
+}
+
+func toGapListResponse(result queries.ListGapsResult, limit, offset int) gen.ModelsGapListResponse {
+	gaps := make([]gen.ModelsGapResponse, len(result.Gaps))
+	for i, g := range result.Gaps {
+		gaps[i] = toGapResponse(g)
+	}
+	return gen.ModelsGapListResponse{
+		Gaps:   gaps,
+		Total:  int32(result.Total),
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	}
+}
+
+func toListGapsParams(agentID string, params gen.ListGapsParams) queries.ListGapsParams {
+	limit := 20
+	offset := 0
+	if params.Limit != nil {
+		limit = int(*params.Limit)
+	}
+	if params.Offset != nil {
+		offset = int(*params.Offset)
+	}
+	return queries.ListGapsParams{
+		AgentID: agentID,
+		Limit:   limit,
+		Offset:  offset,
 	}
 }

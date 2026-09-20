@@ -23,6 +23,7 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/cache"
 	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
+	gapreporter "github.com/DEEJ4Y/genkitkraft/internal/ports/gap_reporter"
 )
 
 // Compile-time check that ChatProvider implements the port interface.
@@ -37,12 +38,23 @@ const maxResponseBytes = 1 << 20 // 1MB
 
 // ChatProvider implements chatprovider.ChatProvider using the Genkit Go SDK.
 type ChatProvider struct {
-	cache cache.Cache
+	cache       cache.Cache
+	gapReporter gapreporter.Reporter
 }
 
-// NewChatProvider creates a new Genkit-based chat provider.
+// NewChatProvider creates a new Genkit-based chat provider. Call
+// SetGapReporter afterward to enable the report_gap tool; until then it is
+// never injected.
 func NewChatProvider(c cache.Cache) *ChatProvider {
 	return &ChatProvider{cache: c}
+}
+
+// SetGapReporter wires the report_gap tool's handler in after construction.
+// This breaks a circular dependency: the gap dedup pipeline needs a
+// ChatProvider to run its own LLM call, but the reporter that ChatProvider
+// calls is backed by that same dedup pipeline.
+func (cp *ChatProvider) SetGapReporter(r gapreporter.Reporter) {
+	cp.gapReporter = r
 }
 
 func (cp *ChatProvider) ChatStream(ctx context.Context, req chatprovider.ChatRequest) (<-chan string, <-chan error) {
@@ -320,7 +332,7 @@ func (cp *ChatProvider) buildTools(ctx context.Context, req chatprovider.ChatReq
 	}
 
 	// Build built-in tools
-	builtInTools := cp.buildBuiltInTools(req.BuiltInToolIDs)
+	builtInTools := cp.buildBuiltInTools(req.BuiltInToolIDs, req.SessionID, req.GapReportingEnabled)
 	tools = append(tools, builtInTools...)
 
 	// Build HTTP tools

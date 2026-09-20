@@ -11,18 +11,19 @@ import (
 )
 
 type UpdateAgentParams struct {
-	ID                 string
-	Name               *string
-	ProviderID         *string
-	ModelID            *string
-	SystemPromptID     *string // nil=don't change, ""=clear, "uuid"=set
-	TemperatureEnabled *bool
-	Temperature        *float64
-	TopPEnabled        *bool
-	TopP               *float64
-	TopKEnabled        *bool
-	TopK               *int
-	MaxToolCalls       *int
+	ID                  string
+	Name                *string
+	ProviderID          *string
+	ModelID             *string
+	SystemPromptID      *string // nil=don't change, ""=clear, "uuid"=set
+	TemperatureEnabled  *bool
+	Temperature         *float64
+	TopPEnabled         *bool
+	TopP                *float64
+	TopKEnabled         *bool
+	TopK                *int
+	MaxToolCalls        *int
+	GapReportingEnabled *bool
 }
 
 type UpdateAgentResult struct {
@@ -87,6 +88,9 @@ func (c *UpdateAgentCommand) Execute(ctx context.Context, params UpdateAgentPara
 	}
 	if params.MaxToolCalls != nil {
 		a.MaxToolCalls = *params.MaxToolCalls
+	}
+	if params.GapReportingEnabled != nil {
+		a.GapReportingEnabled = *params.GapReportingEnabled
 	}
 
 	if err := c.repo.Update(ctx, a); err != nil {

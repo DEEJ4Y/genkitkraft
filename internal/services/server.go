@@ -18,30 +18,33 @@ import (
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
 	cachestreamregistry "github.com/DEEJ4Y/genkitkraft/internal/adapters/cache_stream_registry"
 	genkitchatprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/genkit_chat_provider"
-	inmemorycache "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_cache"
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
+	inmemorycache "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_cache"
 	mcpdiscoveryadapter "github.com/DEEJ4Y/genkitkraft/internal/adapters/mcp_discovery"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
-	rediscache "github.com/DEEJ4Y/genkitkraft/internal/adapters/redis_cache"
 	mysqlagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_agent"
 	mysqlagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_agent_tool"
+	mysqldb "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_db"
+	mysqlgap "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_gap"
 	mysqlhttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_http_tool"
 	mysqlmcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_mcp_server"
 	mysqlplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_playground"
 	mysqlprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_prompt"
 	mysqlprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_provider"
-	mysqldb "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_db"
 	postgresagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_agent"
 	postgresagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_agent_tool"
+	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
+	postgresgap "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_gap"
 	postgreshttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_http_tool"
 	postgresmcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_mcp_server"
 	postgresplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_playground"
 	postgresprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_prompt"
 	postgresperson "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_provider"
-	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
-	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
+	rediscache "github.com/DEEJ4Y/genkitkraft/internal/adapters/redis_cache"
 	sqliteagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent"
 	sqliteagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent_tool"
+	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
+	sqlitegap "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_gap"
 	sqlitehttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_http_tool"
 	sqlitemcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_mcp_server"
 	sqliteplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_playground"
@@ -59,14 +62,15 @@ import (
 	mcphandler "github.com/DEEJ4Y/genkitkraft/internal/handlers/mcp_handler"
 	agentrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_repo"
 	agenttoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_tool_repo"
+	"github.com/DEEJ4Y/genkitkraft/internal/ports/cache"
 	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
+	gaprepo "github.com/DEEJ4Y/genkitkraft/internal/ports/gap_repo"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/hasher"
 	httptoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/http_tool_repo"
 	mcpserverrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/mcp_server_repo"
 	playgroundrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/playground_repo"
 	promptrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/prompt_repo"
 	providerrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/provider_repo"
-	"github.com/DEEJ4Y/genkitkraft/internal/ports/cache"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/session"
 )
 
@@ -82,6 +86,7 @@ type Server struct {
 	mcpServerApp   *app.McpServerApp
 	agentToolApp   *app.AgentToolApp
 	builtInToolApp *app.BuiltInToolApp
+	gapApp         *app.GapApp
 	chatProvider   chatprovider.ChatProvider
 	sessionStore   session.Store
 	cacheStore     cache.Store
@@ -199,6 +204,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 		mcpServerRepo  mcpserverrepo.McpServerRepository
 		playgroundRepo playgroundrepo.PlaygroundRepository
 		agentToolRepo  agenttoolrepo.AgentToolRepository
+		gapRepo        gaprepo.GapRepository
 	)
 	switch cfg.Database.Provider {
 	case "postgres":
@@ -209,6 +215,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 		mcpServerRepo = postgresmcpserver.NewMcpServerRepository(db)
 		playgroundRepo = postgresplayground.NewPlaygroundRepository(db)
 		agentToolRepo = postgresagenttool.NewRepository(db)
+		gapRepo = postgresgap.NewGapRepository(db)
 	case "mysql", "mariadb":
 		providerRepo = mysqlprovider.NewProviderRepository(db)
 		promptRepo = mysqlprompt.NewPromptRepository(db)
@@ -217,6 +224,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 		mcpServerRepo = mysqlmcpserver.NewMcpServerRepository(db)
 		playgroundRepo = mysqlplayground.NewPlaygroundRepository(db)
 		agentToolRepo = mysqlagenttool.NewRepository(db)
+		gapRepo = mysqlgap.NewGapRepository(db)
 	default:
 		providerRepo = sqliteprovider.NewProviderRepository(db)
 		promptRepo = sqliteprompt.NewPromptRepository(db)
@@ -225,6 +233,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 		mcpServerRepo = sqlitemcpserver.NewMcpServerRepository(db)
 		playgroundRepo = sqliteplayground.NewPlaygroundRepository(db)
 		agentToolRepo = sqliteagenttool.NewRepository(db)
+		gapRepo = sqlitegap.NewGapRepository(db)
 	}
 
 	providerTester := httpprovidertester.NewTester()
@@ -376,6 +385,34 @@ func NewServer(cfg config.Config) (*Server, error) {
 	chatProvider := genkitchatprovider.NewChatProvider(webFetchStore.Scope("web_fetch"))
 	streamRegistry := cachestreamregistry.NewRegistry(cacheStore.Scope("stream_cancel"), cachestreamregistry.DefaultPollInterval, logger)
 
+	// Gap dedup pipeline + reporter. chatProvider.SetGapReporter closes a
+	// circular dependency: the dedup pipeline needs a ChatProvider to run its
+	// own LLM call, and the reporter that ChatProvider's report_gap tool
+	// calls is backed by that same dedup pipeline.
+	runGapDedupCmd := commands.NewRunGapDedupCommand(gapRepo, agentRepo, providerRepo, enc, playgroundRepo, chatProvider, logger)
+	reportGapCmd := commands.NewReportGapCommand(playgroundRepo, decorators.ApplyLoggingExecutor(runGapDedupCmd, "RunGapDedup", logger), logger)
+	chatProvider.SetGapReporter(reportGapCmd)
+
+	// Create gap commands and queries
+	dismissGapCmd := commands.NewDismissGapCommand(gapRepo)
+	resolveGapCmd := commands.NewResolveGapCommand(gapRepo)
+	reopenGapCmd := commands.NewReopenGapCommand(gapRepo)
+	listGapsQuery := queries.NewListGapsQuery(gapRepo)
+	getGapQuery := queries.NewGetGapQuery(gapRepo)
+
+	// Build gap application
+	gapApp := &app.GapApp{
+		Commands: app.GapCommands{
+			DismissGap: decorators.ApplyLogging(dismissGapCmd, "DismissGap", logger),
+			ResolveGap: decorators.ApplyLogging(resolveGapCmd, "ResolveGap", logger),
+			ReopenGap:  decorators.ApplyLogging(reopenGapCmd, "ReopenGap", logger),
+		},
+		Queries: app.GapQueries{
+			ListGaps: decorators.ApplyLogging(listGapsQuery, "ListGaps", logger),
+			GetGap:   decorators.ApplyLogging(getGapQuery, "GetGap", logger),
+		},
+	}
+
 	// Create playground commands
 	createSessionCmd := commands.NewCreatePlaygroundSessionCommand(playgroundRepo, agentRepo)
 	deleteSessionCmd := commands.NewDeletePlaygroundSessionCommand(playgroundRepo)
@@ -421,6 +458,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 		mcpServerApp:   mcpServerApp,
 		agentToolApp:   agentToolApp,
 		builtInToolApp: builtInToolApp,
+		gapApp:         gapApp,
 		chatProvider:   chatProvider,
 		sessionStore:   sessionStore,
 		cacheStore:     cacheStore,
@@ -435,7 +473,7 @@ func (s *Server) Start() error {
 
 	// Register all API routes via generated handler
 	mcpDiscovery := mcpdiscoveryadapter.New()
-	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp, s.promptApp, s.agentApp, s.playgroundApp, s.httpToolApp, s.mcpServerApp, s.agentToolApp, s.builtInToolApp, s.chatProvider, mcpDiscovery)
+	apiHandler := httphandler.NewHandler(s.authApp, s.providerApp, s.promptApp, s.agentApp, s.playgroundApp, s.httpToolApp, s.mcpServerApp, s.agentToolApp, s.builtInToolApp, s.gapApp, s.chatProvider, mcpDiscovery)
 	gen.HandlerFromMux(apiHandler, mux)
 
 	// SPA fallback: serve embedded UI or fallback to index.html
@@ -445,7 +483,7 @@ func (s *Server) Start() error {
 	mcpH := mcphandler.NewHandler(
 		s.authApp, s.providerApp, s.promptApp, s.agentApp,
 		s.playgroundApp, s.httpToolApp, s.mcpServerApp, s.agentToolApp,
-		s.builtInToolApp, s.chatProvider, mcpDiscovery, s.cfg.Auth,
+		s.builtInToolApp, s.gapApp, s.chatProvider, mcpDiscovery, s.cfg.Auth,
 	)
 	mux.Handle("/mcp", mcpH.HTTPHandler())
 

@@ -9,10 +9,16 @@ import (
 
 	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/firebase/genkit/go/ai"
+
+	gapreporter "github.com/DEEJ4Y/genkitkraft/internal/ports/gap_reporter"
 )
 
-// buildBuiltInTools creates Genkit tool references for the specified built-in tool IDs.
-func (cp *ChatProvider) buildBuiltInTools(ids []string) []ai.ToolRef {
+// buildBuiltInTools creates Genkit tool references for the specified built-in
+// tool IDs, plus the report_gap tool when gap reporting is enabled for this
+// conversation. report_gap is deliberately not part of ids/the built-in tool
+// registry — it's gated by a per-agent feature flag, not a Tools-tab
+// assignment — and is only offered when a session exists to attach it to.
+func (cp *ChatProvider) buildBuiltInTools(ids []string, sessionID string, gapReportingEnabled bool) []ai.ToolRef {
 	var tools []ai.ToolRef
 	for _, id := range ids {
 		switch id {
@@ -20,7 +26,77 @@ func (cp *ChatProvider) buildBuiltInTools(ids []string) []ai.ToolRef {
 			tools = append(tools, cp.buildWebFetchTool())
 		}
 	}
+	if gapReportingEnabled && sessionID != "" && cp.gapReporter != nil {
+		tools = append(tools, cp.buildReportGapTool(sessionID))
+	}
 	return tools
+}
+
+func (cp *ChatProvider) buildReportGapTool(sessionID string) ai.Tool {
+	name := "report_gap"
+	description := "Report a gap you noticed in this conversation: a question you could not answer " +
+		"reliably (category 'knowledge'), an action you were asked to perform but could not " +
+		"(category 'capability' — e.g. a missing tool, permission, or integration), or an idea for " +
+		"automating more of this flow with no failure involved (category 'improvement'). This does " +
+		"not change your answer to the user — answer them as best you can regardless, then call this " +
+		"tool to flag the gap for review. Calling this tool has no visible effect on the conversation."
+
+	inputSchema := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"category": map[string]any{
+				"type":        "string",
+				"enum":        []any{"knowledge", "capability", "improvement"},
+				"description": "The kind of gap: 'knowledge' (couldn't answer reliably), 'capability' (couldn't perform an action), or 'improvement' (a suggestion, no failure occurred).",
+			},
+			"context": map[string]any{
+				"type":        "string",
+				"description": "What the user asked or what task you were attempting.",
+			},
+			"details": map[string]any{
+				"type":        "string",
+				"description": "What was missing, blocked, or could be improved.",
+			},
+			"suggested_resolution": map[string]any{
+				"type":        "string",
+				"description": "Optional: your suggestion for closing the gap (e.g. a source to add, a tool to grant, a step to automate).",
+			},
+		},
+		"required": []any{"category", "context", "details"},
+	}
+
+	toolFn := func(toolCtx *ai.ToolContext, args any) (any, error) {
+		argsMap, ok := args.(map[string]any)
+		if !ok {
+			return "Gap not recorded: invalid arguments.", nil
+		}
+		category, _ := argsMap["category"].(string)
+		context_, _ := argsMap["context"].(string)
+		details, _ := argsMap["details"].(string)
+		if category == "" || context_ == "" || details == "" {
+			return "Gap not recorded: category, context, and details are required.", nil
+		}
+		suggestedResolution, _ := argsMap["suggested_resolution"].(string)
+
+		cp.reportGap(toolCtx.Context, sessionID, category, context_, details, suggestedResolution)
+		return "Gap recorded for review.", nil
+	}
+
+	return ai.NewTool(name, description, toolFn, ai.WithInputSchema(inputSchema))
+}
+
+// reportGap is split out of the tool closure so it's reachable from a test
+// without standing up Genkit's action machinery. It never fails the tool
+// call — a broken reporter must not disrupt the live response — so any
+// error is only logged by the underlying Reporter implementation.
+func (cp *ChatProvider) reportGap(ctx context.Context, sessionID, category, context_, details, suggestedResolution string) {
+	_ = cp.gapReporter.Report(ctx, gapreporter.ReportParams{
+		SessionID:           sessionID,
+		Category:            category,
+		Context:             context_,
+		Details:             details,
+		SuggestedResolution: suggestedResolution,
+	})
 }
 
 func (cp *ChatProvider) buildWebFetchTool() ai.Tool {

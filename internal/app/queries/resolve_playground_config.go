@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
-	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
-	"github.com/DEEJ4Y/genkitkraft/internal/ports/encryptor"
 	agentrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_repo"
 	agenttoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_tool_repo"
+	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
+	"github.com/DEEJ4Y/genkitkraft/internal/ports/encryptor"
 	httptoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/http_tool_repo"
 	mcpserverrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/mcp_server_repo"
 	promptrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/prompt_repo"
@@ -153,19 +153,20 @@ func (q *ResolvePlaygroundConfigQuery) Execute(ctx context.Context, params Resol
 	}
 
 	chatReq := chatprovider.ChatRequest{
-		ProviderType:       string(p.ProviderType),
-		APIKey:             apiKey,
-		BaseURL:            p.BaseURL,
-		Config:             p.RawConfig,
-		ModelID:            modelID,
-		SystemPrompt:       systemPrompt,
-		TemperatureEnabled: temperatureEnabled,
-		Temperature:        temperature,
-		TopPEnabled:        topPEnabled,
-		TopP:               topP,
-		TopKEnabled:        topKEnabled,
-		TopK:               topK,
-		MaxToolCalls:       maxToolCalls,
+		ProviderType:        string(p.ProviderType),
+		APIKey:              apiKey,
+		BaseURL:             p.BaseURL,
+		Config:              p.RawConfig,
+		ModelID:             modelID,
+		SystemPrompt:        systemPrompt,
+		TemperatureEnabled:  temperatureEnabled,
+		Temperature:         temperature,
+		TopPEnabled:         topPEnabled,
+		TopP:                topP,
+		TopKEnabled:         topKEnabled,
+		TopK:                topK,
+		MaxToolCalls:        maxToolCalls,
+		GapReportingEnabled: a.GapReportingEnabled,
 	}
 
 	// Resolve tools if requested

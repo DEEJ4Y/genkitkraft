@@ -13,6 +13,7 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/app/commands"
 	"github.com/DEEJ4Y/genkitkraft/internal/app/queries"
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
+	"github.com/DEEJ4Y/genkitkraft/internal/domain/gap"
 	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
 	mcpdiscovery "github.com/DEEJ4Y/genkitkraft/internal/ports/mcp_discovery"
 )
@@ -34,12 +35,13 @@ type Handler struct {
 	mcpServerApp   *app.McpServerApp
 	agentToolApp   *app.AgentToolApp
 	builtInToolApp *app.BuiltInToolApp
+	gapApp         *app.GapApp
 	chatProvider   chatprovider.ChatProvider
 	mcpDiscovery   mcpdiscovery.McpDiscovery
 }
 
-func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp, promptApp *app.PromptApp, agentApp *app.AgentApp, playgroundApp *app.PlaygroundApp, httpToolApp *app.HttpToolApp, mcpServerApp *app.McpServerApp, agentToolApp *app.AgentToolApp, builtInToolApp *app.BuiltInToolApp, chatProvider chatprovider.ChatProvider, mcpDiscovery mcpdiscovery.McpDiscovery) *Handler {
-	return &Handler{authApp: authApp, providerApp: providerApp, promptApp: promptApp, agentApp: agentApp, playgroundApp: playgroundApp, httpToolApp: httpToolApp, mcpServerApp: mcpServerApp, agentToolApp: agentToolApp, builtInToolApp: builtInToolApp, chatProvider: chatProvider, mcpDiscovery: mcpDiscovery}
+func NewHandler(authApp *app.AuthApp, providerApp *app.ProviderApp, promptApp *app.PromptApp, agentApp *app.AgentApp, playgroundApp *app.PlaygroundApp, httpToolApp *app.HttpToolApp, mcpServerApp *app.McpServerApp, agentToolApp *app.AgentToolApp, builtInToolApp *app.BuiltInToolApp, gapApp *app.GapApp, chatProvider chatprovider.ChatProvider, mcpDiscovery mcpdiscovery.McpDiscovery) *Handler {
+	return &Handler{authApp: authApp, providerApp: providerApp, promptApp: promptApp, agentApp: agentApp, playgroundApp: playgroundApp, httpToolApp: httpToolApp, mcpServerApp: mcpServerApp, agentToolApp: agentToolApp, builtInToolApp: builtInToolApp, gapApp: gapApp, chatProvider: chatProvider, mcpDiscovery: mcpDiscovery}
 }
 
 func (h *Handler) GetAuthStatus(w http.ResponseWriter, r *http.Request) {
@@ -546,6 +548,7 @@ func (h *Handler) PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId
 
 	chatReq := configResult.ChatRequest
 	chatReq.Messages = chatMessages
+	chatReq.SessionID = req.SessionId
 
 	// Non-streaming path: return a single JSON response
 	if req.Stream != nil && !*req.Stream {
@@ -878,6 +881,7 @@ func (h *Handler) DeploySessionChatCompletions(w http.ResponseWriter, r *http.Re
 
 	chatReq := configResult.ChatRequest
 	chatReq.Messages = chatMessages
+	chatReq.SessionID = sessionId
 
 	completionID := "chatcmpl-" + uuid.New().String()
 	created := time.Now().Unix()
@@ -1121,6 +1125,98 @@ func (h *Handler) UpdateAgentTools(w http.ResponseWriter, r *http.Request, agent
 		return
 	}
 	writeJSON(w, http.StatusOK, toAgentToolConfigResponse(result.Config))
+}
+
+func (h *Handler) ListGaps(w http.ResponseWriter, r *http.Request, agentId string, params gen.ListGapsParams) {
+	qParams := toListGapsParams(agentId, params)
+	result, err := h.gapApp.Queries.ListGaps.Execute(r.Context(), qParams)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toGapListResponse(result, qParams.Limit, qParams.Offset))
+}
+
+func (h *Handler) GetGap(w http.ResponseWriter, r *http.Request, agentId string, gapId string) {
+	result, err := h.gapApp.Queries.GetGap.Execute(r.Context(), queries.GetGapParams{ID: gapId})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	if result.Gap.AgentID != agentId {
+		writeAppError(w, errors.NewAppError(errors.NotFound, "gap not found"))
+		return
+	}
+	writeJSON(w, http.StatusOK, toGapResponse(result.GapWithReferences))
+}
+
+func (h *Handler) UpdateGap(w http.ResponseWriter, r *http.Request, agentId string, gapId string) {
+	var req gen.ModelsUpdateGapRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "invalid request body"))
+		return
+	}
+	if req.Status == nil {
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "status is required"))
+		return
+	}
+
+	existing, err := h.gapApp.Queries.GetGap.Execute(r.Context(), queries.GetGapParams{ID: gapId})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	if existing.Gap.AgentID != agentId {
+		writeAppError(w, errors.NewAppError(errors.NotFound, "gap not found"))
+		return
+	}
+
+	var g *gap.Gap
+	switch *req.Status {
+	case gen.Resolved:
+		result, err := h.gapApp.Commands.ResolveGap.Execute(r.Context(), commands.ResolveGapParams{ID: gapId})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		g = result.Gap
+	case gen.Dismissed:
+		if req.DismissalCategory == nil {
+			writeAppError(w, errors.NewAppError(errors.InvalidInput, "dismissalCategory is required when status is dismissed"))
+			return
+		}
+		reason := ""
+		if req.DismissalReason != nil {
+			reason = *req.DismissalReason
+		}
+		result, err := h.gapApp.Commands.DismissGap.Execute(r.Context(), commands.DismissGapParams{
+			ID:                gapId,
+			DismissalCategory: string(*req.DismissalCategory),
+			DismissalReason:   reason,
+		})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		g = result.Gap
+	case gen.Open:
+		result, err := h.gapApp.Commands.ReopenGap.Execute(r.Context(), commands.ReopenGapParams{ID: gapId})
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		g = result.Gap
+	default:
+		writeAppError(w, errors.NewAppError(errors.InvalidInput, "status must be one of: open, resolved, dismissed"))
+		return
+	}
+
+	refs, err := h.gapApp.Queries.GetGap.Execute(r.Context(), queries.GetGapParams{ID: g.ID})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toGapResponse(refs.GapWithReferences))
 }
 
 func (h *Handler) ListBuiltInTools(w http.ResponseWriter, r *http.Request) {
