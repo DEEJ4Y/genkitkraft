@@ -2,7 +2,9 @@ package queries
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
+	"strings"
 
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
 	agentrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_repo"
@@ -14,6 +16,9 @@ import (
 	promptrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/prompt_repo"
 	providerrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/provider_repo"
 )
+
+//go:embed prompts/gap_reporting_instructions.md
+var gapReportingInstructions string
 
 // ToolOverride specifies tool configuration overrides for a chat request.
 type ToolOverride struct {
@@ -152,6 +157,10 @@ func (q *ResolvePlaygroundConfigQuery) Execute(ctx context.Context, params Resol
 		systemPrompt = prompt.Content
 	}
 
+	if a.GapReportingEnabled {
+		systemPrompt = appendGapReportingInstructions(systemPrompt)
+	}
+
 	chatReq := chatprovider.ChatRequest{
 		ProviderType:        string(p.ProviderType),
 		APIKey:              apiKey,
@@ -178,6 +187,17 @@ func (q *ResolvePlaygroundConfigQuery) Execute(ctx context.Context, params Resol
 	}
 
 	return ResolvePlaygroundConfigResult{ChatRequest: chatReq}, nil
+}
+
+// appendGapReportingInstructions adds the gap-reporting instruction block to
+// the end of a system prompt, so an agent with gap reporting enabled always
+// knows when to call report_gap even if it has no custom prompt of its own.
+func appendGapReportingInstructions(systemPrompt string) string {
+	instructions := strings.TrimRight(gapReportingInstructions, "\n")
+	if systemPrompt == "" {
+		return instructions
+	}
+	return systemPrompt + "\n\n" + instructions
 }
 
 // resolveTools loads tool configurations and populates the ChatRequest.

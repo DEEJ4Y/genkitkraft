@@ -380,6 +380,41 @@ func TestDeployChat_MultipleMessages(t *testing.T) {
 	}
 }
 
+// Regression test: report_gap under-reported in manual QA because the model
+// had no instructions beyond the tool's own description (see PR #49 manual
+// test report). Assert the stateless deploy chat-completions path — which
+// has no session to fall back on — carries the appended instructions.
+func TestDeployChat_GapReportingEnabled_AppendsInstructionsToSystemPrompt(t *testing.T) {
+	env := setupTestEnv(t)
+
+	a, err := env.agentRepo.GetByID(context.Background(), env.agentID)
+	if err != nil {
+		t.Fatalf("get agent: %v", err)
+	}
+	a.GapReportingEnabled = true
+	if err := env.agentRepo.Update(context.Background(), a); err != nil {
+		t.Fatalf("update agent: %v", err)
+	}
+
+	reqBody := map[string]interface{}{
+		"messages": []map[string]string{{"role": "user", "content": "Hello"}},
+		"stream":   false,
+	}
+	req := httptest.NewRequest(http.MethodPost,
+		"/api/v1/agents/"+env.agentID+"/deploy/chat/completions",
+		makeDeployRequest(t, reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	env.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(env.mockChat.LastRequest.SystemPrompt, "report_gap") {
+		t.Errorf("expected gap-reporting instructions in system prompt, got %q", env.mockChat.LastRequest.SystemPrompt)
+	}
+}
+
 // --- Streaming tests ---
 
 func TestDeployChat_Streaming_HappyPath(t *testing.T) {

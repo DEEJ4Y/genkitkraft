@@ -39,9 +39,10 @@ func (cp *ChatProvider) buildReportGapTool(sessionID, agentID string) ai.Tool {
 	description := "Report a gap you noticed in this conversation: a question you could not answer " +
 		"reliably (category 'knowledge'), an action you were asked to perform but could not " +
 		"(category 'capability' — e.g. a missing tool, permission, or integration), or an idea for " +
-		"automating more of this flow with no failure involved (category 'improvement'). This does " +
-		"not change your answer to the user — answer them as best you can regardless, then call this " +
-		"tool to flag the gap for review. Calling this tool has no visible effect on the conversation."
+		"automating more of this flow with no failure involved (category 'improvement'). Call this " +
+		"tool before you answer if you're about to decline the request, answer unreliably, or notice " +
+		"a repeated manual step — the call never changes your answer, so answer normally either way. " +
+		"Calling this tool has no visible effect on the conversation."
 
 	inputSchema := map[string]any{
 		"type": "object",

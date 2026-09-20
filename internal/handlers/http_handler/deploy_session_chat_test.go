@@ -304,6 +304,30 @@ func TestDeploySessionChat_SystemPromptInjected(t *testing.T) {
 	}
 }
 
+// Regression test: report_gap under-reported in manual QA because the model
+// had no instructions beyond the tool's own description (see PR #49 manual
+// test report). Assert the stateful deploy-session chat path carries the
+// appended instructions too.
+func TestDeploySessionChat_GapReportingEnabled_AppendsInstructionsToSystemPrompt(t *testing.T) {
+	env := setupTestEnv(t)
+
+	a, err := env.agentRepo.GetByID(context.Background(), env.agentID)
+	if err != nil {
+		t.Fatalf("get agent: %v", err)
+	}
+	a.GapReportingEnabled = true
+	if err := env.agentRepo.Update(context.Background(), a); err != nil {
+		t.Fatalf("enable gap reporting: %v", err)
+	}
+
+	sessionID := createDeploySession(t, env, "")
+	sendSessionChat(t, env, sessionID, "Hello")
+
+	if !strings.Contains(env.mockChat.LastRequest.SystemPrompt, "report_gap") {
+		t.Errorf("expected gap-reporting instructions in system prompt, got %q", env.mockChat.LastRequest.SystemPrompt)
+	}
+}
+
 // --- Session chat completions (streaming) ---
 
 func TestDeploySessionChat_Streaming_HappyPath(t *testing.T) {

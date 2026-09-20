@@ -20,6 +20,8 @@ Gaps are reviewed on the agent's **Gaps** tab, so you can find missing sources, 
 
 Once enabled, the agent gets a `report_gap` tool it can call during a conversation. Calling this tool never blocks or alters the agent's answer to the user — it fires in the background, and generation continues normally.
 
+Enabling the flag also appends an internal instruction block to the end of the agent's system prompt, describing the three categories and when to call `report_gap` — including reporting a capability gap even when the agent's own instructions already document the limitation, and reporting every occurrence rather than assuming it was already reported elsewhere. These instructions are never shown to end users.
+
 ## How gaps are deduplicated
 
 Reported gaps aren't written straight to the list. A background pipeline reviews each new report against the agent's existing open gaps and either merges it into a matching gap (combining details) or creates a new one — so repeatedly hitting the same blind spot doesn't flood the tab with duplicates. This runs asynchronously, using the agent's own configured provider and model; it never adds latency to the conversation the gap was reported from.
