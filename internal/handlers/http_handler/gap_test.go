@@ -90,6 +90,18 @@ func TestListGaps_ScopedToAgent(t *testing.T) {
 	}
 }
 
+func TestListGaps_UnknownAgent_Returns404(t *testing.T) {
+	env := setupTestEnv(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/agents/00000000-0000-0000-0000-000000000000/gaps", nil)
+	w := httptest.NewRecorder()
+	env.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestGetGap_NotFound(t *testing.T) {
 	env := setupTestEnv(t)
 

@@ -397,7 +397,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 	dismissGapCmd := commands.NewDismissGapCommand(gapRepo)
 	resolveGapCmd := commands.NewResolveGapCommand(gapRepo)
 	reopenGapCmd := commands.NewReopenGapCommand(gapRepo)
-	listGapsQuery := queries.NewListGapsQuery(gapRepo)
+	listGapsQuery := queries.NewListGapsQuery(gapRepo, agentRepo)
 	getGapQuery := queries.NewGetGapQuery(gapRepo)
 
 	// Build gap application

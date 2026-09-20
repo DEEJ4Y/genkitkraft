@@ -7,15 +7,17 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/app"
 	"github.com/DEEJ4Y/genkitkraft/internal/app/queries"
 	apperrors "github.com/DEEJ4Y/genkitkraft/internal/common/errors"
+	"github.com/DEEJ4Y/genkitkraft/internal/domain/agent"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/gap"
 	"github.com/DEEJ4Y/genkitkraft/resources/test/mock"
 )
 
 func newTestHandler(repo *mock.GapRepository) *Handler {
+	agentRepo := &mock.AgentRepository{GetByIDResult: &agent.Agent{ID: "agent-1"}}
 	return &Handler{
 		gapApp: &app.GapApp{
 			Queries: app.GapQueries{
-				ListGaps: queries.NewListGapsQuery(repo),
+				ListGaps: queries.NewListGapsQuery(repo, agentRepo),
 				GetGap:   queries.NewGetGapQuery(repo),
 			},
 		},
@@ -51,6 +53,23 @@ func TestListGapsTool_RepoError_ReturnsWrappedError(t *testing.T) {
 	_, _, err := h.listGaps(context.Background(), nil, ListGapsInput{AgentID: "agent-1"})
 	if err == nil {
 		t.Fatal("listGaps() = nil error, want the repo error wrapped")
+	}
+}
+
+func TestListGapsTool_UnknownAgent_ReturnsError(t *testing.T) {
+	repo := &mock.GapRepository{}
+	agentRepo := &mock.AgentRepository{GetByIDErr: apperrors.NewAppError(apperrors.NotFound, "agent not found")}
+	h := &Handler{
+		gapApp: &app.GapApp{
+			Queries: app.GapQueries{
+				ListGaps: queries.NewListGapsQuery(repo, agentRepo),
+			},
+		},
+	}
+
+	_, _, err := h.listGaps(context.Background(), nil, ListGapsInput{AgentID: "missing-agent"})
+	if err == nil {
+		t.Fatal("listGaps() = nil error, want the agent-not-found error wrapped")
 	}
 }
 

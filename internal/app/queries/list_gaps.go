@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/gap"
+	agentrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_repo"
 	gaprepo "github.com/DEEJ4Y/genkitkraft/internal/ports/gap_repo"
 )
 
@@ -25,14 +26,19 @@ type ListGapsResult struct {
 }
 
 type ListGapsQuery struct {
-	repo gaprepo.GapRepository
+	repo      gaprepo.GapRepository
+	agentRepo agentrepo.AgentRepository
 }
 
-func NewListGapsQuery(repo gaprepo.GapRepository) *ListGapsQuery {
-	return &ListGapsQuery{repo: repo}
+func NewListGapsQuery(repo gaprepo.GapRepository, agentRepo agentrepo.AgentRepository) *ListGapsQuery {
+	return &ListGapsQuery{repo: repo, agentRepo: agentRepo}
 }
 
 func (q *ListGapsQuery) Execute(ctx context.Context, params ListGapsParams) (ListGapsResult, error) {
+	if _, err := q.agentRepo.GetByID(ctx, params.AgentID); err != nil {
+		return ListGapsResult{}, err
+	}
+
 	limit := params.Limit
 	if limit <= 0 {
 		limit = 20

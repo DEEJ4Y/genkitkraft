@@ -6,6 +6,7 @@ import (
 
 	"github.com/DEEJ4Y/genkitkraft/internal/app/queries"
 	apperrors "github.com/DEEJ4Y/genkitkraft/internal/common/errors"
+	"github.com/DEEJ4Y/genkitkraft/internal/domain/agent"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/gap"
 	"github.com/DEEJ4Y/genkitkraft/resources/test/mock"
 )
@@ -27,7 +28,8 @@ func TestListGaps_PaginationClamping(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mock.GapRepository{}
-			q := queries.NewListGapsQuery(repo)
+			agentRepo := &mock.AgentRepository{GetByIDResult: &agent.Agent{ID: "agent-1"}}
+			q := queries.NewListGapsQuery(repo, agentRepo)
 
 			if _, err := q.Execute(context.Background(), queries.ListGapsParams{
 				AgentID: "agent-1", Limit: tt.limit, Offset: tt.offset,
@@ -54,7 +56,8 @@ func TestListGaps_AttachesReferencesPerGap(t *testing.T) {
 		CountResult: 2,
 		References:  []*gap.Reference{{GapID: "gap-1", SessionID: "session-1"}},
 	}
-	q := queries.NewListGapsQuery(repo)
+	agentRepo := &mock.AgentRepository{GetByIDResult: &agent.Agent{ID: "agent-1"}}
+	q := queries.NewListGapsQuery(repo, agentRepo)
 
 	result, err := q.Execute(context.Background(), queries.ListGapsParams{AgentID: "agent-1", Limit: 20, Offset: 0})
 	if err != nil {
@@ -81,7 +84,8 @@ func TestListGaps_AttachesReferencesPerGap(t *testing.T) {
 
 func TestListGaps_CountError_Propagates(t *testing.T) {
 	repo := &mock.GapRepository{CountErr: apperrors.NewAppError(apperrors.Internal, "count failed")}
-	q := queries.NewListGapsQuery(repo)
+	agentRepo := &mock.AgentRepository{GetByIDResult: &agent.Agent{ID: "agent-1"}}
+	q := queries.NewListGapsQuery(repo, agentRepo)
 
 	_, err := q.Execute(context.Background(), queries.ListGapsParams{AgentID: "agent-1"})
 	if appErr, ok := apperrors.IsAppError(err); !ok || appErr.Code() != apperrors.Internal {
@@ -91,10 +95,25 @@ func TestListGaps_CountError_Propagates(t *testing.T) {
 
 func TestListGaps_ListError_Propagates(t *testing.T) {
 	repo := &mock.GapRepository{ListErr: apperrors.NewAppError(apperrors.Internal, "list failed")}
-	q := queries.NewListGapsQuery(repo)
+	agentRepo := &mock.AgentRepository{GetByIDResult: &agent.Agent{ID: "agent-1"}}
+	q := queries.NewListGapsQuery(repo, agentRepo)
 
 	_, err := q.Execute(context.Background(), queries.ListGapsParams{AgentID: "agent-1"})
 	if appErr, ok := apperrors.IsAppError(err); !ok || appErr.Code() != apperrors.Internal {
 		t.Fatalf("Execute() = %v, want the List error", err)
+	}
+}
+
+func TestListGaps_UnknownAgent_ReturnsNotFound(t *testing.T) {
+	repo := &mock.GapRepository{}
+	agentRepo := &mock.AgentRepository{GetByIDErr: apperrors.NewAppError(apperrors.NotFound, "agent not found")}
+	q := queries.NewListGapsQuery(repo, agentRepo)
+
+	_, err := q.Execute(context.Background(), queries.ListGapsParams{AgentID: "missing-agent"})
+	if appErr, ok := apperrors.IsAppError(err); !ok || appErr.Code() != apperrors.NotFound {
+		t.Fatalf("Execute() = %v, want a NotFound error", err)
+	}
+	if repo.LastCountAgentID != "" || repo.LastListAgentID != "" {
+		t.Errorf("Count/List were called on the gap repo, want them skipped once the agent lookup fails")
 	}
 }

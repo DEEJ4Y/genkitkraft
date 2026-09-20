@@ -863,7 +863,8 @@ func (h *Handler) DeploySessionChatCompletions(w http.ResponseWriter, r *http.Re
 
 	// Resolve agent config
 	configResult, err := h.playgroundApp.Queries.ResolveConfig.Execute(r.Context(), queries.ResolvePlaygroundConfigParams{
-		AgentID: agentId,
+		AgentID:      agentId,
+		IncludeTools: true,
 	})
 	if err != nil {
 		writeAppError(w, err)

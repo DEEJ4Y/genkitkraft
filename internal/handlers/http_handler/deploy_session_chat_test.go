@@ -13,6 +13,7 @@ import (
 
 	"github.com/DEEJ4Y/genkitkraft/internal/api/gen"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/playground"
+	agenttoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_tool_repo"
 )
 
 // --- Create session ---
@@ -269,6 +270,26 @@ func TestDeploySessionChat_HistoryAccumulates(t *testing.T) {
 	}
 	if env.mockChat.LastRequest.Messages[2].Content != "What can you do?" {
 		t.Errorf("expected third message content 'What can you do?', got %q", env.mockChat.LastRequest.Messages[2].Content)
+	}
+}
+
+// Regression test: DeploySessionChatCompletions used to resolve agent config
+// without IncludeTools, silently dropping the agent's configured tools (see
+// PR #49 manual test report). Assert built-in tools now reach the provider.
+func TestDeploySessionChat_ConfiguredBuiltInTool_ReachesProvider(t *testing.T) {
+	env := setupTestEnv(t)
+	if err := env.agentToolRepo.Save(context.Background(), agenttoolrepo.AgentToolConfig{
+		AgentID:        env.agentID,
+		BuiltInToolIDs: []string{"web_fetch"},
+	}); err != nil {
+		t.Fatalf("save agent tool config: %v", err)
+	}
+	sessionID := createDeploySession(t, env, "")
+
+	sendSessionChat(t, env, sessionID, "Hello")
+
+	if len(env.mockChat.LastRequest.BuiltInToolIDs) != 1 || env.mockChat.LastRequest.BuiltInToolIDs[0] != "web_fetch" {
+		t.Errorf("LastRequest.BuiltInToolIDs = %v, want [\"web_fetch\"]", env.mockChat.LastRequest.BuiltInToolIDs)
 	}
 }
 
