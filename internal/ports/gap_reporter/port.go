@@ -4,7 +4,8 @@ import "context"
 
 // ReportParams carries a single gap self-report from the live agent.
 type ReportParams struct {
-	SessionID           string
+	AgentID             string
+	SessionID           string // empty when reported from a stateless request
 	Category            string // "knowledge", "capability", or "improvement"
 	Context             string
 	Details             string

@@ -127,10 +127,10 @@ func setupPlaygroundToolTestEnv(t *testing.T) *playgroundToolTestEnv {
 }
 
 // Regression test: the MCP playground_chat tool used to build a ChatRequest
-// without ever setting SessionID, so report_gap's `sessionID != ""` gate
-// (internal/adapters/genkit_chat_provider/builtin_tools.go) could never pass
-// on this path, no matter the agent's gap_reporting_enabled flag or its
-// assigned tools.
+// without ever setting SessionID, so report_gap references from this path
+// (internal/adapters/genkit_chat_provider/builtin_tools.go) could never be
+// attached to a conversation, no matter the agent's gap_reporting_enabled
+// flag or its assigned tools.
 func TestPlaygroundChatTool_SetsSessionID(t *testing.T) {
 	env := setupPlaygroundToolTestEnv(t)
 
@@ -172,5 +172,8 @@ func TestPlaygroundChatTool_GapReportingEnabled_ReachesProvider(t *testing.T) {
 	}
 	if env.mockChat.LastRequest.SessionID != env.sessionID {
 		t.Errorf("LastRequest.SessionID = %q, want %q", env.mockChat.LastRequest.SessionID, env.sessionID)
+	}
+	if env.mockChat.LastRequest.AgentID != env.agentID {
+		t.Errorf("LastRequest.AgentID = %q, want %q", env.mockChat.LastRequest.AgentID, env.agentID)
 	}
 }

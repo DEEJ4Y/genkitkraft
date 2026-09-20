@@ -60,8 +60,11 @@ func (g *Gap) IsTerminal() bool {
 }
 
 // Reference ties a Gap to the conversation (and, when resolvable, message)
-// it was observed in. MessageID is empty when the dedup pipeline could not
-// resolve the in-flight message before the reference was written.
+// it was observed in. SessionID is empty for a report from the stateless
+// deploy chat-completions endpoint, which has no persisted conversation.
+// MessageID is empty when the dedup pipeline could not resolve the
+// in-flight message before the reference was written, or when SessionID
+// itself is empty.
 type Reference struct {
 	ID        string
 	GapID     string

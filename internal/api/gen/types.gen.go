@@ -451,8 +451,10 @@ type ModelsGapReference struct {
 	// MessageId ID of the specific message, when it could be resolved.
 	MessageId *string `json:"messageId,omitempty"`
 
-	// SessionId ID of the playground/deploy session this gap was observed in.
-	SessionId string `json:"sessionId"`
+	// SessionId ID of the playground/deploy session this gap was observed in, when one
+	// exists. Absent for a report from the stateless deploy chat-completions
+	// endpoint, which has no persisted conversation.
+	SessionId *string `json:"sessionId,omitempty"`
 }
 
 // ModelsGapResponse A self-reported gap for an agent: a question it could not answer

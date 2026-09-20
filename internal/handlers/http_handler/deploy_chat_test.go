@@ -203,10 +203,11 @@ func makeDeployRequest(t *testing.T, body interface{}) *bytes.Buffer {
 
 // --- Non-streaming tests ---
 
-// Verification test for the PR #49 manual test report: the stateless deploy
-// chat-completions endpoint has no session to attach a report_gap reference
-// to, so it must never inject a SessionID even when gap reporting is
-// enabled — this is documented (website/docs/guides/gaps.md), not a bug.
+// The stateless deploy chat-completions endpoint has no session, so it must
+// never set a SessionID — there is no conversation to attach a report_gap
+// reference to. This no longer means gap reporting is unavailable there: the
+// tool is still offered, scoped by AgentID instead (see the test below);
+// reports from this path just carry no session/message reference.
 func TestDeployChat_GapReportingEnabled_NeverSetsSessionID(t *testing.T) {
 	env := setupTestEnv(t)
 
@@ -237,6 +238,32 @@ func TestDeployChat_GapReportingEnabled_NeverSetsSessionID(t *testing.T) {
 	}
 	if env.mockChat.LastRequest.SessionID != "" {
 		t.Errorf("LastRequest.SessionID = %q, want empty — the stateless deploy endpoint has no session to scope report_gap to", env.mockChat.LastRequest.SessionID)
+	}
+}
+
+// AgentID must reach the ChatRequest on the stateless path even though no
+// session exists — it's what lets report_gap be offered and scoped there.
+func TestDeployChat_PopulatesAgentIDOnChatRequest(t *testing.T) {
+	env := setupTestEnv(t)
+
+	reqBody := map[string]interface{}{
+		"messages": []map[string]string{
+			{"role": "user", "content": "Hello"},
+		},
+		"stream": false,
+	}
+	req := httptest.NewRequest(http.MethodPost,
+		"/api/v1/agents/"+env.agentID+"/deploy/chat/completions",
+		makeDeployRequest(t, reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	env.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if env.mockChat.LastRequest.AgentID != env.agentID {
+		t.Errorf("LastRequest.AgentID = %q, want %q", env.mockChat.LastRequest.AgentID, env.agentID)
 	}
 }
 

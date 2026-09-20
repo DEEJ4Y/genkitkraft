@@ -160,8 +160,35 @@ func TestGetGap_HappyPath_IncludesReferences(t *testing.T) {
 	if resp.SuggestedResolution == nil || *resp.SuggestedResolution != "add the refund policy as a source" {
 		t.Errorf("suggestedResolution = %v, want the seeded value", resp.SuggestedResolution)
 	}
-	if len(resp.References) != 1 || resp.References[0].SessionId != session.ID {
+	if len(resp.References) != 1 || resp.References[0].SessionId == nil || *resp.References[0].SessionId != session.ID {
 		t.Errorf("references = %+v, want a reference to session %q", resp.References, session.ID)
+	}
+}
+
+// A gap reference with no session (a report from the stateless deploy
+// chat-completions endpoint) must round-trip through the API with sessionId
+// simply absent, not a zero-value string.
+func TestGetGap_ReferenceWithoutSession_OmitsSessionId(t *testing.T) {
+	env := setupTestEnv(t)
+	g := seedGap(t, env, env.agentID, &gap.Gap{})
+
+	if err := env.gapRepo.AddReference(context.Background(), &gap.Reference{GapID: g.ID}); err != nil {
+		t.Fatalf("seed reference: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/agents/"+env.agentID+"/gaps/"+g.ID, nil)
+	w := httptest.NewRecorder()
+	env.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp gen.ModelsGapResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(resp.References) != 1 || resp.References[0].SessionId != nil {
+		t.Errorf("references = %+v, want sessionId absent", resp.References)
 	}
 }
 

@@ -217,3 +217,30 @@ func TestRunGapDedupCommand_MessageResolutionExhausted_ReferenceHasEmptyMessageI
 		t.Errorf("reference.MessageID = %q, want empty when resolution is exhausted", env.gapRepo.LastAddReference.MessageID)
 	}
 }
+
+// A report from the stateless deploy chat-completions endpoint has no
+// session, so there's nothing to poll a message ID against — the pipeline
+// must skip resolution entirely (not just resolve to empty) and still write
+// a reference, with both SessionID and MessageID empty.
+func TestRunGapDedupCommand_EmptySessionID_SkipsMessageResolution_ReferenceHasEmptySessionAndMessageID(t *testing.T) {
+	env := newDedupTestEnv()
+	env.chatProvider.ChatResponse = `{"action":"create","category":"knowledge","context":"c","details":"d"}`
+
+	params := RunGapDedupParams{SessionID: "", AgentID: "agent-1", Category: "knowledge", Context: "c", Details: "d"}
+	if err := env.cmd.Execute(context.Background(), params); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	if env.playgroundRepo.getLatestMessageCalls != 0 {
+		t.Errorf("GetLatestMessageBySession called %d times, want 0 when SessionID is empty", env.playgroundRepo.getLatestMessageCalls)
+	}
+	if env.gapRepo.LastAddReference == nil {
+		t.Fatal("gapRepo.AddReference was not called")
+	}
+	if env.gapRepo.LastAddReference.SessionID != "" {
+		t.Errorf("reference.SessionID = %q, want empty", env.gapRepo.LastAddReference.SessionID)
+	}
+	if env.gapRepo.LastAddReference.MessageID != "" {
+		t.Errorf("reference.MessageID = %q, want empty", env.gapRepo.LastAddReference.MessageID)
+	}
+}

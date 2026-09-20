@@ -16,10 +16,11 @@ import (
 // never run forever if the LLM call hangs.
 const GapDedupTimeout = 2 * time.Minute
 
-// ReportGapCommand implements gapreporter.Reporter. It validates the report,
-// resolves which agent it belongs to, and launches the dedup pipeline on a
-// context detached from the caller's — the live tool call must return
-// immediately regardless of how long dedup takes.
+// ReportGapCommand implements gapreporter.Reporter. It validates the report
+// and launches the dedup pipeline on a context detached from the caller's —
+// the live tool call must return immediately regardless of how long dedup
+// takes. SessionID is optional: reports from the stateless deploy
+// chat-completions endpoint have no session to attach.
 type ReportGapCommand struct {
 	playgroundRepo playgroundrepo.PlaygroundRepository
 	dedup          executors.Executor[RunGapDedupParams]
@@ -33,27 +34,38 @@ func NewReportGapCommand(playgroundRepo playgroundrepo.PlaygroundRepository, ded
 }
 
 func (c *ReportGapCommand) Report(ctx context.Context, p gapreporter.ReportParams) error {
-	if p.SessionID == "" || p.Category == "" || p.Context == "" || p.Details == "" {
-		return errors.NewAppError(errors.InvalidInput, "session id, category, context, and details are required")
+	if p.AgentID == "" || p.Category == "" || p.Context == "" || p.Details == "" {
+		return errors.NewAppError(errors.InvalidInput, "agent id, category, context, and details are required")
 	}
 
-	session, err := c.playgroundRepo.GetSession(ctx, p.SessionID)
-	if err != nil {
-		return err
+	sessionID := p.SessionID
+	if sessionID != "" {
+		session, err := c.playgroundRepo.GetSession(ctx, sessionID)
+		if err != nil {
+			return err
+		}
+		if session.AgentID != p.AgentID {
+			// The session belongs to a different agent than the one reporting —
+			// treat this as if no session were given rather than writing an
+			// inconsistent reference.
+			c.logger.Warn().Str("session_id", sessionID).Str("agent_id", p.AgentID).
+				Msg("gap report: session belongs to a different agent, dropping session reference")
+			sessionID = ""
+		}
 	}
 
 	dedupCtx, cancel := context.WithTimeout(context.Background(), GapDedupTimeout)
 	go func() {
 		defer cancel()
 		if err := c.dedup.Execute(dedupCtx, RunGapDedupParams{
-			SessionID:           p.SessionID,
-			AgentID:             session.AgentID,
+			SessionID:           sessionID,
+			AgentID:             p.AgentID,
 			Category:            p.Category,
 			Context:             p.Context,
 			Details:             p.Details,
 			SuggestedResolution: p.SuggestedResolution,
 		}); err != nil {
-			c.logger.Error().Err(err).Str("session_id", p.SessionID).Msg("gap dedup pipeline failed")
+			c.logger.Error().Err(err).Str("agent_id", p.AgentID).Msg("gap dedup pipeline failed")
 		}
 	}()
 

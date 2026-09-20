@@ -779,7 +779,10 @@ func toGapResponse(g queries.GapWithReferences) gen.ModelsGapResponse {
 		resp.DismissalReason = &g.Gap.DismissalReason
 	}
 	for i, ref := range g.References {
-		item := gen.ModelsGapReference{SessionId: ref.SessionID}
+		item := gen.ModelsGapReference{}
+		if ref.SessionID != "" {
+			item.SessionId = &ref.SessionID
+		}
 		if ref.MessageID != "" {
 			item.MessageId = &ref.MessageID
 		}

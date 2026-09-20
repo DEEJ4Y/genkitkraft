@@ -136,7 +136,7 @@ func (r *GapRepository) AddReference(ctx context.Context, ref *gap.Reference) er
 
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO agent_gap_references (id, gap_id, session_id, message_id, created_at) VALUES (?, ?, ?, ?, ?)`,
-		ref.ID, ref.GapID, ref.SessionID, nullableString(ref.MessageID), ref.CreatedAt)
+		ref.ID, ref.GapID, nullableString(ref.SessionID), nullableString(ref.MessageID), ref.CreatedAt)
 	if err != nil {
 		return apperrors.NewAppErrorf(apperrors.Internal, "adding gap reference: %v", err)
 	}
@@ -155,10 +155,11 @@ func (r *GapRepository) ListReferences(ctx context.Context, gapID string) ([]*ga
 	var refs []*gap.Reference
 	for rows.Next() {
 		var ref gap.Reference
-		var messageID sql.NullString
-		if err := rows.Scan(&ref.ID, &ref.GapID, &ref.SessionID, &messageID, &ref.CreatedAt); err != nil {
+		var sessionID, messageID sql.NullString
+		if err := rows.Scan(&ref.ID, &ref.GapID, &sessionID, &messageID, &ref.CreatedAt); err != nil {
 			return nil, apperrors.NewAppErrorf(apperrors.Internal, "scanning gap reference: %v", err)
 		}
+		ref.SessionID = sessionID.String
 		ref.MessageID = messageID.String
 		refs = append(refs, &ref)
 	}

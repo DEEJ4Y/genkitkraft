@@ -1152,8 +1152,12 @@ export interface components {
         };
         /** @description A conversation (and, when resolvable, message) a gap was observed in. */
         "Models.GapReference": {
-            /** @description ID of the playground/deploy session this gap was observed in. */
-            sessionId: string;
+            /**
+             * @description ID of the playground/deploy session this gap was observed in, when one
+             *     exists. Absent for a report from the stateless deploy chat-completions
+             *     endpoint, which has no persisted conversation.
+             */
+            sessionId?: string;
             /** @description ID of the specific message, when it could be resolved. */
             messageId?: string;
         };

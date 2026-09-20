@@ -166,6 +166,7 @@ func (q *ResolvePlaygroundConfigQuery) Execute(ctx context.Context, params Resol
 		TopKEnabled:         topKEnabled,
 		TopK:                topK,
 		MaxToolCalls:        maxToolCalls,
+		AgentID:             a.ID,
 		GapReportingEnabled: a.GapReportingEnabled,
 	}
 

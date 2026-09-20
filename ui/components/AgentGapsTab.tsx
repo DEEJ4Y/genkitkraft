@@ -165,7 +165,9 @@ export function AgentGapsTab({ agentId }: AgentGapsTabProps) {
                       <Text size="xs" c="dimmed">
                         Seen in:{' '}
                         {g.references
-                          .map((r) => r.sessionId + (r.messageId ? `/${r.messageId}` : ''))
+                          .map((r) =>
+                            r.sessionId ? r.sessionId + (r.messageId ? `/${r.messageId}` : '') : '(stateless call)'
+                          )
                           .join(', ')}
                       </Text>
                     )}

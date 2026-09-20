@@ -152,6 +152,9 @@ func TestPlaygroundChat_GapReportingEnabled_InjectsSessionAndFlag(t *testing.T) 
 	if env.mockChat.LastRequest.SessionID != sessionID {
 		t.Errorf("LastRequest.SessionID = %q, want %q", env.mockChat.LastRequest.SessionID, sessionID)
 	}
+	if env.mockChat.LastRequest.AgentID != env.agentID {
+		t.Errorf("LastRequest.AgentID = %q, want %q", env.mockChat.LastRequest.AgentID, env.agentID)
+	}
 }
 
 func TestPlaygroundChat_Streaming_MidStreamError_PersistsPartialWithErrorStatus(t *testing.T) {

@@ -19,7 +19,7 @@ type ListGapsInput struct {
 }
 
 type GapReferenceOutput struct {
-	SessionID string `json:"session_id"`
+	SessionID string `json:"session_id,omitempty"`
 	MessageID string `json:"message_id,omitempty"`
 }
 

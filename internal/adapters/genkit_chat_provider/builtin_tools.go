@@ -15,10 +15,12 @@ import (
 
 // buildBuiltInTools creates Genkit tool references for the specified built-in
 // tool IDs, plus the report_gap tool when gap reporting is enabled for this
-// conversation. report_gap is deliberately not part of ids/the built-in tool
+// agent. report_gap is deliberately not part of ids/the built-in tool
 // registry — it's gated by a per-agent feature flag, not a Tools-tab
-// assignment — and is only offered when a session exists to attach it to.
-func (cp *ChatProvider) buildBuiltInTools(ids []string, sessionID string, gapReportingEnabled bool) []ai.ToolRef {
+// assignment. It's offered whenever an agent is known, session or not — a
+// report from a session-less (stateless) request is still recorded, just
+// without a conversation to attach as a reference.
+func (cp *ChatProvider) buildBuiltInTools(ids []string, sessionID, agentID string, gapReportingEnabled bool) []ai.ToolRef {
 	var tools []ai.ToolRef
 	for _, id := range ids {
 		switch id {
@@ -26,13 +28,13 @@ func (cp *ChatProvider) buildBuiltInTools(ids []string, sessionID string, gapRep
 			tools = append(tools, cp.buildWebFetchTool())
 		}
 	}
-	if gapReportingEnabled && sessionID != "" && cp.gapReporter != nil {
-		tools = append(tools, cp.buildReportGapTool(sessionID))
+	if gapReportingEnabled && agentID != "" && cp.gapReporter != nil {
+		tools = append(tools, cp.buildReportGapTool(sessionID, agentID))
 	}
 	return tools
 }
 
-func (cp *ChatProvider) buildReportGapTool(sessionID string) ai.Tool {
+func (cp *ChatProvider) buildReportGapTool(sessionID, agentID string) ai.Tool {
 	name := "report_gap"
 	description := "Report a gap you noticed in this conversation: a question you could not answer " +
 		"reliably (category 'knowledge'), an action you were asked to perform but could not " +
@@ -78,7 +80,7 @@ func (cp *ChatProvider) buildReportGapTool(sessionID string) ai.Tool {
 		}
 		suggestedResolution, _ := argsMap["suggested_resolution"].(string)
 
-		cp.reportGap(toolCtx.Context, sessionID, category, context_, details, suggestedResolution)
+		cp.reportGap(toolCtx.Context, sessionID, agentID, category, context_, details, suggestedResolution)
 		return "Gap recorded for review.", nil
 	}
 
@@ -89,9 +91,10 @@ func (cp *ChatProvider) buildReportGapTool(sessionID string) ai.Tool {
 // without standing up Genkit's action machinery. It never fails the tool
 // call — a broken reporter must not disrupt the live response — so any
 // error is only logged by the underlying Reporter implementation.
-func (cp *ChatProvider) reportGap(ctx context.Context, sessionID, category, context_, details, suggestedResolution string) {
+func (cp *ChatProvider) reportGap(ctx context.Context, sessionID, agentID, category, context_, details, suggestedResolution string) {
 	_ = cp.gapReporter.Report(ctx, gapreporter.ReportParams{
 		SessionID:           sessionID,
+		AgentID:             agentID,
 		Category:            category,
 		Context:             context_,
 		Details:             details,

@@ -150,7 +150,9 @@ func (c *RunGapDedupCommand) Execute(ctx context.Context, params RunGapDedupPara
 	ref := &gap.Reference{
 		GapID:     gapID,
 		SessionID: params.SessionID,
-		MessageID: c.resolveMessageID(ctx, params.SessionID),
+	}
+	if params.SessionID != "" {
+		ref.MessageID = c.resolveMessageID(ctx, params.SessionID)
 	}
 	if err := c.gapRepo.AddReference(ctx, ref); err != nil {
 		return fmt.Errorf("adding gap reference: %w", err)

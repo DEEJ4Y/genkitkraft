@@ -19,6 +19,7 @@ type fakePlaygroundRepo struct {
 
 	getLatestMessageResult *playground.Message
 	getLatestMessageErr    error
+	getLatestMessageCalls  int
 }
 
 func (f *fakePlaygroundRepo) CreateSession(context.Context, *playground.Session) error { return nil }
@@ -62,6 +63,7 @@ func (f *fakePlaygroundRepo) GetMessage(context.Context, string) (*playground.Me
 }
 
 func (f *fakePlaygroundRepo) GetLatestMessageBySession(_ context.Context, _ string) (*playground.Message, error) {
+	f.getLatestMessageCalls++
 	return f.getLatestMessageResult, f.getLatestMessageErr
 }
 

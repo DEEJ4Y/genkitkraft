@@ -332,7 +332,7 @@ func (cp *ChatProvider) buildTools(ctx context.Context, req chatprovider.ChatReq
 	}
 
 	// Build built-in tools
-	builtInTools := cp.buildBuiltInTools(req.BuiltInToolIDs, req.SessionID, req.GapReportingEnabled)
+	builtInTools := cp.buildBuiltInTools(req.BuiltInToolIDs, req.SessionID, req.AgentID, req.GapReportingEnabled)
 	tools = append(tools, builtInTools...)
 
 	// Build HTTP tools

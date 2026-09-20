@@ -24,8 +24,10 @@ enum GapDismissalCategory {
 
 /** A conversation (and, when resolvable, message) a gap was observed in. */
 model GapReference {
-  /** ID of the playground/deploy session this gap was observed in. */
-  sessionId: string;
+  /** ID of the playground/deploy session this gap was observed in, when one
+   * exists. Absent for a report from the stateless deploy chat-completions
+   * endpoint, which has no persisted conversation. */
+  sessionId?: string;
 
   /** ID of the specific message, when it could be resolved. */
   messageId?: string;

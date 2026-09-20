@@ -54,10 +54,10 @@ func TestReportGapCommand_MissingFields_ReturnsInvalidInputWithoutDispatching(t 
 	cmd := NewReportGapCommand(&fakePlaygroundRepo{}, dedup, zerolog.Nop())
 
 	tests := []gapreporter.ReportParams{
-		{Category: "knowledge", Context: "c", Details: "d"},              // missing SessionID
-		{SessionID: "s", Context: "c", Details: "d"},                     // missing Category
-		{SessionID: "s", Category: "knowledge", Details: "d"},            // missing Context
-		{SessionID: "s", Category: "knowledge", Context: "c"},            // missing Details
+		{Category: "knowledge", Context: "c", Details: "d"},               // missing AgentID
+		{AgentID: "a", Context: "c", Details: "d"},                        // missing Category
+		{AgentID: "a", Category: "knowledge", Details: "d"},               // missing Context
+		{AgentID: "a", Category: "knowledge", Context: "c"},               // missing Details
 	}
 	for _, p := range tests {
 		err := cmd.Report(context.Background(), p)
@@ -78,7 +78,7 @@ func TestReportGapCommand_UnknownSession_ReturnsErrorWithoutDispatching(t *testi
 	cmd := NewReportGapCommand(&fakePlaygroundRepo{getSessionErr: sessionErr}, dedup, zerolog.Nop())
 
 	err := cmd.Report(context.Background(), gapreporter.ReportParams{
-		SessionID: "unknown-session", Category: "knowledge", Context: "c", Details: "d",
+		SessionID: "unknown-session", AgentID: "agent-1", Category: "knowledge", Context: "c", Details: "d",
 	})
 
 	appErr, ok := apperrors.IsAppError(err)
@@ -103,6 +103,7 @@ func TestReportGapCommand_ReturnsImmediately_DedupRunsAsync(t *testing.T) {
 
 	reportErr := cmd.Report(context.Background(), gapreporter.ReportParams{
 		SessionID:           "session-1",
+		AgentID:             "agent-42",
 		Category:            "capability",
 		Context:             "user asked to send an email",
 		Details:             "no email tool is configured for this agent",
@@ -133,5 +134,83 @@ func TestReportGapCommand_ReturnsImmediately_DedupRunsAsync(t *testing.T) {
 	}
 	if got != want {
 		t.Errorf("dedup executor called with %+v, want %+v", got, want)
+	}
+}
+
+// A report from the stateless deploy chat-completions endpoint has no
+// session at all — AgentID alone must be enough to dispatch dedup, with no
+// session lookup performed.
+func TestReportGapCommand_NoSessionID_StillDispatchesUsingAgentID(t *testing.T) {
+	dedup := newFakeDedupExecutor()
+	dedup.block = make(chan struct{})
+	close(dedup.block)
+
+	playgroundRepo := &fakePlaygroundRepo{}
+	cmd := NewReportGapCommand(playgroundRepo, dedup, zerolog.Nop())
+
+	reportErr := cmd.Report(context.Background(), gapreporter.ReportParams{
+		AgentID:  "agent-42",
+		Category: "knowledge",
+		Context:  "user asked about a policy",
+		Details:  "no source configured for this policy",
+	})
+	if reportErr != nil {
+		t.Fatalf("Report() = %v, want nil for a stateless (no session) report", reportErr)
+	}
+
+	select {
+	case <-dedup.done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("dedup executor was never invoked")
+	}
+
+	got := dedup.lastParams
+	want := RunGapDedupParams{
+		SessionID: "",
+		AgentID:   "agent-42",
+		Category:  "knowledge",
+		Context:   "user asked about a policy",
+		Details:   "no source configured for this policy",
+	}
+	if got != want {
+		t.Errorf("dedup executor called with %+v, want %+v", got, want)
+	}
+}
+
+// A session belonging to a different agent than the one reporting must not
+// produce an inconsistent reference — the report should still succeed and
+// dispatch, but with the session dropped.
+func TestReportGapCommand_SessionBelongsToDifferentAgent_DropsSessionReference(t *testing.T) {
+	dedup := newFakeDedupExecutor()
+	dedup.block = make(chan struct{})
+	close(dedup.block)
+
+	playgroundRepo := &fakePlaygroundRepo{
+		getSessionResult: &playground.Session{ID: "session-1", AgentID: "some-other-agent"},
+	}
+	cmd := NewReportGapCommand(playgroundRepo, dedup, zerolog.Nop())
+
+	reportErr := cmd.Report(context.Background(), gapreporter.ReportParams{
+		SessionID: "session-1",
+		AgentID:   "agent-42",
+		Category:  "knowledge",
+		Context:   "c",
+		Details:   "d",
+	})
+	if reportErr != nil {
+		t.Fatalf("Report() = %v, want nil", reportErr)
+	}
+
+	select {
+	case <-dedup.done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("dedup executor was never invoked")
+	}
+
+	if dedup.lastParams.SessionID != "" {
+		t.Errorf("dedup executor called with SessionID = %q, want empty when the session belongs to a different agent", dedup.lastParams.SessionID)
+	}
+	if dedup.lastParams.AgentID != "agent-42" {
+		t.Errorf("dedup executor called with AgentID = %q, want the reporting agent's ID", dedup.lastParams.AgentID)
 	}
 }

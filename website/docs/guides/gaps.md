@@ -26,7 +26,7 @@ Reported gaps aren't written straight to the list. A background pipeline reviews
 
 ## Reviewing gaps
 
-Open the agent's **Gaps** tab to see every reported gap, with its category, context, details, and any suggested resolution. Each gap also lists the playground or deploy sessions it was observed in.
+Open the agent's **Gaps** tab to see every reported gap, with its category, context, details, and any suggested resolution. Each gap also lists the playground or deploy sessions it was observed in — reports from the stateless Deploy chat-completions endpoint show up as "(stateless call)" instead, since there's no conversation to point to.
 
 From here you can:
 
@@ -36,6 +36,6 @@ From here you can:
 
 ## Scope and limitations
 
-- Gap reporting is only available on the Playground and stateful Deploy session APIs, which have a conversation to attach the report to. The stateless Deploy chat-completions endpoint has no session, so gap reporting isn't available there.
+- Gap reporting is available on the Playground, stateful Deploy session APIs, and the stateless Deploy chat-completions endpoint. The stateless endpoint has no persisted conversation, so reports from it carry no session or message reference — the gap's own category/context/details still capture everything needed to review it.
 - Gaps are scoped to the reporting agent — they aren't shared or correlated across agents.
 - Two near-simultaneous reports for the same underlying gap can occasionally create separate entries instead of merging; review the Gaps tab periodically to catch duplicates.

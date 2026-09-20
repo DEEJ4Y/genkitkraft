@@ -19,7 +19,7 @@ CREATE TABLE agent_gaps (
 CREATE TABLE agent_gap_references (
     id          VARCHAR(36) PRIMARY KEY,
     gap_id      VARCHAR(36) NOT NULL,
-    session_id  VARCHAR(36) NOT NULL,
+    session_id  VARCHAR(36),
     message_id  VARCHAR(36),
     created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (gap_id) REFERENCES agent_gaps(id) ON DELETE CASCADE,

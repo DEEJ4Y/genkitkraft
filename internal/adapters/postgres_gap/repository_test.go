@@ -136,6 +136,36 @@ func TestGapRepositoryPostgres(t *testing.T) {
 			t.Errorf("MessageID = %q, want empty when no message was given", refs[0].MessageID)
 		}
 	})
+
+	// A report from the stateless deploy chat-completions endpoint has no
+	// session at all — the reference must still round-trip with both
+	// SessionID and MessageID empty (NULL in the DB), not error.
+	t.Run("AddReferenceWithoutSession", func(t *testing.T) {
+		ref := &gap.Reference{GapID: g.ID}
+		if err := repo.AddReference(ctx, ref); err != nil {
+			t.Fatalf("AddReference: %v", err)
+		}
+
+		refs, err := repo.ListReferences(ctx, g.ID)
+		if err != nil {
+			t.Fatalf("ListReferences: %v", err)
+		}
+		var found *gap.Reference
+		for _, r := range refs {
+			if r.ID == ref.ID {
+				found = r
+			}
+		}
+		if found == nil {
+			t.Fatalf("ListReferences did not return the session-less reference %q", ref.ID)
+		}
+		if found.SessionID != "" {
+			t.Errorf("SessionID = %q, want empty", found.SessionID)
+		}
+		if found.MessageID != "" {
+			t.Errorf("MessageID = %q, want empty", found.MessageID)
+		}
+	})
 }
 
 // seedProvider inserts a real providers row so agents can satisfy the

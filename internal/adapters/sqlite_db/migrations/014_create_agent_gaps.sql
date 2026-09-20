@@ -18,7 +18,7 @@ CREATE TABLE agent_gaps (
 CREATE TABLE agent_gap_references (
     id          TEXT PRIMARY KEY,
     gap_id      TEXT NOT NULL REFERENCES agent_gaps(id) ON DELETE CASCADE,
-    session_id  TEXT NOT NULL REFERENCES playground_sessions(id) ON DELETE CASCADE,
+    session_id  TEXT REFERENCES playground_sessions(id) ON DELETE CASCADE,
     message_id  TEXT REFERENCES playground_messages(id) ON DELETE CASCADE,
     created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
