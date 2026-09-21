@@ -64,7 +64,7 @@ func TestGapRepositoryPostgres(t *testing.T) {
 			t.Fatalf("Create other agent's gap: %v", err)
 		}
 
-		list, err := repo.List(ctx, agentID, 10, 0)
+		list, err := repo.List(ctx, agentID, "", 10, 0)
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
@@ -77,12 +77,35 @@ func TestGapRepositoryPostgres(t *testing.T) {
 	})
 
 	t.Run("Count", func(t *testing.T) {
-		count, err := repo.Count(ctx, agentID)
+		count, err := repo.Count(ctx, agentID, "")
 		if err != nil {
 			t.Fatalf("Count: %v", err)
 		}
 		if count != 1 {
 			t.Errorf("Count(%q) = %d, want 1", agentID, count)
+		}
+	})
+
+	t.Run("List_StatusFilter", func(t *testing.T) {
+		resolvedGap := &gap.Gap{AgentID: agentID, Category: gap.CategoryImprovement, Context: "c2", Details: "d2", Status: gap.StatusResolved}
+		if err := repo.Create(ctx, resolvedGap); err != nil {
+			t.Fatalf("Create resolved gap: %v", err)
+		}
+
+		list, err := repo.List(ctx, agentID, gap.StatusResolved, 10, 0)
+		if err != nil {
+			t.Fatalf("List: %v", err)
+		}
+		if len(list) != 1 || list[0].ID != resolvedGap.ID {
+			t.Fatalf("List(status=resolved) = %+v, want only %q", list, resolvedGap.ID)
+		}
+
+		count, err := repo.Count(ctx, agentID, gap.StatusResolved)
+		if err != nil {
+			t.Fatalf("Count: %v", err)
+		}
+		if count != 1 {
+			t.Errorf("Count(status=resolved) = %d, want 1", count)
 		}
 	})
 

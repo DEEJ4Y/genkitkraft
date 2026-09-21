@@ -110,7 +110,7 @@ func (c *RunGapDedupCommand) Execute(ctx context.Context, params RunGapDedupPara
 		}
 	}
 
-	existing, err := c.gapRepo.List(ctx, params.AgentID, 50, 0)
+	existing, err := c.gapRepo.List(ctx, params.AgentID, "", 50, 0)
 	if err != nil {
 		return fmt.Errorf("listing existing gaps: %w", err)
 	}

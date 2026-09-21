@@ -9,7 +9,8 @@ import (
 )
 
 type ResolveGapParams struct {
-	ID string
+	ID      string
+	AgentID string
 }
 
 type ResolveGapResult struct {
@@ -28,6 +29,9 @@ func (c *ResolveGapCommand) Execute(ctx context.Context, params ResolveGapParams
 	g, err := c.repo.GetByID(ctx, params.ID)
 	if err != nil {
 		return ResolveGapResult{}, err
+	}
+	if g.AgentID != params.AgentID {
+		return ResolveGapResult{}, apperrors.NewAppError(apperrors.NotFound, "gap not found")
 	}
 	if g.IsTerminal() {
 		return ResolveGapResult{}, apperrors.NewAppError(apperrors.Conflict, "gap dismissed as unrelated is terminal")

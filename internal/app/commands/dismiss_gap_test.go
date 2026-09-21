@@ -60,6 +60,27 @@ func TestDismissGap_Terminal_ReturnsConflict(t *testing.T) {
 	}
 }
 
+func TestDismissGap_BelongsToDifferentAgent_ReturnsNotFound(t *testing.T) {
+	repo := &mock.GapRepository{
+		GetByIDResult: &gap.Gap{ID: "gap-1", AgentID: "agent-1", Status: gap.StatusOpen},
+	}
+	cmd := commands.NewDismissGapCommand(repo)
+
+	_, err := cmd.Execute(context.Background(), commands.DismissGapParams{
+		ID:                "gap-1",
+		AgentID:           "agent-2",
+		DismissalCategory: gap.DismissalDuplicate,
+	})
+
+	appErr, ok := apperrors.IsAppError(err)
+	if !ok || appErr.Code() != apperrors.NotFound {
+		t.Fatalf("Execute() = %v, want NotFound AppError", err)
+	}
+	if repo.LastUpdate != nil {
+		t.Error("repo.Update was called, want no write once the ownership guard rejects the request")
+	}
+}
+
 func TestDismissGap_HappyPath(t *testing.T) {
 	repo := &mock.GapRepository{
 		GetByIDResult: &gap.Gap{ID: "gap-1", Status: gap.StatusOpen},

@@ -2229,6 +2229,7 @@ export interface operations {
     listGaps: {
         parameters: {
             query?: {
+                status?: components["schemas"]["Models.GapStatus"];
                 limit?: number;
                 offset?: number;
             };

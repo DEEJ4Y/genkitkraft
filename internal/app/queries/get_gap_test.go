@@ -17,7 +17,7 @@ func TestGetGap_HappyPath_IncludesReferences(t *testing.T) {
 	}
 	q := queries.NewGetGapQuery(repo)
 
-	result, err := q.Execute(context.Background(), queries.GetGapParams{ID: "gap-1"})
+	result, err := q.Execute(context.Background(), queries.GetGapParams{ID: "gap-1", AgentID: "agent-1"})
 	if err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
@@ -37,6 +37,22 @@ func TestGetGap_NotFound_Propagates(t *testing.T) {
 	q := queries.NewGetGapQuery(repo)
 
 	_, err := q.Execute(context.Background(), queries.GetGapParams{ID: "missing"})
+	appErr, ok := apperrors.IsAppError(err)
+	if !ok || appErr.Code() != apperrors.NotFound {
+		t.Fatalf("Execute() = %v, want NotFound AppError", err)
+	}
+}
+
+// A gap that exists but belongs to a different agent must 404 the same as
+// one that doesn't exist at all — this is the only place ownership is
+// enforced now that the HTTP and MCP handlers both delegate to this query.
+func TestGetGap_BelongsToDifferentAgent_ReturnsNotFound(t *testing.T) {
+	repo := &mock.GapRepository{
+		GetByIDResult: &gap.Gap{ID: "gap-1", AgentID: "agent-1"},
+	}
+	q := queries.NewGetGapQuery(repo)
+
+	_, err := q.Execute(context.Background(), queries.GetGapParams{ID: "gap-1", AgentID: "agent-2"})
 	appErr, ok := apperrors.IsAppError(err)
 	if !ok || appErr.Code() != apperrors.NotFound {
 		t.Fatalf("Execute() = %v, want NotFound AppError", err)

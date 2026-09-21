@@ -8,8 +8,8 @@ import (
 
 // GapRepository defines the contract for gap persistence.
 type GapRepository interface {
-	List(ctx context.Context, agentID string, limit, offset int) ([]*gap.Gap, error)
-	Count(ctx context.Context, agentID string) (int, error)
+	List(ctx context.Context, agentID string, status gap.Status, limit, offset int) ([]*gap.Gap, error)
+	Count(ctx context.Context, agentID string, status gap.Status) (int, error)
 	GetByID(ctx context.Context, id string) (*gap.Gap, error)
 	Create(ctx context.Context, g *gap.Gap) error
 	Update(ctx context.Context, g *gap.Gap) error

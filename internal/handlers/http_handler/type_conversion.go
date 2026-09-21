@@ -11,6 +11,7 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/agent"
 	builtintool "github.com/DEEJ4Y/genkitkraft/internal/domain/builtin_tool"
+	"github.com/DEEJ4Y/genkitkraft/internal/domain/gap"
 	httptool "github.com/DEEJ4Y/genkitkraft/internal/domain/http_tool"
 	mcpserver "github.com/DEEJ4Y/genkitkraft/internal/domain/mcp_server"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/playground"
@@ -813,8 +814,13 @@ func toListGapsParams(agentID string, params gen.ListGapsParams) queries.ListGap
 	if params.Offset != nil {
 		offset = int(*params.Offset)
 	}
+	var status gap.Status
+	if params.Status != nil {
+		status = gap.Status(*params.Status)
+	}
 	return queries.ListGapsParams{
 		AgentID: agentID,
+		Status:  status,
 		Limit:   limit,
 		Offset:  offset,
 	}

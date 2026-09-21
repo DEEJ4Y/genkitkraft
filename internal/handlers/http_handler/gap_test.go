@@ -90,6 +90,30 @@ func TestListGaps_ScopedToAgent(t *testing.T) {
 	}
 }
 
+func TestListGaps_StatusFilter(t *testing.T) {
+	env := setupTestEnv(t)
+	seedGap(t, env, env.agentID, &gap.Gap{Status: gap.StatusOpen})
+	resolved := seedGap(t, env, env.agentID, &gap.Gap{Status: gap.StatusResolved})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/agents/"+env.agentID+"/gaps?status=resolved", nil)
+	w := httptest.NewRecorder()
+	env.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp gen.ModelsGapListResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp.Total != 1 || len(resp.Gaps) != 1 {
+		t.Fatalf("expected exactly 1 resolved gap, got %+v", resp)
+	}
+	if resp.Gaps[0].Id != resolved.ID {
+		t.Errorf("gap.Id = %q, want %q", resp.Gaps[0].Id, resolved.ID)
+	}
+}
+
 func TestListGaps_UnknownAgent_Returns404(t *testing.T) {
 	env := setupTestEnv(t)
 

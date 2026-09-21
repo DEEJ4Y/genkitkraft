@@ -1139,13 +1139,9 @@ func (h *Handler) ListGaps(w http.ResponseWriter, r *http.Request, agentId strin
 }
 
 func (h *Handler) GetGap(w http.ResponseWriter, r *http.Request, agentId string, gapId string) {
-	result, err := h.gapApp.Queries.GetGap.Execute(r.Context(), queries.GetGapParams{ID: gapId})
+	result, err := h.gapApp.Queries.GetGap.Execute(r.Context(), queries.GetGapParams{ID: gapId, AgentID: agentId})
 	if err != nil {
 		writeAppError(w, err)
-		return
-	}
-	if result.Gap.AgentID != agentId {
-		writeAppError(w, errors.NewAppError(errors.NotFound, "gap not found"))
 		return
 	}
 	writeJSON(w, http.StatusOK, toGapResponse(result.GapWithReferences))
@@ -1162,20 +1158,10 @@ func (h *Handler) UpdateGap(w http.ResponseWriter, r *http.Request, agentId stri
 		return
 	}
 
-	existing, err := h.gapApp.Queries.GetGap.Execute(r.Context(), queries.GetGapParams{ID: gapId})
-	if err != nil {
-		writeAppError(w, err)
-		return
-	}
-	if existing.Gap.AgentID != agentId {
-		writeAppError(w, errors.NewAppError(errors.NotFound, "gap not found"))
-		return
-	}
-
 	var g *gap.Gap
 	switch *req.Status {
 	case gen.Resolved:
-		result, err := h.gapApp.Commands.ResolveGap.Execute(r.Context(), commands.ResolveGapParams{ID: gapId})
+		result, err := h.gapApp.Commands.ResolveGap.Execute(r.Context(), commands.ResolveGapParams{ID: gapId, AgentID: agentId})
 		if err != nil {
 			writeAppError(w, err)
 			return
@@ -1192,6 +1178,7 @@ func (h *Handler) UpdateGap(w http.ResponseWriter, r *http.Request, agentId stri
 		}
 		result, err := h.gapApp.Commands.DismissGap.Execute(r.Context(), commands.DismissGapParams{
 			ID:                gapId,
+			AgentID:           agentId,
 			DismissalCategory: string(*req.DismissalCategory),
 			DismissalReason:   reason,
 		})
@@ -1201,7 +1188,7 @@ func (h *Handler) UpdateGap(w http.ResponseWriter, r *http.Request, agentId stri
 		}
 		g = result.Gap
 	case gen.Open:
-		result, err := h.gapApp.Commands.ReopenGap.Execute(r.Context(), commands.ReopenGapParams{ID: gapId})
+		result, err := h.gapApp.Commands.ReopenGap.Execute(r.Context(), commands.ReopenGapParams{ID: gapId, AgentID: agentId})
 		if err != nil {
 			writeAppError(w, err)
 			return
@@ -1212,7 +1199,7 @@ func (h *Handler) UpdateGap(w http.ResponseWriter, r *http.Request, agentId stri
 		return
 	}
 
-	refs, err := h.gapApp.Queries.GetGap.Execute(r.Context(), queries.GetGapParams{ID: g.ID})
+	refs, err := h.gapApp.Queries.GetGap.Execute(r.Context(), queries.GetGapParams{ID: g.ID, AgentID: agentId})
 	if err != nil {
 		writeAppError(w, err)
 		return

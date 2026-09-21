@@ -15,7 +15,7 @@ namespace AgentGaps {
   @route("/api/v1/agents/{agentId}/gaps")
   @summary("List agent gaps")
   @operationId("listGaps")
-  op listGaps(@path agentId: string, @query limit?: int32 = 20, @query offset?: int32 = 0): GapListResponse;
+  op listGaps(@path agentId: string, @query status?: GapStatus, @query limit?: int32 = 20, @query offset?: int32 = 0): GapListResponse;
 
   /** Get a single gap by ID. */
   @get

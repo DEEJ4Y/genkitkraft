@@ -117,3 +117,34 @@ func TestListGaps_UnknownAgent_ReturnsNotFound(t *testing.T) {
 		t.Errorf("Count/List were called on the gap repo, want them skipped once the agent lookup fails")
 	}
 }
+
+func TestListGaps_StatusFilter_PassedToRepo(t *testing.T) {
+	repo := &mock.GapRepository{}
+	agentRepo := &mock.AgentRepository{GetByIDResult: &agent.Agent{ID: "agent-1"}}
+	q := queries.NewListGapsQuery(repo, agentRepo)
+
+	if _, err := q.Execute(context.Background(), queries.ListGapsParams{AgentID: "agent-1", Status: gap.StatusResolved}); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	if repo.LastListStatus != gap.StatusResolved {
+		t.Errorf("List called with status=%q, want %q", repo.LastListStatus, gap.StatusResolved)
+	}
+	if repo.LastCountStatus != gap.StatusResolved {
+		t.Errorf("Count called with status=%q, want %q", repo.LastCountStatus, gap.StatusResolved)
+	}
+}
+
+func TestListGaps_InvalidStatus_ReturnsInvalidInput(t *testing.T) {
+	repo := &mock.GapRepository{}
+	agentRepo := &mock.AgentRepository{GetByIDResult: &agent.Agent{ID: "agent-1"}}
+	q := queries.NewListGapsQuery(repo, agentRepo)
+
+	_, err := q.Execute(context.Background(), queries.ListGapsParams{AgentID: "agent-1", Status: gap.Status("bogus")})
+	if appErr, ok := apperrors.IsAppError(err); !ok || appErr.Code() != apperrors.InvalidInput {
+		t.Fatalf("Execute() = %v, want an InvalidInput error", err)
+	}
+	if repo.LastCountAgentID != "" || repo.LastListAgentID != "" || agentRepo.LastGetByID != "" {
+		t.Error("agent/gap repo were called, want status validated before any lookup")
+	}
+}

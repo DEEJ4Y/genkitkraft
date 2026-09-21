@@ -9,7 +9,8 @@ import (
 )
 
 type ReopenGapParams struct {
-	ID string
+	ID      string
+	AgentID string
 }
 
 type ReopenGapResult struct {
@@ -31,6 +32,9 @@ func (c *ReopenGapCommand) Execute(ctx context.Context, params ReopenGapParams) 
 	g, err := c.repo.GetByID(ctx, params.ID)
 	if err != nil {
 		return ReopenGapResult{}, err
+	}
+	if g.AgentID != params.AgentID {
+		return ReopenGapResult{}, apperrors.NewAppError(apperrors.NotFound, "gap not found")
 	}
 	if g.IsTerminal() {
 		return ReopenGapResult{}, apperrors.NewAppError(apperrors.Conflict, "gap dismissed as unrelated cannot be reopened")

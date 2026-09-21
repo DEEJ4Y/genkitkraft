@@ -48,10 +48,17 @@ func scanGap(row interface{ Scan(dest ...any) error }) (*gap.Gap, error) {
 
 const gapColumns = `id, agent_id, category, context, details, suggested_resolution, status, dismissal_category, dismissal_reason, created_at, updated_at`
 
-func (r *GapRepository) List(ctx context.Context, agentID string, limit, offset int) ([]*gap.Gap, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+gapColumns+`
-		 FROM agent_gaps WHERE agent_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`, agentID, limit, offset)
+func (r *GapRepository) List(ctx context.Context, agentID string, status gap.Status, limit, offset int) ([]*gap.Gap, error) {
+	query := `SELECT ` + gapColumns + ` FROM agent_gaps WHERE agent_id = ?`
+	args := []any{agentID}
+	if status != "" {
+		query += ` AND status = ?`
+		args = append(args, string(status))
+	}
+	query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
+	args = append(args, limit, offset)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, apperrors.NewAppErrorf(apperrors.Internal, "listing gaps: %v", err)
 	}
@@ -68,9 +75,15 @@ func (r *GapRepository) List(ctx context.Context, agentID string, limit, offset 
 	return gaps, rows.Err()
 }
 
-func (r *GapRepository) Count(ctx context.Context, agentID string) (int, error) {
+func (r *GapRepository) Count(ctx context.Context, agentID string, status gap.Status) (int, error) {
+	query := `SELECT COUNT(*) FROM agent_gaps WHERE agent_id = ?`
+	args := []any{agentID}
+	if status != "" {
+		query += ` AND status = ?`
+		args = append(args, string(status))
+	}
 	var count int
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM agent_gaps WHERE agent_id = ?`, agentID).Scan(&count)
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(&count)
 	if err != nil {
 		return 0, apperrors.NewAppErrorf(apperrors.Internal, "counting gaps: %v", err)
 	}

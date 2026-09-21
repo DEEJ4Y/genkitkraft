@@ -60,6 +60,23 @@ func TestReopenGap_NonTerminalDismissal_Succeeds(t *testing.T) {
 	}
 }
 
+func TestReopenGap_BelongsToDifferentAgent_ReturnsNotFound(t *testing.T) {
+	repo := &mock.GapRepository{
+		GetByIDResult: &gap.Gap{ID: "gap-1", AgentID: "agent-1", Status: gap.StatusResolved},
+	}
+	cmd := commands.NewReopenGapCommand(repo)
+
+	_, err := cmd.Execute(context.Background(), commands.ReopenGapParams{ID: "gap-1", AgentID: "agent-2"})
+
+	appErr, ok := apperrors.IsAppError(err)
+	if !ok || appErr.Code() != apperrors.NotFound {
+		t.Fatalf("Execute() = %v, want NotFound AppError", err)
+	}
+	if repo.LastUpdate != nil {
+		t.Error("repo.Update was called, want no write once the ownership guard rejects the request")
+	}
+}
+
 func TestReopenGap_Resolved_Succeeds(t *testing.T) {
 	repo := &mock.GapRepository{GetByIDResult: &gap.Gap{ID: "gap-1", Status: gap.StatusResolved}}
 	cmd := commands.NewReopenGapCommand(repo)

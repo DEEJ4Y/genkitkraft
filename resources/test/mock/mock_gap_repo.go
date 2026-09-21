@@ -38,23 +38,27 @@ type GapRepository struct {
 	LastAddReference *gap.Reference
 
 	LastListAgentID string
+	LastListStatus  gap.Status
 	LastListLimit   int
 	LastListOffset  int
 
 	LastCountAgentID        string
+	LastCountStatus         gap.Status
 	LastGetByID             string
 	LastListReferencesGapID string
 }
 
-func (m *GapRepository) List(_ context.Context, agentID string, limit, offset int) ([]*gap.Gap, error) {
+func (m *GapRepository) List(_ context.Context, agentID string, status gap.Status, limit, offset int) ([]*gap.Gap, error) {
 	m.LastListAgentID = agentID
+	m.LastListStatus = status
 	m.LastListLimit = limit
 	m.LastListOffset = offset
 	return m.ListGaps, m.ListErr
 }
 
-func (m *GapRepository) Count(_ context.Context, agentID string) (int, error) {
+func (m *GapRepository) Count(_ context.Context, agentID string, status gap.Status) (int, error) {
 	m.LastCountAgentID = agentID
+	m.LastCountStatus = status
 	return m.CountResult, m.CountErr
 }
 

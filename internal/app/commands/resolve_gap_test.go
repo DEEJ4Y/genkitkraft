@@ -58,6 +58,23 @@ func TestResolveGap_HappyPath_ClearsAnyPriorDismissal(t *testing.T) {
 	}
 }
 
+func TestResolveGap_BelongsToDifferentAgent_ReturnsNotFound(t *testing.T) {
+	repo := &mock.GapRepository{
+		GetByIDResult: &gap.Gap{ID: "gap-1", AgentID: "agent-1", Status: gap.StatusOpen},
+	}
+	cmd := commands.NewResolveGapCommand(repo)
+
+	_, err := cmd.Execute(context.Background(), commands.ResolveGapParams{ID: "gap-1", AgentID: "agent-2"})
+
+	appErr, ok := apperrors.IsAppError(err)
+	if !ok || appErr.Code() != apperrors.NotFound {
+		t.Fatalf("Execute() = %v, want NotFound AppError", err)
+	}
+	if repo.LastUpdate != nil {
+		t.Error("repo.Update was called, want no write once the ownership guard rejects the request")
+	}
+}
+
 func TestResolveGap_NotFound_PropagatesRepoError(t *testing.T) {
 	repo := &mock.GapRepository{GetByIDErr: apperrors.NewAppError(apperrors.NotFound, "gap not found")}
 	cmd := commands.NewResolveGapCommand(repo)

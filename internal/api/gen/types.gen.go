@@ -1035,8 +1035,9 @@ type ListAgentsParams struct {
 
 // ListGapsParams defines parameters for ListGaps.
 type ListGapsParams struct {
-	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
-	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
+	Status *ModelsGapStatus `form:"status,omitempty" json:"status,omitempty"`
+	Limit  *int32           `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32           `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // ListHttpToolsParams defines parameters for ListHttpTools.

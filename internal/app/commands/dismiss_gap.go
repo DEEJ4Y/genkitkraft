@@ -10,6 +10,7 @@ import (
 
 type DismissGapParams struct {
 	ID                string
+	AgentID           string
 	DismissalCategory string
 	DismissalReason   string
 }
@@ -39,6 +40,9 @@ func (c *DismissGapCommand) Execute(ctx context.Context, params DismissGapParams
 	g, err := c.repo.GetByID(ctx, params.ID)
 	if err != nil {
 		return DismissGapResult{}, err
+	}
+	if g.AgentID != params.AgentID {
+		return DismissGapResult{}, apperrors.NewAppError(apperrors.NotFound, "gap not found")
 	}
 	if g.IsTerminal() {
 		return DismissGapResult{}, apperrors.NewAppError(apperrors.Conflict, "gap dismissed as unrelated is terminal")

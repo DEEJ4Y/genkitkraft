@@ -3,6 +3,7 @@ package postgresgap
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,10 +49,19 @@ func scanGap(row interface{ Scan(dest ...any) error }) (*gap.Gap, error) {
 
 const gapColumns = `id, agent_id, category, context, details, suggested_resolution, status, dismissal_category, dismissal_reason, created_at, updated_at`
 
-func (r *GapRepository) List(ctx context.Context, agentID string, limit, offset int) ([]*gap.Gap, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+gapColumns+`
-		 FROM agent_gaps WHERE agent_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`, agentID, limit, offset)
+func (r *GapRepository) List(ctx context.Context, agentID string, status gap.Status, limit, offset int) ([]*gap.Gap, error) {
+	args := []any{agentID}
+	query := `SELECT ` + gapColumns + ` FROM agent_gaps WHERE agent_id = $1`
+	if status != "" {
+		args = append(args, string(status))
+		query += fmt.Sprintf(" AND status = $%d", len(args))
+	}
+	args = append(args, limit)
+	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d", len(args))
+	args = append(args, offset)
+	query += fmt.Sprintf(" OFFSET $%d", len(args))
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, apperrors.NewAppErrorf(apperrors.Internal, "listing gaps: %v", err)
 	}
@@ -68,9 +78,15 @@ func (r *GapRepository) List(ctx context.Context, agentID string, limit, offset 
 	return gaps, rows.Err()
 }
 
-func (r *GapRepository) Count(ctx context.Context, agentID string) (int, error) {
+func (r *GapRepository) Count(ctx context.Context, agentID string, status gap.Status) (int, error) {
+	args := []any{agentID}
+	query := `SELECT COUNT(*) FROM agent_gaps WHERE agent_id = $1`
+	if status != "" {
+		args = append(args, string(status))
+		query += fmt.Sprintf(" AND status = $%d", len(args))
+	}
 	var count int
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM agent_gaps WHERE agent_id = $1`, agentID).Scan(&count)
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(&count)
 	if err != nil {
 		return 0, apperrors.NewAppErrorf(apperrors.Internal, "counting gaps: %v", err)
 	}
