@@ -14,6 +14,7 @@ tags:
   - name: McpServers
   - name: Agent Tools
   - name: Built-in Tools
+  - name: Agent Gaps
 paths:
   /api/auth/login:
     post:
@@ -444,6 +445,115 @@ paths:
                 $ref: '#/components/schemas/Models.ErrorResponse'
       tags:
         - Deploy
+  /api/v1/agents/{agentId}/gaps:
+    get:
+      operationId: listGaps
+      summary: List agent gaps
+      description: List an agent's self-reported gaps.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Models.GapStatus'
+          explode: false
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 20
+          explode: false
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.GapListResponse'
+      tags:
+        - Agent Gaps
+  /api/v1/agents/{agentId}/gaps/{gapId}:
+    get:
+      operationId: getGap
+      summary: Get agent gap
+      description: Get a single gap by ID.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: gapId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.GapResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Agent Gaps
+    put:
+      operationId: updateGap
+      summary: Update agent gap
+      description: Update a gap's review status (resolve, dismiss, or reopen).
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: gapId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.GapResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Agent Gaps
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Models.UpdateGapRequest'
   /api/v1/agents/{agentId}/playground/chat:
     post:
       operationId: playgroundChat
@@ -1477,6 +1587,7 @@ components:
         - topKEnabled
         - topK
         - maxToolCalls
+        - gapReportingEnabled
         - createdAt
         - updatedAt
       properties:
@@ -1530,6 +1641,9 @@ components:
           type: integer
           format: int32
           description: Maximum number of tool call iterations per request.
+        gapReportingEnabled:
+          type: boolean
+          description: Whether this agent can self-report gaps (knowledge/capability/improvement) during conversations.
         createdAt:
           type: string
           format: date-time
@@ -1705,6 +1819,9 @@ components:
           type: integer
           format: int32
           description: Maximum number of tool call iterations per request (default 10).
+        gapReportingEnabled:
+          type: boolean
+          description: Whether this agent can self-report gaps during conversations (default false).
       description: Request to create a new agent.
     Models.CreateDeploySessionRequest:
       type: object
@@ -1953,6 +2070,127 @@ components:
           type: string
           description: Human-readable error description.
       description: Standard error response.
+    Models.GapCategory:
+      type: string
+      enum:
+        - knowledge
+        - capability
+        - improvement
+      description: Category of a self-reported agent gap.
+    Models.GapDismissalCategory:
+      type: string
+      enum:
+        - unrelated
+        - insufficient_detail
+        - duplicate
+        - other
+      description: Reason category for dismissing a gap.
+    Models.GapListResponse:
+      type: object
+      required:
+        - gaps
+        - total
+        - limit
+        - offset
+      properties:
+        gaps:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.GapResponse'
+          description: Array of gaps.
+        total:
+          type: integer
+          format: int32
+          description: Total number of gaps for this agent.
+        limit:
+          type: integer
+          format: int32
+          description: Number of gaps per page.
+        offset:
+          type: integer
+          format: int32
+          description: Number of gaps skipped.
+      description: Paginated list of gaps.
+    Models.GapReference:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          description: |-
+            ID of the playground/deploy session this gap was observed in, when one
+            exists. Absent for a report from the stateless deploy chat-completions
+            endpoint, which has no persisted conversation.
+        messageId:
+          type: string
+          description: ID of the specific message, when it could be resolved.
+      description: A conversation (and, when resolvable, message) a gap was observed in.
+    Models.GapResponse:
+      type: object
+      required:
+        - id
+        - agentId
+        - category
+        - context
+        - details
+        - status
+        - references
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Unique gap ID.
+        agentId:
+          type: string
+          description: ID of the agent this gap belongs to.
+        category:
+          allOf:
+            - $ref: '#/components/schemas/Models.GapCategory'
+          description: The kind of gap.
+        context:
+          type: string
+          description: What the user asked or what task was attempted.
+        details:
+          type: string
+          description: What was missing, blocked, or could be improved.
+        suggestedResolution:
+          type: string
+          description: Optional suggestion for closing the gap.
+        status:
+          allOf:
+            - $ref: '#/components/schemas/Models.GapStatus'
+          description: Review lifecycle status.
+        dismissalCategory:
+          allOf:
+            - $ref: '#/components/schemas/Models.GapDismissalCategory'
+          description: Reason category, present only when status is dismissed.
+        dismissalReason:
+          type: string
+          description: Free-text dismissal reason, if provided.
+        references:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.GapReference'
+          description: Conversations this gap was observed in.
+        createdAt:
+          type: string
+          format: date-time
+          description: When this gap was first created.
+        updatedAt:
+          type: string
+          format: date-time
+          description: When this gap was last updated.
+      description: |-
+        A self-reported gap for an agent: a question it could not answer
+        reliably (knowledge), an action it could not perform (capability), or a
+        suggestion to automate more of the flow (improvement).
+    Models.GapStatus:
+      type: string
+      enum:
+        - open
+        - resolved
+        - dismissed
+      description: Review lifecycle status of a gap.
     Models.GoogleAIProviderConfig:
       type: object
       description: Google AI provider config (no extra fields needed).
@@ -2628,6 +2866,9 @@ components:
           type: integer
           format: int32
           description: Updated maximum tool call iterations.
+        gapReportingEnabled:
+          type: boolean
+          description: Updated gap reporting enabled flag.
       description: Request to update an existing agent.
     Models.UpdateAgentToolConfigRequest:
       type: object
@@ -2652,6 +2893,24 @@ components:
             type: string
           description: IDs of built-in tools to enable.
       description: Request to update an agent's tool configuration.
+    Models.UpdateGapRequest:
+      type: object
+      properties:
+        status:
+          allOf:
+            - $ref: '#/components/schemas/Models.GapStatus'
+          description: 'New status: "resolved", "dismissed", or "open" (to reopen).'
+        dismissalCategory:
+          allOf:
+            - $ref: '#/components/schemas/Models.GapDismissalCategory'
+          description: Required when status is "dismissed".
+        dismissalReason:
+          type: string
+          description: Optional free-text reason, used together with dismissalCategory.
+      description: |-
+        Request to update a gap's review status. Resolve, dismiss (with a
+        reason), or reopen (status: "open") — a gap dismissed with category
+        "unrelated" can never be reopened.
     Models.UpdateHttpToolRequest:
       type: object
       properties:

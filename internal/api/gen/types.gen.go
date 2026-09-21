@@ -14,6 +14,28 @@ const (
 	ModelsDeployChatMessageRoleUser      ModelsDeployChatMessageRole = "user"
 )
 
+// Defines values for ModelsGapCategory.
+const (
+	Capability  ModelsGapCategory = "capability"
+	Improvement ModelsGapCategory = "improvement"
+	Knowledge   ModelsGapCategory = "knowledge"
+)
+
+// Defines values for ModelsGapDismissalCategory.
+const (
+	Duplicate          ModelsGapDismissalCategory = "duplicate"
+	InsufficientDetail ModelsGapDismissalCategory = "insufficient_detail"
+	Other              ModelsGapDismissalCategory = "other"
+	Unrelated          ModelsGapDismissalCategory = "unrelated"
+)
+
+// Defines values for ModelsGapStatus.
+const (
+	Dismissed ModelsGapStatus = "dismissed"
+	Open      ModelsGapStatus = "open"
+	Resolved  ModelsGapStatus = "resolved"
+)
+
 // Defines values for ModelsHealthStatus.
 const (
 	Down ModelsHealthStatus = "down"
@@ -89,6 +111,9 @@ type ModelsAgentMcpServerToolConfig struct {
 type ModelsAgentResponse struct {
 	// CreatedAt When this agent was created.
 	CreatedAt time.Time `json:"createdAt"`
+
+	// GapReportingEnabled Whether this agent can self-report gaps (knowledge/capability/improvement) during conversations.
+	GapReportingEnabled bool `json:"gapReportingEnabled"`
 
 	// Id Unique agent ID.
 	Id string `json:"id"`
@@ -195,6 +220,9 @@ type ModelsConfigFieldInfo struct {
 
 // ModelsCreateAgentRequest Request to create a new agent.
 type ModelsCreateAgentRequest struct {
+	// GapReportingEnabled Whether this agent can self-report gaps during conversations (default false).
+	GapReportingEnabled *bool `json:"gapReportingEnabled,omitempty"`
+
 	// MaxToolCalls Maximum number of tool call iterations per request (default 10).
 	MaxToolCalls *int32 `json:"maxToolCalls,omitempty"`
 
@@ -396,6 +424,82 @@ type ModelsErrorResponse struct {
 	// Error Human-readable error description.
 	Error string `json:"error"`
 }
+
+// ModelsGapCategory Category of a self-reported agent gap.
+type ModelsGapCategory string
+
+// ModelsGapDismissalCategory Reason category for dismissing a gap.
+type ModelsGapDismissalCategory string
+
+// ModelsGapListResponse Paginated list of gaps.
+type ModelsGapListResponse struct {
+	// Gaps Array of gaps.
+	Gaps []ModelsGapResponse `json:"gaps"`
+
+	// Limit Number of gaps per page.
+	Limit int32 `json:"limit"`
+
+	// Offset Number of gaps skipped.
+	Offset int32 `json:"offset"`
+
+	// Total Total number of gaps for this agent.
+	Total int32 `json:"total"`
+}
+
+// ModelsGapReference A conversation (and, when resolvable, message) a gap was observed in.
+type ModelsGapReference struct {
+	// MessageId ID of the specific message, when it could be resolved.
+	MessageId *string `json:"messageId,omitempty"`
+
+	// SessionId ID of the playground/deploy session this gap was observed in, when one
+	// exists. Absent for a report from the stateless deploy chat-completions
+	// endpoint, which has no persisted conversation.
+	SessionId *string `json:"sessionId,omitempty"`
+}
+
+// ModelsGapResponse A self-reported gap for an agent: a question it could not answer
+// reliably (knowledge), an action it could not perform (capability), or a
+// suggestion to automate more of the flow (improvement).
+type ModelsGapResponse struct {
+	// AgentId ID of the agent this gap belongs to.
+	AgentId string `json:"agentId"`
+
+	// Category The kind of gap.
+	Category ModelsGapCategory `json:"category"`
+
+	// Context What the user asked or what task was attempted.
+	Context string `json:"context"`
+
+	// CreatedAt When this gap was first created.
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Details What was missing, blocked, or could be improved.
+	Details string `json:"details"`
+
+	// DismissalCategory Reason category, present only when status is dismissed.
+	DismissalCategory *ModelsGapDismissalCategory `json:"dismissalCategory,omitempty"`
+
+	// DismissalReason Free-text dismissal reason, if provided.
+	DismissalReason *string `json:"dismissalReason,omitempty"`
+
+	// Id Unique gap ID.
+	Id string `json:"id"`
+
+	// References Conversations this gap was observed in.
+	References []ModelsGapReference `json:"references"`
+
+	// Status Review lifecycle status.
+	Status ModelsGapStatus `json:"status"`
+
+	// SuggestedResolution Optional suggestion for closing the gap.
+	SuggestedResolution *string `json:"suggestedResolution,omitempty"`
+
+	// UpdatedAt When this gap was last updated.
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// ModelsGapStatus Review lifecycle status of a gap.
+type ModelsGapStatus string
 
 // ModelsHealthCheckResponse Response body for health check endpoints.
 type ModelsHealthCheckResponse struct {
@@ -794,6 +898,9 @@ type ModelsTestProviderResponse struct {
 
 // ModelsUpdateAgentRequest Request to update an existing agent.
 type ModelsUpdateAgentRequest struct {
+	// GapReportingEnabled Updated gap reporting enabled flag.
+	GapReportingEnabled *bool `json:"gapReportingEnabled,omitempty"`
+
 	// MaxToolCalls Updated maximum tool call iterations.
 	MaxToolCalls *int32 `json:"maxToolCalls,omitempty"`
 
@@ -838,6 +945,20 @@ type ModelsUpdateAgentToolConfigRequest struct {
 
 	// McpServers MCP server tool configurations to assign.
 	McpServers []ModelsAgentMcpServerToolConfig `json:"mcpServers"`
+}
+
+// ModelsUpdateGapRequest Request to update a gap's review status. Resolve, dismiss (with a
+// reason), or reopen (status: "open") — a gap dismissed with category
+// "unrelated" can never be reopened.
+type ModelsUpdateGapRequest struct {
+	// DismissalCategory Required when status is "dismissed".
+	DismissalCategory *ModelsGapDismissalCategory `json:"dismissalCategory,omitempty"`
+
+	// DismissalReason Optional free-text reason, used together with dismissalCategory.
+	DismissalReason *string `json:"dismissalReason,omitempty"`
+
+	// Status New status: "resolved", "dismissed", or "open" (to reopen).
+	Status *ModelsGapStatus `json:"status,omitempty"`
 }
 
 // ModelsUpdateHttpToolRequest Request to update an existing HTTP tool.
@@ -912,6 +1033,13 @@ type ListAgentsParams struct {
 	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
+// ListGapsParams defines parameters for ListGaps.
+type ListGapsParams struct {
+	Status *ModelsGapStatus `form:"status,omitempty" json:"status,omitempty"`
+	Limit  *int32           `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32           `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // ListHttpToolsParams defines parameters for ListHttpTools.
 type ListHttpToolsParams struct {
 	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
@@ -944,6 +1072,9 @@ type CreateDeploySessionJSONRequestBody = ModelsCreateDeploySessionRequest
 
 // DeploySessionChatCompletionsJSONRequestBody defines body for DeploySessionChatCompletions for application/json ContentType.
 type DeploySessionChatCompletionsJSONRequestBody = ModelsDeployChatCompletionsRequest
+
+// UpdateGapJSONRequestBody defines body for UpdateGap for application/json ContentType.
+type UpdateGapJSONRequestBody = ModelsUpdateGapRequest
 
 // PlaygroundChatJSONRequestBody defines body for PlaygroundChat for application/json ContentType.
 type PlaygroundChatJSONRequestBody = ModelsPlaygroundChatRequest

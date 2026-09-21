@@ -20,6 +20,7 @@ import (
 	sqliteagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent"
 	sqliteagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent_tool"
 	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
+	sqlitegap "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_gap"
 	sqlitehttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_http_tool"
 	sqlitemcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_mcp_server"
 	sqliteplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_playground"
@@ -33,6 +34,9 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/prompt"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
 	httphandler "github.com/DEEJ4Y/genkitkraft/internal/handlers/http_handler"
+	agentrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_repo"
+	agenttoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_tool_repo"
+	gaprepo "github.com/DEEJ4Y/genkitkraft/internal/ports/gap_repo"
 	playgroundrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/playground_repo"
 	mockchat "github.com/DEEJ4Y/genkitkraft/resources/test/mock"
 )
@@ -44,6 +48,10 @@ type testEnv struct {
 	agentID        string
 	mockChat       *mockchat.ChatProvider
 	playgroundRepo playgroundrepo.PlaygroundRepository
+	gapRepo        gaprepo.GapRepository
+	agentRepo      agentrepo.AgentRepository
+	agentToolRepo  agenttoolrepo.AgentToolRepository
+	providerID     string
 }
 
 // setupTestEnv creates a fully wired test environment with a real SQLite DB,
@@ -71,6 +79,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	agentToolRepo := sqliteagenttool.NewRepository(db)
 	httpToolRepo := sqlitehttptool.NewHttpToolRepository(db)
 	mcpServerRepo := sqlitemcpserver.NewMcpServerRepository(db)
+	gapRepo := sqlitegap.NewGapRepository(db)
 
 	ctx := context.Background()
 
@@ -153,7 +162,19 @@ func setupTestEnv(t *testing.T) *testEnv {
 		},
 	}
 
-	handler := httphandler.NewHandler(nil, nil, nil, nil, playgroundApp, nil, nil, nil, nil, mockCP, nil)
+	gapApp := &app.GapApp{
+		Commands: app.GapCommands{
+			DismissGap: commands.NewDismissGapCommand(gapRepo),
+			ResolveGap: commands.NewResolveGapCommand(gapRepo),
+			ReopenGap:  commands.NewReopenGapCommand(gapRepo),
+		},
+		Queries: app.GapQueries{
+			ListGaps: queries.NewListGapsQuery(gapRepo, agentRepo),
+			GetGap:   queries.NewGetGapQuery(gapRepo),
+		},
+	}
+
+	handler := httphandler.NewHandler(nil, nil, nil, nil, playgroundApp, nil, nil, nil, nil, gapApp, mockCP, nil)
 
 	mux := http.NewServeMux()
 	gen.HandlerFromMux(handler, mux)
@@ -164,6 +185,10 @@ func setupTestEnv(t *testing.T) *testEnv {
 		agentID:        a.ID,
 		mockChat:       mockCP,
 		playgroundRepo: playgroundRepo,
+		gapRepo:        gapRepo,
+		agentRepo:      agentRepo,
+		agentToolRepo:  agentToolRepo,
+		providerID:     p.ID,
 	}
 }
 
@@ -177,6 +202,70 @@ func makeDeployRequest(t *testing.T, body interface{}) *bytes.Buffer {
 }
 
 // --- Non-streaming tests ---
+
+// The stateless deploy chat-completions endpoint has no session, so it must
+// never set a SessionID — there is no conversation to attach a report_gap
+// reference to. This no longer means gap reporting is unavailable there: the
+// tool is still offered, scoped by AgentID instead (see the test below);
+// reports from this path just carry no session/message reference.
+func TestDeployChat_GapReportingEnabled_NeverSetsSessionID(t *testing.T) {
+	env := setupTestEnv(t)
+
+	a, err := env.agentRepo.GetByID(context.Background(), env.agentID)
+	if err != nil {
+		t.Fatalf("get agent: %v", err)
+	}
+	a.GapReportingEnabled = true
+	if err := env.agentRepo.Update(context.Background(), a); err != nil {
+		t.Fatalf("enable gap reporting: %v", err)
+	}
+
+	reqBody := map[string]interface{}{
+		"messages": []map[string]string{
+			{"role": "user", "content": "Hello"},
+		},
+		"stream": false,
+	}
+	req := httptest.NewRequest(http.MethodPost,
+		"/api/v1/agents/"+env.agentID+"/deploy/chat/completions",
+		makeDeployRequest(t, reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	env.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if env.mockChat.LastRequest.SessionID != "" {
+		t.Errorf("LastRequest.SessionID = %q, want empty — the stateless deploy endpoint has no session to scope report_gap to", env.mockChat.LastRequest.SessionID)
+	}
+}
+
+// AgentID must reach the ChatRequest on the stateless path even though no
+// session exists — it's what lets report_gap be offered and scoped there.
+func TestDeployChat_PopulatesAgentIDOnChatRequest(t *testing.T) {
+	env := setupTestEnv(t)
+
+	reqBody := map[string]interface{}{
+		"messages": []map[string]string{
+			{"role": "user", "content": "Hello"},
+		},
+		"stream": false,
+	}
+	req := httptest.NewRequest(http.MethodPost,
+		"/api/v1/agents/"+env.agentID+"/deploy/chat/completions",
+		makeDeployRequest(t, reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	env.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if env.mockChat.LastRequest.AgentID != env.agentID {
+		t.Errorf("LastRequest.AgentID = %q, want %q", env.mockChat.LastRequest.AgentID, env.agentID)
+	}
+}
 
 func TestDeployChat_NonStreaming_HappyPath(t *testing.T) {
 	env := setupTestEnv(t)
@@ -288,6 +377,41 @@ func TestDeployChat_MultipleMessages(t *testing.T) {
 	// Verify system prompt was injected
 	if env.mockChat.LastRequest.SystemPrompt != "You are a helpful assistant." {
 		t.Errorf("expected system prompt to be injected, got %q", env.mockChat.LastRequest.SystemPrompt)
+	}
+}
+
+// Regression test: report_gap under-reported in manual QA because the model
+// had no instructions beyond the tool's own description (see PR #49 manual
+// test report). Assert the stateless deploy chat-completions path — which
+// has no session to fall back on — carries the appended instructions.
+func TestDeployChat_GapReportingEnabled_AppendsInstructionsToSystemPrompt(t *testing.T) {
+	env := setupTestEnv(t)
+
+	a, err := env.agentRepo.GetByID(context.Background(), env.agentID)
+	if err != nil {
+		t.Fatalf("get agent: %v", err)
+	}
+	a.GapReportingEnabled = true
+	if err := env.agentRepo.Update(context.Background(), a); err != nil {
+		t.Fatalf("update agent: %v", err)
+	}
+
+	reqBody := map[string]interface{}{
+		"messages": []map[string]string{{"role": "user", "content": "Hello"}},
+		"stream":   false,
+	}
+	req := httptest.NewRequest(http.MethodPost,
+		"/api/v1/agents/"+env.agentID+"/deploy/chat/completions",
+		makeDeployRequest(t, reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	env.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(env.mockChat.LastRequest.SystemPrompt, "report_gap") {
+		t.Errorf("expected gap-reporting instructions in system prompt, got %q", env.mockChat.LastRequest.SystemPrompt)
 	}
 }
 

@@ -199,6 +199,7 @@ func (h *Handler) playgroundChat(ctx context.Context, _ *mcp.CallToolRequest, in
 
 	chatReq := configResult.ChatRequest
 	chatReq.Messages = chatMessages
+	chatReq.SessionID = input.SessionID
 
 	// Non-streaming chat
 	content, err := h.chatProvider.Chat(ctx, chatReq)

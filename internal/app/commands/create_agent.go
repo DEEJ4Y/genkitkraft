@@ -11,17 +11,18 @@ import (
 )
 
 type CreateAgentParams struct {
-	Name               string
-	ProviderID         string
-	ModelID            string
-	SystemPromptID     string
-	TemperatureEnabled *bool
-	Temperature        *float64
-	TopPEnabled        *bool
-	TopP               *float64
-	TopKEnabled        *bool
-	TopK               *int
-	MaxToolCalls       *int
+	Name                string
+	ProviderID          string
+	ModelID             string
+	SystemPromptID      string
+	TemperatureEnabled  *bool
+	Temperature         *float64
+	TopPEnabled         *bool
+	TopP                *float64
+	TopKEnabled         *bool
+	TopK                *int
+	MaxToolCalls        *int
+	GapReportingEnabled *bool
 }
 
 type CreateAgentResult struct {
@@ -89,19 +90,24 @@ func (c *CreateAgentCommand) Execute(ctx context.Context, params CreateAgentPara
 	if params.MaxToolCalls != nil {
 		maxToolCalls = *params.MaxToolCalls
 	}
+	gapReportingEnabled := false
+	if params.GapReportingEnabled != nil {
+		gapReportingEnabled = *params.GapReportingEnabled
+	}
 
 	a := &agent.Agent{
-		Name:               params.Name,
-		ProviderID:         params.ProviderID,
-		ModelID:            params.ModelID,
-		SystemPromptID:     params.SystemPromptID,
-		TemperatureEnabled: temperatureEnabled,
-		Temperature:        temperature,
-		TopPEnabled:        topPEnabled,
-		TopP:               topP,
-		TopKEnabled:        topKEnabled,
-		TopK:               topK,
-		MaxToolCalls:       maxToolCalls,
+		Name:                params.Name,
+		ProviderID:          params.ProviderID,
+		ModelID:             params.ModelID,
+		SystemPromptID:      params.SystemPromptID,
+		TemperatureEnabled:  temperatureEnabled,
+		Temperature:         temperature,
+		TopPEnabled:         topPEnabled,
+		TopP:                topP,
+		TopKEnabled:         topKEnabled,
+		TopK:                topK,
+		MaxToolCalls:        maxToolCalls,
+		GapReportingEnabled: gapReportingEnabled,
 	}
 
 	if err := c.repo.Create(ctx, a); err != nil {

@@ -232,6 +232,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agents/{agentId}/gaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List agent gaps
+         * @description List an agent's self-reported gaps.
+         */
+        get: operations["listGaps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agentId}/gaps/{gapId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get agent gap
+         * @description Get a single gap by ID.
+         */
+        get: operations["getGap"];
+        /**
+         * Update agent gap
+         * @description Update a gap's review status (resolve, dismiss, or reopen).
+         */
+        put: operations["updateGap"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agents/{agentId}/playground/chat": {
         parameters: {
             query?: never;
@@ -813,6 +857,8 @@ export interface components {
              * @description Maximum number of tool call iterations per request.
              */
             maxToolCalls: number;
+            /** @description Whether this agent can self-report gaps (knowledge/capability/improvement) during conversations. */
+            gapReportingEnabled: boolean;
             /**
              * Format: date-time
              * @description When this agent was created.
@@ -923,6 +969,8 @@ export interface components {
              * @description Maximum number of tool call iterations per request (default 10).
              */
             maxToolCalls?: number;
+            /** @description Whether this agent can self-report gaps during conversations (default false). */
+            gapReportingEnabled?: boolean;
         };
         /** @description Request to create a new deploy session. */
         "Models.CreateDeploySessionRequest": {
@@ -1072,6 +1120,89 @@ export interface components {
             /** @description Human-readable error description. */
             error: string;
         };
+        /**
+         * @description Category of a self-reported agent gap.
+         * @enum {string}
+         */
+        "Models.GapCategory": "knowledge" | "capability" | "improvement";
+        /**
+         * @description Reason category for dismissing a gap.
+         * @enum {string}
+         */
+        "Models.GapDismissalCategory": "unrelated" | "insufficient_detail" | "duplicate" | "other";
+        /** @description Paginated list of gaps. */
+        "Models.GapListResponse": {
+            /** @description Array of gaps. */
+            gaps: components["schemas"]["Models.GapResponse"][];
+            /**
+             * Format: int32
+             * @description Total number of gaps for this agent.
+             */
+            total: number;
+            /**
+             * Format: int32
+             * @description Number of gaps per page.
+             */
+            limit: number;
+            /**
+             * Format: int32
+             * @description Number of gaps skipped.
+             */
+            offset: number;
+        };
+        /** @description A conversation (and, when resolvable, message) a gap was observed in. */
+        "Models.GapReference": {
+            /**
+             * @description ID of the playground/deploy session this gap was observed in, when one
+             *     exists. Absent for a report from the stateless deploy chat-completions
+             *     endpoint, which has no persisted conversation.
+             */
+            sessionId?: string;
+            /** @description ID of the specific message, when it could be resolved. */
+            messageId?: string;
+        };
+        /**
+         * @description A self-reported gap for an agent: a question it could not answer
+         *     reliably (knowledge), an action it could not perform (capability), or a
+         *     suggestion to automate more of the flow (improvement).
+         */
+        "Models.GapResponse": {
+            /** @description Unique gap ID. */
+            id: string;
+            /** @description ID of the agent this gap belongs to. */
+            agentId: string;
+            /** @description The kind of gap. */
+            category: components["schemas"]["Models.GapCategory"];
+            /** @description What the user asked or what task was attempted. */
+            context: string;
+            /** @description What was missing, blocked, or could be improved. */
+            details: string;
+            /** @description Optional suggestion for closing the gap. */
+            suggestedResolution?: string;
+            /** @description Review lifecycle status. */
+            status: components["schemas"]["Models.GapStatus"];
+            /** @description Reason category, present only when status is dismissed. */
+            dismissalCategory?: components["schemas"]["Models.GapDismissalCategory"];
+            /** @description Free-text dismissal reason, if provided. */
+            dismissalReason?: string;
+            /** @description Conversations this gap was observed in. */
+            references: components["schemas"]["Models.GapReference"][];
+            /**
+             * Format: date-time
+             * @description When this gap was first created.
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description When this gap was last updated.
+             */
+            updatedAt: string;
+        };
+        /**
+         * @description Review lifecycle status of a gap.
+         * @enum {string}
+         */
+        "Models.GapStatus": "open" | "resolved" | "dismissed";
         /** @description Google AI provider config (no extra fields needed). */
         "Models.GoogleAIProviderConfig": Record<string, never>;
         /** @description Response body for health check endpoints. */
@@ -1497,6 +1628,8 @@ export interface components {
              * @description Updated maximum tool call iterations.
              */
             maxToolCalls?: number;
+            /** @description Updated gap reporting enabled flag. */
+            gapReportingEnabled?: boolean;
         };
         /** @description Request to update an agent's tool configuration. */
         "Models.UpdateAgentToolConfigRequest": {
@@ -1506,6 +1639,19 @@ export interface components {
             mcpServers: components["schemas"]["Models.AgentMcpServerToolConfig"][];
             /** @description IDs of built-in tools to enable. */
             builtInToolIds: string[];
+        };
+        /**
+         * @description Request to update a gap's review status. Resolve, dismiss (with a
+         *     reason), or reopen (status: "open") — a gap dismissed with category
+         *     "unrelated" can never be reopened.
+         */
+        "Models.UpdateGapRequest": {
+            /** @description New status: "resolved", "dismissed", or "open" (to reopen). */
+            status?: components["schemas"]["Models.GapStatus"];
+            /** @description Required when status is "dismissed". */
+            dismissalCategory?: components["schemas"]["Models.GapDismissalCategory"];
+            /** @description Optional free-text reason, used together with dismissalCategory. */
+            dismissalReason?: string;
         };
         /** @description Request to update an existing HTTP tool. */
         "Models.UpdateHttpToolRequest": {
@@ -2067,6 +2213,100 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    listGaps: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["Models.GapStatus"];
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.GapListResponse"];
+                };
+            };
+        };
+    };
+    getGap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+                gapId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.GapResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateGap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+                gapId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Models.UpdateGapRequest"];
+            };
+        };
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.GapResponse"];
                 };
             };
             /** @description The server cannot find the requested resource. */
