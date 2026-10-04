@@ -1,35 +1,21 @@
-//go:build integration
-
-package mysqlplayground_test
+package sqliteplayground_test
 
 import (
 	"context"
-	"database/sql"
+	"path/filepath"
 	"sort"
 	"testing"
 	"time"
 
-	mysqldb "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_db"
-	mysqlplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_playground"
+	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
+	sqliteplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_playground"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/playground"
-	"github.com/DEEJ4Y/genkitkraft/resources/test/containers"
 	"github.com/google/uuid"
 )
 
-func TestPlaygroundRepositoryMySQL(t *testing.T) {
-	dsn := containers.StartMySQLDSN(t)
-	testPlaygroundRepository(t, mysqldb.Open, dsn)
-}
-
-func TestPlaygroundRepositoryMariaDB(t *testing.T) {
-	dsn := containers.StartMariaDBDSN(t)
-	testPlaygroundRepository(t, mysqldb.Open, dsn)
-}
-
-func testPlaygroundRepository(t *testing.T, open func(string) (*sql.DB, error), dsn string) {
-	t.Helper()
-
-	db, err := open(dsn)
+func TestPlaygroundRepositorySQLite(t *testing.T) {
+	// Opening the database runs every migration and enables foreign keys.
+	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -41,25 +27,20 @@ func testPlaygroundRepository(t *testing.T, open func(string) (*sql.DB, error), 
 	providerID := uuid.New().String()
 	agentID := uuid.New().String()
 	_, err = db.ExecContext(ctx,
-		`INSERT INTO providers (id, name, provider_type, api_key, base_url, config, enabled, created_at, updated_at)
-		 VALUES (?, ?, ?, NULL, '', '{}', 1, NOW(), NOW())`,
+		`INSERT INTO providers (id, name, provider_type, api_key, base_url, config, enabled)
+		 VALUES (?, ?, ?, NULL, '', '{}', 1)`,
 		providerID, "test-provider", "openai")
 	if err != nil {
 		t.Fatalf("inserting test provider: %v", err)
 	}
 	_, err = db.ExecContext(ctx,
-		`INSERT INTO agents (id, name, provider_id, model_id, system_prompt_id, temperature_enabled, temperature, top_p_enabled, top_p, top_k_enabled, top_k, max_tool_calls, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, NULL, 0, 0.7, 0, 0.9, 0, 40, 10, NOW(), NOW())`,
+		`INSERT INTO agents (id, name, provider_id, model_id) VALUES (?, ?, ?, ?)`,
 		agentID, "test-agent", providerID, "gpt-4o")
 	if err != nil {
 		t.Fatalf("inserting test agent: %v", err)
 	}
-	t.Cleanup(func() {
-		db.ExecContext(ctx, "DELETE FROM agents WHERE id = ?", agentID)
-		db.ExecContext(ctx, "DELETE FROM providers WHERE id = ?", providerID)
-	})
 
-	repo := mysqlplayground.NewPlaygroundRepository(db)
+	repo := sqliteplayground.NewPlaygroundRepository(db)
 
 	// Create session
 	s := &playground.Session{AgentID: agentID, Title: "Test Session"}
@@ -69,7 +50,6 @@ func testPlaygroundRepository(t *testing.T, open func(string) (*sql.DB, error), 
 	if s.ID == "" {
 		t.Fatal("CreateSession did not assign ID")
 	}
-	t.Cleanup(func() { repo.DeleteSession(ctx, s.ID) })
 
 	t.Run("GetSession", func(t *testing.T) {
 		got, err := repo.GetSession(ctx, s.ID)
@@ -97,7 +77,6 @@ func testPlaygroundRepository(t *testing.T, open func(string) (*sql.DB, error), 
 			if err := repo.CreateSession(ctx, extra); err != nil {
 				t.Fatalf("CreateSession (extra): %v", err)
 			}
-			t.Cleanup(func() { repo.DeleteSession(ctx, extra.ID) })
 		}
 
 		all, err := repo.ListSessionsByAgent(ctx, agentID)
@@ -154,7 +133,6 @@ func testPlaygroundRepository(t *testing.T, open func(string) (*sql.DB, error), 
 			if err := repo.CreateSession(ctx, tie); err != nil {
 				t.Fatalf("CreateSession (tie): %v", err)
 			}
-			t.Cleanup(func() { repo.DeleteSession(ctx, tie.ID) })
 		}
 
 		if _, err := db.ExecContext(ctx,
