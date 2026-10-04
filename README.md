@@ -10,6 +10,7 @@ Self-hostable platform for configuring and running LLM agents. Built on [Google 
 - [x] **MCP tool support**: Connect tools via MCP servers (SSE and Streamable HTTP transports)
 - [x] **MCP server**: All management APIs exposed as [MCP tools](https://DEEJ4Y.github.io/genkitkraft/docs/guides/mcp-quickstart) — build agents on top of GenKitKraft with any MCP client
 - [x] **OpenAI-compatible API**: `/v1/chat/completions` with streaming support, works with any OpenAI client
+- [x] **Embeddable chat widget**: Design a website chat widget in the agent's **Widget** tab (or the public [widget builder](https://DEEJ4Y.github.io/genkitkraft/widget-builder)) and connect it through your own backend: [integration guide](https://DEEJ4Y.github.io/genkitkraft/docs/guides/chat-widget)
 - [x] **Single binary**: Frontend embedded in the Go binary; SQLite by default (zero external deps), PostgreSQL, MySQL, and MariaDB supported for multi-instance deployments
 - [ ] **Smart tool selection**: Three tool modes (manual, auto-search, hybrid) to avoid context pollution
 
@@ -41,6 +42,8 @@ Developer docs live under `docs/`:
 - [TypeSpec Guide](docs/api-spec/01-typespec-guide.md) - API contract definitions
 
 API spec implementations and generated OpenAPI output are in `spec/`.
+
+The chat widget builder UI shared by the dashboard and the docs website lives in [`widget-builder/`](widget-builder/README.md).
 
 ## License
 

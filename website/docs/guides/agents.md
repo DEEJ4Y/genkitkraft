@@ -53,3 +53,4 @@ After creating an agent, you can:
 
 - **Test it interactively** in the [Playground](./playground).
 - **Deploy it** via the OpenAI-compatible API. Open the **Deploy** tab in the agent edit screen to find your agent ID, the full endpoint URL, and a ready-to-use curl command. See the [Deploy API documentation](../api/deploy) for the full reference.
+- **Embed it in your website** with the chat widget. Open the **Widget** tab to design it, then follow the [chat widget guide](./chat-widget).

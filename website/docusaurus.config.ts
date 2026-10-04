@@ -81,6 +81,11 @@ const config: Config = {
           label: 'Docs',
         },
         {
+          to: '/widget-builder',
+          label: 'Widget builder',
+          position: 'left',
+        },
+        {
           href: 'https://github.com/DEEJ4Y/genkitkraft',
           label: 'GitHub',
           position: 'right',
@@ -97,6 +102,7 @@ const config: Config = {
             { label: 'Guides', to: '/docs/guides/providers' },
             { label: 'Configuration', to: '/docs/configuration/environment-variables' },
             { label: 'API Reference', to: '/docs/api/overview' },
+            { label: 'Chat Widget', to: '/docs/guides/chat-widget' },
           ],
         },
         {
@@ -114,7 +120,7 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
-      additionalLanguages: ['bash', 'yaml', 'go', 'docker'],
+      additionalLanguages: ['bash', 'yaml', 'go', 'docker', 'json', 'python', 'typescript', 'jsx', 'tsx'],
     },
   } satisfies Preset.ThemeConfig,
 };

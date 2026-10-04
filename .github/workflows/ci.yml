@@ -41,3 +41,21 @@ jobs:
           cache: true
       - name: Test
         run: go test -tags integration -v ./...
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Widget builder (test + build)
+        working-directory: widget-builder
+        run: npm ci && npm test && npm run build
+      - name: UI build
+        working-directory: ui
+        run: npm ci && npm run generate:api && npm run build
+      - name: Website build
+        working-directory: website
+        run: npm ci && npm run typecheck && npm run build

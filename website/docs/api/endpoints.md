@@ -222,9 +222,13 @@ Responses: 200 (updated)
 |---|---|---|
 | POST | `/api/v1/agents/{agentId}/deploy/chat/completions` | Stateless chat completions (caller provides full history) |
 | POST | `/api/v1/agents/{agentId}/deploy/sessions` | Create a new stateful chat session |
+| GET | `/api/v1/agents/{agentId}/deploy/sessions` | List the agent's sessions (paginated, most recently updated first) |
 | GET | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}` | Get session metadata |
+| GET | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/messages` | Get a session's messages (conversation history) |
 | DELETE | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}` | Delete a session and all its messages |
 | POST | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions` | Stateful chat completions (server manages history) |
+| GET | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/stream` | Reconnect to a streaming reply (`Last-Event-ID`) |
+| POST | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/cancel` | Stop the reply currently streaming |
 
 See the full [Deploy API documentation](./deploy) for request/response format, authentication, and examples.
 
