@@ -84,6 +84,35 @@ func TestDeployAuthMiddleware_NonDeployPath_PassesThrough(t *testing.T) {
 	}
 }
 
+func TestDeployAuthMiddleware_HistoryEndpoints_RequireKey(t *testing.T) {
+	keys := map[string]struct{}{"valid-key": {}}
+	handler := interceptors.DeployAuthMiddleware(keys)(okHandler())
+
+	paths := []string{
+		"/api/v1/agents/abc/deploy/sessions",
+		"/api/v1/agents/abc/deploy/sessions?limit=5&offset=10",
+		"/api/v1/agents/abc/deploy/sessions/s1/messages",
+	}
+	for _, path := range paths {
+		for name, header := range map[string]string{"missing": "", "wrong": "Bearer nope", "valid": "Bearer valid-key"} {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			if header != "" {
+				req.Header.Set("Authorization", header)
+			}
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+
+			want := http.StatusUnauthorized
+			if name == "valid" {
+				want = http.StatusOK
+			}
+			if w.Code != want {
+				t.Errorf("%s with %s key: expected %d, got %d", path, name, want, w.Code)
+			}
+		}
+	}
+}
+
 func okHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

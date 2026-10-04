@@ -11,6 +11,11 @@ type PlaygroundRepository interface {
 	CreateSession(ctx context.Context, s *playground.Session) error
 	GetSession(ctx context.Context, id string) (*playground.Session, error)
 	ListSessionsByAgent(ctx context.Context, agentID string) ([]*playground.Session, error)
+	// ListSessionsByAgentPaged returns one page of the agent's sessions, most
+	// recently updated first (ties broken by id so pages are stable).
+	ListSessionsByAgentPaged(ctx context.Context, agentID string, limit, offset int) ([]*playground.Session, error)
+	// CountSessionsByAgent returns the total number of sessions for the agent.
+	CountSessionsByAgent(ctx context.Context, agentID string) (int, error)
 	DeleteSession(ctx context.Context, id string) error
 	UpdateSessionTitle(ctx context.Context, id, title string) error
 

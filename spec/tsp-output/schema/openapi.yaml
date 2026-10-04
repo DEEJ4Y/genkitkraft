@@ -256,6 +256,53 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Models.CreateDeploySessionRequest'
+    get:
+      operationId: listDeploySessions
+      summary: List deploy sessions
+      description: "List the agent's deploy sessions with pagination, most recently updated first. The list covers every session of the agent (including ones created in the dashboard playground) and is not scoped to an end user: callers that serve multiple end users must keep their own mapping of user to session ID."
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 20
+          explode: false
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.DeploySessionListResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Deploy
   /api/v1/agents/{agentId}/deploy/sessions/{sessionId}:
     get:
       operationId: getDeploySession
@@ -430,6 +477,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Models.DeployChatCompletionResponse'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.ErrorResponse'
+      tags:
+        - Deploy
+  /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/messages:
+    get:
+      operationId: listDeployMessages
+      summary: List deploy session messages
+      description: List the messages of a deploy session in chronological order (the conversation history).
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Models.DeployMessageListResponse'
         '401':
           description: Access is unauthorized.
           content:
@@ -1922,6 +2006,81 @@ components:
           type: string
           description: The content of the message.
       description: A message in an OpenAI-compatible chat completions request.
+    Models.DeployMessageListResponse:
+      type: object
+      required:
+        - messages
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.DeployMessageResponse'
+          description: Messages in chronological order.
+      description: The messages of a deploy session, oldest first.
+    Models.DeployMessageResponse:
+      type: object
+      required:
+        - id
+        - session_id
+        - role
+        - content
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          description: Unique message ID.
+        session_id:
+          type: string
+          description: ID of the session this message belongs to.
+        role:
+          type: string
+          description: 'The role of the message author: "user" or "assistant".'
+        content:
+          type: string
+          description: The message content. For an assistant message that is still streaming or failed, this is the partial content so far.
+        status:
+          allOf:
+            - $ref: '#/components/schemas/Models.DeployMessageStatus'
+          description: Generation status of the message.
+        created_at:
+          type: string
+          format: date-time
+          description: When this message was created (ISO 8601).
+      description: A message stored in a deploy session.
+    Models.DeployMessageStatus:
+      type: string
+      enum:
+        - complete
+        - streaming
+        - error
+      description: Generation state of a stored deploy message.
+    Models.DeploySessionListResponse:
+      type: object
+      required:
+        - sessions
+        - total
+        - limit
+        - offset
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Models.DeploySessionResponse'
+          description: Sessions, most recently updated first.
+        total:
+          type: integer
+          format: int32
+          description: Total number of sessions for the agent.
+        limit:
+          type: integer
+          format: int32
+          description: Maximum number of sessions returned.
+        offset:
+          type: integer
+          format: int32
+          description: Number of sessions skipped.
+      description: Paginated list of deploy sessions for an agent. Includes every session of the agent, regardless of who created it.
     Models.DeploySessionResponse:
       type: object
       required:

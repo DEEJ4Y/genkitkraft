@@ -33,6 +33,7 @@ import (
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/prompt"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/provider"
 	httphandler "github.com/DEEJ4Y/genkitkraft/internal/handlers/http_handler"
+	agentrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_repo"
 	playgroundrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/playground_repo"
 	mockchat "github.com/DEEJ4Y/genkitkraft/resources/test/mock"
 )
@@ -44,6 +45,8 @@ type testEnv struct {
 	agentID        string
 	mockChat       *mockchat.ChatProvider
 	playgroundRepo playgroundrepo.PlaygroundRepository
+	agentRepo      agentrepo.AgentRepository
+	providerID     string
 }
 
 // setupTestEnv creates a fully wired test environment with a real SQLite DB,
@@ -131,6 +134,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	cancelStream := commands.NewCancelPlaygroundStreamCommand(playgroundRepo, streamRegistry)
 	failStream := commands.NewFailPlaygroundStreamCommand(playgroundRepo)
 	listSessions := queries.NewListPlaygroundSessionsQuery(playgroundRepo)
+	listDeploySessions := queries.NewListDeploySessionsQuery(playgroundRepo, agentRepo)
 	getSession := queries.NewGetPlaygroundSessionQuery(playgroundRepo)
 	listMessages := queries.NewListPlaygroundMessagesQuery(playgroundRepo)
 	getStreamChunks := queries.NewGetPlaygroundStreamChunksQuery(playgroundRepo)
@@ -145,11 +149,12 @@ func setupTestEnv(t *testing.T) *testEnv {
 			FailStream:    failStream,
 		},
 		Queries: app.PlaygroundQueries{
-			ListSessions:    listSessions,
-			GetSession:      getSession,
-			ListMessages:    listMessages,
-			ResolveConfig:   resolveConfig,
-			GetStreamChunks: getStreamChunks,
+			ListSessions:       listSessions,
+			ListDeploySessions: listDeploySessions,
+			GetSession:         getSession,
+			ListMessages:       listMessages,
+			ResolveConfig:      resolveConfig,
+			GetStreamChunks:    getStreamChunks,
 		},
 	}
 
@@ -164,6 +169,8 @@ func setupTestEnv(t *testing.T) *testEnv {
 		agentID:        a.ID,
 		mockChat:       mockCP,
 		playgroundRepo: playgroundRepo,
+		agentRepo:      agentRepo,
+		providerID:     p.ID,
 	}
 }
 

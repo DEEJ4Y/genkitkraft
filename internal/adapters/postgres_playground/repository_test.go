@@ -77,6 +77,61 @@ func TestPlaygroundRepositoryPostgres(t *testing.T) {
 		}
 	})
 
+	t.Run("ListSessionsByAgentPagedAndCount", func(t *testing.T) {
+		for i := 0; i < 2; i++ {
+			extra := &playground.Session{AgentID: agentID, Title: "Extra Session"}
+			if err := repo.CreateSession(ctx, extra); err != nil {
+				t.Fatalf("CreateSession (extra): %v", err)
+			}
+			t.Cleanup(func() { repo.DeleteSession(ctx, extra.ID) })
+		}
+
+		all, err := repo.ListSessionsByAgent(ctx, agentID)
+		if err != nil {
+			t.Fatalf("ListSessionsByAgent: %v", err)
+		}
+		total, err := repo.CountSessionsByAgent(ctx, agentID)
+		if err != nil {
+			t.Fatalf("CountSessionsByAgent: %v", err)
+		}
+		if total != len(all) || total < 3 {
+			t.Fatalf("expected count to match list (%d) and be >= 3, got %d", len(all), total)
+		}
+
+		seen := map[string]bool{}
+		for offset := 0; offset < total; offset += 2 {
+			page, err := repo.ListSessionsByAgentPaged(ctx, agentID, 2, offset)
+			if err != nil {
+				t.Fatalf("ListSessionsByAgentPaged(offset=%d): %v", offset, err)
+			}
+			if len(page) == 0 || len(page) > 2 {
+				t.Fatalf("offset %d: expected 1-2 sessions, got %d", offset, len(page))
+			}
+			for _, p := range page {
+				if seen[p.ID] {
+					t.Errorf("session %s returned on more than one page", p.ID)
+				}
+				seen[p.ID] = true
+			}
+		}
+		if len(seen) != total {
+			t.Errorf("expected pages to cover all %d sessions, covered %d", total, len(seen))
+		}
+
+		past, err := repo.ListSessionsByAgentPaged(ctx, agentID, 2, total+10)
+		if err != nil {
+			t.Fatalf("ListSessionsByAgentPaged (past end): %v", err)
+		}
+		if len(past) != 0 {
+			t.Errorf("expected no sessions past the end, got %d", len(past))
+		}
+
+		none, err := repo.CountSessionsByAgent(ctx, uuid.New().String())
+		if err != nil || none != 0 {
+			t.Errorf("expected 0 sessions for an unknown agent, got %d (err %v)", none, err)
+		}
+	})
+
 	t.Run("UpdateSessionTitle", func(t *testing.T) {
 		if err := repo.UpdateSessionTitle(ctx, s.ID, "Updated Title"); err != nil {
 			t.Fatalf("UpdateSessionTitle: %v", err)
