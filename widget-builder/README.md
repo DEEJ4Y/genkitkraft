@@ -22,14 +22,6 @@ npm test          # vitest
 npm run build     # tsup -> dist/ (what the apps consume)
 ```
 
-`ui/` and `website/` depend on this package with `file:../widget-builder` and `install-links=true`, so they get a **copy**, not a symlink (a symlink would load a second copy of React). After changing the package:
-
-```bash
-npm run build
-cd ../ui        # or ../website
-rm -rf node_modules/genkitkraft-widget-builder && npm install
-rm -rf .next/cache dist/cache    # ui only: Next caches the old copy
-npx docusaurus clear             # website only
-```
+`ui/` and `website/` depend on this package with `file:../widget-builder` and `install-links=true`, so they get a **copy**, not a symlink (a symlink would load a second copy of React). After changing the package, rebuild and refresh the copy in each app (`npm run build`, then `rm -rf node_modules/genkitkraft-widget-builder && npm install` in `ui/` or `website/`, then clear the bundler cache). Bumping the widget version has extra steps. See [Updating the Chat Widget Builder](../docs/widget-builder/01-updating-the-widget.md) for the full procedure.
 
 Peer dependencies (`react`, `@mantine/core`, `@mantine/hooks`, `@tabler/icons-react`) come from the consuming app.
