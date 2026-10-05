@@ -25,3 +25,8 @@ export function buildWidgetConfig(config: BuilderConfig, chatProvider: ChatWidge
 
   return { ...out, chatProvider } as ChatWidgetConfig
 }
+
+/** The color scheme the config asks for. The widget treats an unset or unknown value as light. */
+export function getColorScheme(config: BuilderConfig): 'light' | 'dark' {
+  return config.chatWindow?.defaults?.colorScheme === 'dark' ? 'dark' : 'light'
+}

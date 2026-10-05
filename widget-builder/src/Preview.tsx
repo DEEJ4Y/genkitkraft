@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { createMockProvider } from './mockProvider'
 import { normalizeConfig } from './normalize'
-import { buildWidgetConfig } from './widgetConfig'
+import { buildWidgetConfig, getColorScheme } from './widgetConfig'
 import type { BuilderConfig } from './types'
 
 const IFRAME_ID = 'chat-widget-iframe'
@@ -89,7 +89,12 @@ function push(config: BuilderConfig, button: HTMLElement | null, sendToIframe: b
   const widgetConfig = buildWidgetConfig(config, provider)
   // clone everything but the provider: it holds functions, which structuredClone rejects
   w.initialConfig = { ...structuredClone({ ...widgetConfig, chatProvider: undefined }), chatProvider: provider }
-  if (sendToIframe) w.sendEvent('override_config', widgetConfig)
+  if (sendToIframe) {
+    w.sendEvent('override_config', widgetConfig)
+    // The hosted app only switches scheme from `override_config` when it differs from the scheme it had
+    // at mount (a stale value), so a switch back to that scheme is skipped. `toggleColorScheme` always applies.
+    w.toggleColorScheme(getColorScheme(config))
+  }
 
   // Size and launcher are only applied at injection time by the widget; mirror them here so
   // toggling "Start expanded" or editing the launcher HTML takes effect immediately.

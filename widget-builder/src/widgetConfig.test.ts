@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BuilderConfig } from './types'
-import { buildWidgetConfig } from './widgetConfig'
+import { buildWidgetConfig, getColorScheme } from './widgetConfig'
 
 const provider = {} as never
 
@@ -70,4 +70,19 @@ describe('primary colors the hosted widget cannot parse', () => {
       expect(buildWidgetConfig(cfgWith(name), provider).chatWindow?.defaults?.primaryColor).toBe(name)
     },
   )
+})
+
+describe('getColorScheme', () => {
+  const cfg = (colorScheme?: unknown) => ({ chatWindow: { defaults: { colorScheme } } }) as unknown as BuilderConfig
+
+  it('returns the configured scheme', () => {
+    expect(getColorScheme(cfg('dark'))).toBe('dark')
+    expect(getColorScheme(cfg('light'))).toBe('light')
+  })
+
+  it('falls back to light when unset or invalid', () => {
+    expect(getColorScheme({})).toBe('light')
+    expect(getColorScheme(cfg(undefined))).toBe('light')
+    expect(getColorScheme(cfg('auto'))).toBe('light')
+  })
 })

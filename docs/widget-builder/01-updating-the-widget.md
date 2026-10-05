@@ -66,6 +66,7 @@ The builder carries workarounds for bugs in the hosted iframe app. For a new ver
 | Send `grape` and `dark` as hex | `toWidgetPrimaryColor` in `src/colors.ts`, applied by `normalizeConfig` | The iframe runs every primary color through chroma-js, which only knows CSS color names. `grape` and `dark` throw `unknown hex color`. The "Minimal" preset uses `dark`. |
 | Same config shape on update as on init | `buildWidgetConfig` in `src/widgetConfig.ts`, used by `src/Preview.tsx` | `actionsMap` is always an object, welcome actions without a matching action are dropped, and `chatProvider` is present. `injectAiChatWidget` does this on first load. |
 | Send `override_config` only after the iframe `load` event | `src/Preview.tsx` | Events sent before the iframe has loaded are lost or race the `init` → `set_config` handshake. |
+| Apply the color scheme with `toggleColorScheme`, not only `override_config` | `push` in `src/Preview.tsx`, `getColorScheme` in `src/widgetConfig.ts` | The hosted app's message listener compares the requested scheme with the scheme it had at mount (a stale value), so switching back to that scheme is skipped. Choosing Dark or the Dark preset silently did nothing when the iframe's saved scheme was dark. `toggleColorScheme` applies unconditionally. |
 
 `normalizeConfig` is shared by the live preview and the generated snippets, so the workarounds also protect people who paste the embed code.
 
@@ -81,6 +82,7 @@ Unit tests don't cover the hosted iframe, so also check in a browser.
 2. Refresh the consumer copy (procedure A) and open the builder from `website/` or `ui/`.
 3. With the browser console open (including the iframe context), confirm the preview stays up with no errors after each of these:
    - Pick **every** name in the Primary color dropdown.
+   - Switch the default color scheme Light → Dark → Light, and apply the Dark preset then Default. Read `data-mantine-color-scheme` on the iframe's `<html>` after each. Repeat after a reload with dark saved.
    - Type `#ff0000` into Custom primary color one character at a time.
    - Apply each preset.
    - Edit a handful of other fields (agent name, logos, message colors, actions, "Start expanded").
