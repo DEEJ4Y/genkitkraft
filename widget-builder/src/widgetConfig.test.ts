@@ -51,3 +51,23 @@ describe('invalid primary color', () => {
     expect(buildWidgetConfig(cfg, provider).chatWindow?.defaults?.primaryColor).toBe(color)
   })
 })
+
+describe('primary colors the hosted widget cannot parse', () => {
+  const cfgWith = (color: string) => ({ chatWindow: { defaults: { primaryColor: color } } }) as unknown as BuilderConfig
+
+  it.each([
+    ['grape', '#be4bdb'],
+    ['dark', '#2e2e2e'],
+  ])('sends %s as %s', (name, hex) => {
+    const cfg = cfgWith(name)
+    expect(buildWidgetConfig(cfg, provider).chatWindow?.defaults?.primaryColor).toBe(hex)
+    expect(cfg.chatWindow?.defaults?.primaryColor).toBe(name)
+  })
+
+  it.each(['red', 'pink', 'violet', 'indigo', 'blue', 'cyan', 'green', 'lime', 'yellow', 'orange', 'teal', 'gray'])(
+    'leaves %s alone',
+    (name) => {
+      expect(buildWidgetConfig(cfgWith(name), provider).chatWindow?.defaults?.primaryColor).toBe(name)
+    },
+  )
+})

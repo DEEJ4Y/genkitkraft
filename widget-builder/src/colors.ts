@@ -47,3 +47,15 @@ export function isValidPrimaryColor(value: unknown): boolean {
     /^(rgb|hsl)a?\(\s*[\d.%]+(\s*,\s*|\s+)[\d.%]+(\s*,\s*|\s+)[\d.%]+(\s*[,/]\s*[\d.%]+)?\s*\)$/.test(s)
   )
 }
+
+/**
+ * Palette names the widget's hosted app cannot take. It runs every primary color through chroma-js,
+ * which only knows CSS color names, so "grape" and "dark" throw `unknown hex color` and blank the widget.
+ */
+const CHROMA_UNKNOWN_NAMES = ['grape', 'dark']
+
+/** The primary color to hand the widget: a hex stand-in for names its hosted app can't parse. */
+export function toWidgetPrimaryColor(value: string): string {
+  const name = value.trim().toLowerCase()
+  return CHROMA_UNKNOWN_NAMES.includes(name) ? NAMED_COLORS[name] : value
+}

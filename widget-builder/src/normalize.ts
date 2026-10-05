@@ -1,4 +1,4 @@
-import { isValidPrimaryColor } from './colors'
+import { isValidPrimaryColor, toWidgetPrimaryColor } from './colors'
 import type { BuilderConfig } from './types'
 
 /**
@@ -15,6 +15,8 @@ export function normalizeConfig(config: BuilderConfig): BuilderConfig {
   const defaults = out.chatWindow?.defaults
   if (defaults && defaults.primaryColor !== undefined && !isValidPrimaryColor(defaults.primaryColor)) {
     delete defaults.primaryColor
+  } else if (defaults?.primaryColor) {
+    defaults.primaryColor = toWidgetPrimaryColor(defaults.primaryColor)
   }
   return out
 }

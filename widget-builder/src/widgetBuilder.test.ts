@@ -63,6 +63,12 @@ describe('snippets', () => {
     expect(s).not.toContain('injectChatWidget')
   })
 
+  it('emits a hex for palette names the hosted widget cannot parse', () => {
+    const grape: BuilderConfig = { chatWindow: { defaults: { primaryColor: 'grape' } } }
+    expect(generateNpmSnippet(grape)).toContain('"primaryColor": "#be4bdb"')
+    expect(generateCdnSnippet(grape)).not.toContain('"grape"')
+  })
+
   it('cdn snippet uses window.initAiChatWidget and has valid JS (no type annotations)', () => {
     const s = generateCdnSnippet(cfg)
     expect(s).toContain('window.initAiChatWidget(')
