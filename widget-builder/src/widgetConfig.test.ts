@@ -38,3 +38,16 @@ describe('buildWidgetConfig', () => {
     expect(JSON.parse(JSON.stringify(out)).actionsMap).toEqual({})
   })
 })
+
+describe('invalid primary color', () => {
+  it.each(['#', '#ff', 'abc', '#ff000', 'rgb(1,2'])('drops %s', (color) => {
+    const cfg = { chatWindow: { defaults: { primaryColor: color, colorScheme: 'light' } } } as unknown as BuilderConfig
+    expect(buildWidgetConfig(cfg, provider).chatWindow?.defaults?.primaryColor).toBeUndefined()
+    expect(cfg.chatWindow?.defaults?.primaryColor).toBe(color)
+  })
+
+  it.each(['blue', '#fff', '#ff0000', 'rgb(1, 2, 3)', 'hsl(10, 50%, 50%)'])('keeps %s', (color) => {
+    const cfg = { chatWindow: { defaults: { primaryColor: color } } } as unknown as BuilderConfig
+    expect(buildWidgetConfig(cfg, provider).chatWindow?.defaults?.primaryColor).toBe(color)
+  })
+})
