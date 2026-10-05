@@ -302,6 +302,17 @@ func (h *Handler) thingCreate(ctx context.Context, _ *mcp.CallToolRequest, input
 3. **Register in handler.go** — If it's a new file, add `h.register<Domain>Tools(server)` call in `HTTPHandler()`
 4. **Update Handler struct** — If new app dependencies are needed, add them to the struct and `NewHandler()` in `handler.go`, then wire them in `internal/services/server.go`
 
+## Chat Widget & Widget Builder
+
+Applies to any change under `widget-builder/`, or any bump of the `navigableai-chat-widget` version. Full procedure: `docs/widget-builder/01-updating-the-widget.md`.
+
+**Rules that are easy to miss:**
+
+1. **`ui/` and `website/` hold a copy of `widget-builder`, not a symlink** (`file:../widget-builder` with `install-links=true`). After changing it: `npm run build` in `widget-builder/`, then in each app `rm -rf node_modules/genkitkraft-widget-builder && npm install`, then clear bundler caches (`rm -rf .next/cache dist/cache` for `ui`; `rm -rf node_modules/.cache/webpack` and `npx docusaurus clear` for `website`), then restart the dev server. A bare `npm install` or a rebuild alone leaves the app on old code.
+2. **A widget version bump touches several places together:** `widget-builder/package.json` and its lockfile, `WIDGET_VERSION` in `widget-builder/src/constants.ts`, and the hard-coded versions in `website/docs/guides/chat-widget.md`. Keep the provider source in `src/providerSource.ts` identical to the copy in that doc.
+3. **Re-check the workarounds for the hosted iframe app** (invalid primary colors, `grape`/`dark` as hex, same config shape on update as on init, waiting for the iframe `load`). They are listed in the doc. Remove any the new version fixes, with their tests.
+4. **Verify in a real browser against the hosted iframe**, not only with vitest: pick every primary color, type a hex color character by character, apply each preset, and watch the console (including the iframe) for errors.
+
 ## Checklist for New Features
 
 ### Phase 1: Spec-Driven Contract (do this FIRST, before any Go code)
@@ -351,8 +362,10 @@ Update user-facing documentation in `website/docs/` to reflect the feature chang
 17. [ ] If page is too large, split into subfolder with multiple pages + `_category_.json`
 18. [ ] Add/update the relevant doc page in `website/docs/<category>/`
 19. [ ] Verify links and cross-references are correct
+20. [ ] If the change touches `widget-builder/` or the `navigableai-chat-widget` version: follow `docs/widget-builder/01-updating-the-widget.md` (refresh the `ui/` and `website/` copies, update versions in `website/docs/guides/chat-widget.md`, re-check hosted-app workarounds, verify in a browser)
 
 ## Additional Resources
 
 - [Hexagonal Architecture Guide](docs/hexagonal-architecture/README.md) - project structure, patterns, dependency rules
 - [TypeSpec Guide](docs/api-spec/01-typespec-guide.md) - API contract definitions
+- [Updating the Chat Widget Builder](docs/widget-builder/01-updating-the-widget.md) - refreshing the `ui/`/`website/` copies, bumping the widget version, hosted-app workarounds

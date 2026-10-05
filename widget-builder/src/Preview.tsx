@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { createMockProvider } from './mockProvider'
 import { normalizeConfig } from './normalize'
+import { buildWidgetConfig, getColorScheme } from './widgetConfig'
 import type { BuilderConfig } from './types'
 
 const IFRAME_ID = 'chat-widget-iframe'
@@ -20,6 +21,8 @@ export function Preview({ config }: { config: BuilderConfig }) {
   configRef.current = config
   const buttonRef = useRef<HTMLElement | null>(null)
   const readyRef = useRef(false)
+  // The iframe app ignores events until it has loaded; before that `initialConfig` is what it gets via `set_config`.
+  const loadedRef = useRef(false)
 
   // Mount: inject once, remove launcher + hide on unmount.
   useEffect(() => {
@@ -29,7 +32,7 @@ export function Preview({ config }: { config: BuilderConfig }) {
     import('navigableai-chat-widget').then(({ injectAiChatWidget, WIDGET_BUTTON }) => {
       defaultButtonHtml = WIDGET_BUTTON
       if (cancelled) return
-      const cfg = { ...structuredClone(normalizeConfig(configRef.current)), chatProvider: provider }
+      const cfg = buildWidgetConfig(configRef.current, provider)
       const before = document.body.lastElementChild
       injectAiChatWidget(cfg)
       const added = document.body.lastElementChild
@@ -40,13 +43,24 @@ export function Preview({ config }: { config: BuilderConfig }) {
         window.$aiChatWidget.open()
       }
       readyRef.current = true
-      // trigger the update effect once for the initial config
-      push(configRef.current, buttonRef.current)
+      const iframe = document.getElementById(IFRAME_ID) as HTMLIFrameElement | null
+      iframe?.addEventListener(
+        'load',
+        () => {
+          if (cancelled) return
+          loadedRef.current = true
+          push(configRef.current, buttonRef.current, true)
+        },
+        { once: true },
+      )
+      // apply size and launcher for the initial config; the iframe gets its config via `set_config`
+      push(configRef.current, buttonRef.current, false)
     })
 
     return () => {
       cancelled = true
       readyRef.current = false
+      loadedRef.current = false
       try {
         window.$aiChatWidget?.close()
       } catch {
@@ -59,21 +73,28 @@ export function Preview({ config }: { config: BuilderConfig }) {
 
   // Updates: keep the page widget in sync with the builder.
   useEffect(() => {
-    if (readyRef.current) push(config, buttonRef.current)
+    if (readyRef.current) push(config, buttonRef.current, loadedRef.current)
   }, [config])
 
   return null
 }
 
-function push(config: BuilderConfig, button: HTMLElement | null) {
+function push(config: BuilderConfig, button: HTMLElement | null, sendToIframe: boolean) {
   const w = window.$aiChatWidget
   if (!w) return
   const normalized = normalizeConfig(config)
   const provider = w.chatProvider
-  w.initialConfig = { ...structuredClone(normalized), chatProvider: provider }
-  // The iframe checks that `chatProvider` is present in the config it receives. The provider's
-  // functions are dropped when the event is serialized, but the key must still be there.
-  w.sendEvent('override_config', { ...normalized, chatProvider: provider })
+  // Same shape as the initial config (actionsMap defaulted, welcome actions sanitized). The iframe
+  // checks that `chatProvider` is present; its functions are dropped on serialization but the key stays.
+  const widgetConfig = buildWidgetConfig(config, provider)
+  // clone everything but the provider: it holds functions, which structuredClone rejects
+  w.initialConfig = { ...structuredClone({ ...widgetConfig, chatProvider: undefined }), chatProvider: provider }
+  if (sendToIframe) {
+    w.sendEvent('override_config', widgetConfig)
+    // The hosted app only switches scheme from `override_config` when it differs from the scheme it had
+    // at mount (a stale value), so a switch back to that scheme is skipped. `toggleColorScheme` always applies.
+    w.toggleColorScheme(getColorScheme(config))
+  }
 
   // Size and launcher are only applied at injection time by the widget; mirror them here so
   // toggling "Start expanded" or editing the launcher HTML takes effect immediately.
