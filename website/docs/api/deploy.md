@@ -20,6 +20,10 @@ export PUBLIC_API_KEY=my-secret-key
 
 If `PUBLIC_API_KEY` is not set, all deploy endpoints are publicly accessible (no authentication required).
 
+:::warning
+This key is a shared secret. Call the deploy API from your backend only, never from browser code. To put an agent on a web page, see [Embedding an agent with the chat widget](../guides/chat-widget).
+:::
+
 ### Using the API Key
 
 Include the key as a Bearer token in the `Authorization` header:
@@ -202,10 +206,34 @@ for await (const chunk of stream) {
 
 ## Error Responses
 
-Errors follow the OpenAI error format:
-
 | Status | Reason |
 |---|---|
+| 400 | Invalid request (empty messages, system messages, malformed JSON, invalid `limit`/`offset`) |
+| 401 | Missing or invalid API key (when `PUBLIC_API_KEY` is set) |
+| 404 | Agent or session not found |
+| 500 | Internal server error |
+
+Authentication failures (`401`) use the OpenAI error format:
+
+```json
+{
+  "error": {
+    "message": "Invalid API key",
+    "type": "invalid_request_error",
+    "code": "invalid_api_key"
+  }
+}
+```
+
+All other errors use a plain message:
+
+```json
+{
+  "error": "messages must not be empty"
+}
+```
+
+---|---|
 | 400 | Invalid request (empty messages, system messages, malformed JSON) |
 | 401 | Missing or invalid API key (when `PUBLIC_API_KEY` is set) |
 | 404 | Agent not found |
@@ -271,6 +299,91 @@ Response (200):
   "title": "My conversation",
   "created_at": "2026-04-20T12:00:00Z"
 }
+```
+
+#### List Sessions
+
+```
+GET /api/v1/agents/{agentId}/deploy/sessions?limit=20&offset=0
+```
+
+Returns the agent's sessions, most recently updated first.
+
+| Query parameter | Default | Description |
+|---|---|---|
+| `limit` | `20` | Sessions per page (1 to 100; larger values are capped at 100) |
+| `offset` | `0` | Sessions to skip |
+
+Response (200):
+
+```json
+{
+  "sessions": [
+    {
+      "id": "session-uuid",
+      "agent_id": "agent-uuid",
+      "title": "What word did I ask you to remember?",
+      "created_at": "2026-04-20T12:00:00Z"
+    }
+  ],
+  "total": 1,
+  "limit": 20,
+  "offset": 0
+}
+```
+
+Returns `404` if the agent does not exist.
+
+:::warning The list is not scoped to an end user
+This endpoint returns every session of the agent, including sessions created in the dashboard Playground and by other callers. If you serve multiple end users, keep your own mapping of user to session ID and only return or read sessions you own. See [Embedding an agent with the chat widget](../guides/chat-widget).
+:::
+
+:::note Session titles
+GenKitKraft updates a session's `title` from the conversation, so sessions created without a title get a meaningful one after the first messages.
+:::
+
+#### List Messages (History)
+
+```
+GET /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/messages
+```
+
+Returns the session's conversation history, oldest first. Use it to render a past conversation, for example after a page reload.
+
+Response (200):
+
+```json
+{
+  "messages": [
+    {
+      "id": "message-uuid",
+      "session_id": "session-uuid",
+      "role": "user",
+      "content": "Remember the word pineapple.",
+      "status": "complete",
+      "created_at": "2026-04-20T12:00:01Z"
+    },
+    {
+      "id": "message-uuid",
+      "session_id": "session-uuid",
+      "role": "assistant",
+      "content": "ok",
+      "status": "complete",
+      "created_at": "2026-04-20T12:00:02Z"
+    }
+  ]
+}
+```
+
+| Field | Description |
+|---|---|
+| `role` | `"user"` or `"assistant"` |
+| `status` | `"complete"`, `"streaming"` (the reply is still being generated; `content` is partial) or `"error"` (generation failed; `content` is what was produced before the failure) |
+
+An empty session returns `"messages": []`. Returns `404` if the session does not exist or belongs to a different agent.
+
+```bash
+curl http://localhost:8080/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/messages   -H "Authorization: Bearer my-secret-key"
 ```
 
 #### Delete a Session

@@ -42,6 +42,32 @@ namespace Deploy {
     @body body: ErrorResponse;
   };
 
+  /** List the agent's deploy sessions with pagination, most recently updated first. The list covers every session of the agent (including ones created in the dashboard playground) and is not scoped to an end user: callers that serve multiple end users must keep their own mapping of user to session ID. */
+  @get
+  @route("/api/v1/agents/{agentId}/deploy/sessions")
+  @summary("List deploy sessions")
+  @operationId("listDeploySessions")
+  op listDeploySessions(@path agentId: string, @query limit?: int32 = 20, @query offset?: int32 = 0): DeploySessionListResponse | {
+    @statusCode statusCode: 404;
+    @body body: ErrorResponse;
+  } | {
+    @statusCode statusCode: 401;
+    @body body: ErrorResponse;
+  };
+
+  /** List the messages of a deploy session in chronological order (the conversation history). */
+  @get
+  @route("/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/messages")
+  @summary("List deploy session messages")
+  @operationId("listDeployMessages")
+  op listDeployMessages(@path agentId: string, @path sessionId: string): DeployMessageListResponse | {
+    @statusCode statusCode: 404;
+    @body body: ErrorResponse;
+  } | {
+    @statusCode statusCode: 401;
+    @body body: ErrorResponse;
+  };
+
   /** Get a deploy session by ID. */
   @get
   @route("/api/v1/agents/{agentId}/deploy/sessions/{sessionId}")

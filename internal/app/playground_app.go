@@ -22,9 +22,10 @@ type PlaygroundCommands struct {
 }
 
 type PlaygroundQueries struct {
-	ListSessions    executors.ExecutorWithReturn[queries.ListPlaygroundSessionsParams, queries.ListPlaygroundSessionsResult]
-	GetSession      executors.ExecutorWithReturn[queries.GetPlaygroundSessionParams, queries.GetPlaygroundSessionResult]
-	ListMessages    executors.ExecutorWithReturn[queries.ListPlaygroundMessagesParams, queries.ListPlaygroundMessagesResult]
-	ResolveConfig   executors.ExecutorWithReturn[queries.ResolvePlaygroundConfigParams, queries.ResolvePlaygroundConfigResult]
-	GetStreamChunks executors.ExecutorWithReturn[queries.GetPlaygroundStreamChunksParams, queries.GetPlaygroundStreamChunksResult]
+	ListSessions       executors.ExecutorWithReturn[queries.ListPlaygroundSessionsParams, queries.ListPlaygroundSessionsResult]
+	ListDeploySessions executors.ExecutorWithReturn[queries.ListDeploySessionsParams, queries.ListDeploySessionsResult]
+	GetSession         executors.ExecutorWithReturn[queries.GetPlaygroundSessionParams, queries.GetPlaygroundSessionResult]
+	ListMessages       executors.ExecutorWithReturn[queries.ListPlaygroundMessagesParams, queries.ListPlaygroundMessagesResult]
+	ResolveConfig      executors.ExecutorWithReturn[queries.ResolvePlaygroundConfigParams, queries.ResolvePlaygroundConfigResult]
+	GetStreamChunks    executors.ExecutorWithReturn[queries.GetPlaygroundStreamChunksParams, queries.GetPlaygroundStreamChunksResult]
 }

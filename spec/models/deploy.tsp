@@ -86,3 +86,57 @@ model DeploySessionResponse {
   /** When this session was created (ISO 8601). */
   created_at: utcDateTime;
 }
+
+/** Paginated list of deploy sessions for an agent. Includes every session of the agent, regardless of who created it. */
+model DeploySessionListResponse {
+  /** Sessions, most recently updated first. */
+  sessions: DeploySessionResponse[];
+
+  /** Total number of sessions for the agent. */
+  total: int32;
+
+  /** Maximum number of sessions returned. */
+  limit: int32;
+
+  /** Number of sessions skipped. */
+  offset: int32;
+}
+
+/** Generation state of a stored deploy message. */
+enum DeployMessageStatus {
+  /** Generation finished successfully. */
+  complete: "complete",
+
+  /** The reply is still being generated; content is partial. */
+  streaming: "streaming",
+
+  /** Generation failed; content is whatever was produced before the failure. */
+  error: "error",
+}
+
+/** A message stored in a deploy session. */
+model DeployMessageResponse {
+  /** Unique message ID. */
+  id: string;
+
+  /** ID of the session this message belongs to. */
+  session_id: string;
+
+  /** The role of the message author: "user" or "assistant". */
+  role: string;
+
+  /** The message content. For an assistant message that is still streaming or failed, this is the partial content so far. */
+  content: string;
+
+  /** Generation status of the message. */
+  status: DeployMessageStatus;
+
+  /** When this message was created (ISO 8601). */
+  created_at: utcDateTime;
+}
+
+/** The messages of a deploy session, oldest first. */
+model DeployMessageListResponse {
+  /** Messages in chronological order. */
+  messages: DeployMessageResponse[];
+}

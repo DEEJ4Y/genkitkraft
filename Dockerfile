@@ -1,8 +1,15 @@
 # Stage 1: Build the UI
 FROM node:22-alpine AS ui-builder
 
+# Shared widget builder package (consumed by the UI via a file: dependency)
+WORKDIR /app/widget-builder
+COPY widget-builder/package.json widget-builder/package-lock.json ./
+RUN npm ci
+COPY widget-builder/ ./
+RUN npm run build
+
 WORKDIR /app/ui
-COPY ui/package.json ui/package-lock.json ./
+COPY ui/package.json ui/package-lock.json ui/.npmrc ./
 RUN npm ci
 
 # Copy OpenAPI spec for TS client generation

@@ -17,8 +17,12 @@
   "dependencies": {
     "@docusaurus/core": "3.9.2",
     "@docusaurus/preset-classic": "3.9.2",
+    "@mantine/core": "^8.3.18",
+    "@mantine/hooks": "^8.3.18",
     "@mdx-js/react": "^3.0.0",
+    "@tabler/icons-react": "^3.48.0",
     "clsx": "^2.0.0",
+    "genkitkraft-widget-builder": "file:../widget-builder",
     "prism-react-renderer": "^2.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

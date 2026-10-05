@@ -18,30 +18,30 @@ import (
 	bcrypthasher "github.com/DEEJ4Y/genkitkraft/internal/adapters/bcrypt_hasher"
 	cachestreamregistry "github.com/DEEJ4Y/genkitkraft/internal/adapters/cache_stream_registry"
 	genkitchatprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/genkit_chat_provider"
-	inmemorycache "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_cache"
 	httpprovidertester "github.com/DEEJ4Y/genkitkraft/internal/adapters/http_provider_tester"
+	inmemorycache "github.com/DEEJ4Y/genkitkraft/internal/adapters/in_memory_cache"
 	mcpdiscoveryadapter "github.com/DEEJ4Y/genkitkraft/internal/adapters/mcp_discovery"
 	memorysession "github.com/DEEJ4Y/genkitkraft/internal/adapters/memory_session"
-	rediscache "github.com/DEEJ4Y/genkitkraft/internal/adapters/redis_cache"
 	mysqlagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_agent"
 	mysqlagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_agent_tool"
+	mysqldb "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_db"
 	mysqlhttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_http_tool"
 	mysqlmcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_mcp_server"
 	mysqlplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_playground"
 	mysqlprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_prompt"
 	mysqlprovider "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_provider"
-	mysqldb "github.com/DEEJ4Y/genkitkraft/internal/adapters/mysql_db"
 	postgresagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_agent"
 	postgresagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_agent_tool"
+	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
 	postgreshttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_http_tool"
 	postgresmcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_mcp_server"
 	postgresplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_playground"
 	postgresprompt "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_prompt"
 	postgresperson "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_provider"
-	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
-	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
+	rediscache "github.com/DEEJ4Y/genkitkraft/internal/adapters/redis_cache"
 	sqliteagent "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent"
 	sqliteagenttool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_agent_tool"
+	sqlitedb "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_db"
 	sqlitehttptool "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_http_tool"
 	sqlitemcpserver "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_mcp_server"
 	sqliteplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/sqlite_playground"
@@ -59,6 +59,7 @@ import (
 	mcphandler "github.com/DEEJ4Y/genkitkraft/internal/handlers/mcp_handler"
 	agentrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_repo"
 	agenttoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_tool_repo"
+	"github.com/DEEJ4Y/genkitkraft/internal/ports/cache"
 	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/hasher"
 	httptoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/http_tool_repo"
@@ -66,7 +67,6 @@ import (
 	playgroundrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/playground_repo"
 	promptrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/prompt_repo"
 	providerrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/provider_repo"
-	"github.com/DEEJ4Y/genkitkraft/internal/ports/cache"
 	"github.com/DEEJ4Y/genkitkraft/internal/ports/session"
 )
 
@@ -386,6 +386,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 
 	// Create playground queries
 	listSessionsQuery := queries.NewListPlaygroundSessionsQuery(playgroundRepo)
+	listDeploySessionsQuery := queries.NewListDeploySessionsQuery(playgroundRepo, agentRepo)
 	getSessionQuery := queries.NewGetPlaygroundSessionQuery(playgroundRepo)
 	listMessagesQuery := queries.NewListPlaygroundMessagesQuery(playgroundRepo)
 	resolveConfigQuery := queries.NewResolvePlaygroundConfigQuery(agentRepo, providerRepo, promptRepo, enc, agentToolRepo, httpToolRepo, mcpServerRepo)
@@ -402,11 +403,12 @@ func NewServer(cfg config.Config) (*Server, error) {
 			FailStream:    decorators.ApplyLoggingExecutor(failStreamCmd, "FailPlaygroundStream", logger),
 		},
 		Queries: app.PlaygroundQueries{
-			ListSessions:    decorators.ApplyLogging(listSessionsQuery, "ListPlaygroundSessions", logger),
-			GetSession:      decorators.ApplyLogging(getSessionQuery, "GetPlaygroundSession", logger),
-			ListMessages:    decorators.ApplyLogging(listMessagesQuery, "ListPlaygroundMessages", logger),
-			ResolveConfig:   decorators.ApplyLogging(resolveConfigQuery, "ResolvePlaygroundConfig", logger),
-			GetStreamChunks: decorators.ApplyLogging(getStreamChunksQuery, "GetPlaygroundStreamChunks", logger),
+			ListSessions:       decorators.ApplyLogging(listSessionsQuery, "ListPlaygroundSessions", logger),
+			ListDeploySessions: decorators.ApplyLogging(listDeploySessionsQuery, "ListDeploySessions", logger),
+			GetSession:         decorators.ApplyLogging(getSessionQuery, "GetPlaygroundSession", logger),
+			ListMessages:       decorators.ApplyLogging(listMessagesQuery, "ListPlaygroundMessages", logger),
+			ResolveConfig:      decorators.ApplyLogging(resolveConfigQuery, "ResolvePlaygroundConfig", logger),
+			GetStreamChunks:    decorators.ApplyLogging(getStreamChunksQuery, "GetPlaygroundStreamChunks", logger),
 		},
 	}
 

@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "website/**"
+      - "widget-builder/**"
 
   workflow_dispatch:
 
@@ -33,7 +34,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: website/package-lock.json
+          cache-dependency-path: |
+            website/package-lock.json
+            widget-builder/package-lock.json
+      - name: Build widget-builder package
+        working-directory: widget-builder
+        run: npm ci && npm run build
       - name: Install dependencies
         run: npm ci
       - name: Build website

@@ -14,6 +14,13 @@ const (
 	ModelsDeployChatMessageRoleUser      ModelsDeployChatMessageRole = "user"
 )
 
+// Defines values for ModelsDeployMessageStatus.
+const (
+	Complete  ModelsDeployMessageStatus = "complete"
+	Error     ModelsDeployMessageStatus = "error"
+	Streaming ModelsDeployMessageStatus = "streaming"
+)
+
 // Defines values for ModelsHealthStatus.
 const (
 	Down ModelsHealthStatus = "down"
@@ -375,6 +382,51 @@ type ModelsDeployChatMessage struct {
 
 // ModelsDeployChatMessageRole The role of the message author.
 type ModelsDeployChatMessageRole string
+
+// ModelsDeployMessageListResponse The messages of a deploy session, oldest first.
+type ModelsDeployMessageListResponse struct {
+	// Messages Messages in chronological order.
+	Messages []ModelsDeployMessageResponse `json:"messages"`
+}
+
+// ModelsDeployMessageResponse A message stored in a deploy session.
+type ModelsDeployMessageResponse struct {
+	// Content The message content. For an assistant message that is still streaming or failed, this is the partial content so far.
+	Content string `json:"content"`
+
+	// CreatedAt When this message was created (ISO 8601).
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id Unique message ID.
+	Id string `json:"id"`
+
+	// Role The role of the message author: "user" or "assistant".
+	Role string `json:"role"`
+
+	// SessionId ID of the session this message belongs to.
+	SessionId string `json:"session_id"`
+
+	// Status Generation status of the message.
+	Status ModelsDeployMessageStatus `json:"status"`
+}
+
+// ModelsDeployMessageStatus Generation state of a stored deploy message.
+type ModelsDeployMessageStatus string
+
+// ModelsDeploySessionListResponse Paginated list of deploy sessions for an agent. Includes every session of the agent, regardless of who created it.
+type ModelsDeploySessionListResponse struct {
+	// Limit Maximum number of sessions returned.
+	Limit int32 `json:"limit"`
+
+	// Offset Number of sessions skipped.
+	Offset int32 `json:"offset"`
+
+	// Sessions Sessions, most recently updated first.
+	Sessions []ModelsDeploySessionResponse `json:"sessions"`
+
+	// Total Total number of sessions for the agent.
+	Total int32 `json:"total"`
+}
 
 // ModelsDeploySessionResponse A deploy session for stateful chat with an agent.
 type ModelsDeploySessionResponse struct {
@@ -908,6 +960,12 @@ type ModelsUpdateProviderRequest struct {
 
 // ListAgentsParams defines parameters for ListAgents.
 type ListAgentsParams struct {
+	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
+// ListDeploySessionsParams defines parameters for ListDeploySessions.
+type ListDeploySessionsParams struct {
 	Limit  *int32 `form:"limit,omitempty" json:"limit,omitempty"`
 	Offset *int32 `form:"offset,omitempty" json:"offset,omitempty"`
 }

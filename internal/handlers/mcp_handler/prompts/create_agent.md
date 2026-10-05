@@ -355,7 +355,9 @@ The server manages conversation history. The caller only sends the new message e
 
 ```
 POST   /api/v1/agents/{agentId}/deploy/sessions               → create
+GET    /api/v1/agents/{agentId}/deploy/sessions               → list (paginated: ?limit=&offset=)
 GET    /api/v1/agents/{agentId}/deploy/sessions/{sessionId}   → get
+GET    /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/messages → conversation history
 DELETE /api/v1/agents/{agentId}/deploy/sessions/{sessionId}   → delete (clears all messages)
 ```
 
@@ -567,7 +569,9 @@ All endpoints are served on the same port as the UI (default: `8080`).
 | ------ | ----------------------------------------------------------------------- | --------------------------- |
 | POST   | `/api/v1/agents/{agentId}/deploy/chat/completions`                      | Stateless chat completions  |
 | POST   | `/api/v1/agents/{agentId}/deploy/sessions`                              | Create a stateful session   |
+| GET    | `/api/v1/agents/{agentId}/deploy/sessions`                              | List sessions (paginated)   |
 | GET    | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}`                  | Get session metadata        |
+| GET    | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/messages`         | Get conversation history    |
 | DELETE | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}`                  | Delete session and messages |
 | POST   | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions` | Stateful chat completions   |
 
