@@ -24,9 +24,10 @@ type McpServerToolConfigOutput struct {
 }
 
 type AgentToolConfigOutput struct {
-	AgentID     string                      `json:"agent_id"`
-	HttpToolIDs []string                    `json:"http_tool_ids"`
-	McpServers  []McpServerToolConfigOutput `json:"mcp_servers"`
+	AgentID        string                      `json:"agent_id"`
+	HttpToolIDs    []string                    `json:"http_tool_ids"`
+	McpServers     []McpServerToolConfigOutput `json:"mcp_servers"`
+	BuiltInToolIDs []string                    `json:"built_in_tool_ids"`
 }
 
 type McpServerToolConfigInput struct {
@@ -36,9 +37,10 @@ type McpServerToolConfigInput struct {
 }
 
 type UpdateAgentToolConfigInput struct {
-	AgentID     string                     `json:"agent_id" jsonschema:"agent ID (required)"`
-	HttpToolIDs []string                   `json:"http_tool_ids" jsonschema:"list of HTTP tool IDs to assign"`
-	McpServers  []McpServerToolConfigInput `json:"mcp_servers" jsonschema:"MCP server tool selections"`
+	AgentID        string                     `json:"agent_id" jsonschema:"agent ID (required)"`
+	HttpToolIDs    []string                   `json:"http_tool_ids" jsonschema:"list of HTTP tool IDs to assign"`
+	McpServers     []McpServerToolConfigInput `json:"mcp_servers" jsonschema:"MCP server tool selections"`
+	BuiltInToolIDs []string                   `json:"built_in_tool_ids" jsonschema:"list of built-in tool IDs to enable, e.g. web_fetch (see built_in_tools_list). Omitting this disables all built-in tools"`
 }
 
 // --- Tool registration ---
@@ -46,12 +48,12 @@ type UpdateAgentToolConfigInput struct {
 func (h *Handler) registerAgentToolTools(s *mcp.Server) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "agent_tools_get",
-		Description: "Get the tool configuration for an agent (which HTTP tools and MCP servers are assigned).",
+		Description: "Get the tool configuration for an agent (which HTTP tools, MCP servers and built-in tools such as web_fetch are assigned).",
 	}, h.getAgentToolConfig)
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "agent_tools_update",
-		Description: "Update the tool configuration for an agent. Replaces the entire configuration.",
+		Description: "Update the tool configuration for an agent. Replaces the entire configuration (HTTP tools, MCP servers and built-in tools), so include the current values of anything you want to keep; call agent_tools_get first.",
 	}, h.updateAgentToolConfig)
 }
 
@@ -76,9 +78,10 @@ func (h *Handler) updateAgentToolConfig(ctx context.Context, _ *mcp.CallToolRequ
 	}
 
 	result, err := h.agentToolApp.Commands.UpdateTools.Execute(ctx, commands.UpdateAgentToolsParams{
-		AgentID:     input.AgentID,
-		HttpToolIDs: input.HttpToolIDs,
-		McpServers:  mcpServers,
+		AgentID:        input.AgentID,
+		HttpToolIDs:    input.HttpToolIDs,
+		McpServers:     mcpServers,
+		BuiltInToolIDs: input.BuiltInToolIDs,
 	})
 	if err != nil {
 		return nil, AgentToolConfigOutput{}, fmt.Errorf("update agent tools failed: %w", err)
@@ -96,8 +99,9 @@ func toAgentToolConfigOutput(cfg agenttoolrepo.AgentToolConfig) AgentToolConfigO
 		}
 	}
 	return AgentToolConfigOutput{
-		AgentID:     cfg.AgentID,
-		HttpToolIDs: cfg.HttpToolIDs,
-		McpServers:  mcpServers,
+		AgentID:        cfg.AgentID,
+		HttpToolIDs:    cfg.HttpToolIDs,
+		McpServers:     mcpServers,
+		BuiltInToolIDs: cfg.BuiltInToolIDs,
 	}
 }

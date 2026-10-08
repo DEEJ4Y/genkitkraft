@@ -69,14 +69,24 @@ type TestProviderOutput struct {
 
 type ListProviderTypesInput struct{}
 
+type ProviderConfigFieldOutput struct {
+	Name        string `json:"name" jsonschema:"key to use in the provider config map"`
+	Label       string `json:"label"`
+	Required    bool   `json:"required"`
+	Placeholder string `json:"placeholder,omitempty"`
+	Sensitive   bool   `json:"sensitive,omitempty"`
+}
+
 type ProviderTypeOutput struct {
-	Type            string `json:"type"`
-	DisplayName     string `json:"display_name"`
-	RequiresAPIKey  bool   `json:"requires_api_key"`
-	RequiresBaseURL bool   `json:"requires_base_url"`
-	ModelPrefix     string `json:"model_prefix,omitempty"`
-	BaseURLDefault  string `json:"base_url_default,omitempty"`
-	ComingSoon      bool   `json:"coming_soon,omitempty"`
+	Type            string                      `json:"type"`
+	DisplayName     string                      `json:"display_name"`
+	RequiresAPIKey  bool                        `json:"requires_api_key"`
+	RequiresBaseURL bool                        `json:"requires_base_url"`
+	ConfigFields    []ProviderConfigFieldOutput `json:"config_fields"`
+	EnvVarHint      string                      `json:"env_var_hint,omitempty"`
+	ModelPrefix     string                      `json:"model_prefix,omitempty"`
+	BaseURLDefault  string                      `json:"base_url_default,omitempty"`
+	ComingSoon      bool                        `json:"coming_soon,omitempty"`
 }
 
 type ListProviderTypesOutput struct {
@@ -196,11 +206,20 @@ func (h *Handler) listProviderTypes(ctx context.Context, _ *mcp.CallToolRequest,
 	}
 	types := make([]ProviderTypeOutput, len(result.ProviderTypes))
 	for i, pt := range result.ProviderTypes {
+		fields := make([]ProviderConfigFieldOutput, len(pt.ConfigFields))
+		for j, f := range pt.ConfigFields {
+			fields[j] = ProviderConfigFieldOutput{
+				Name: f.Name, Label: f.Label, Required: f.Required,
+				Placeholder: f.Placeholder, Sensitive: f.Sensitive,
+			}
+		}
 		types[i] = ProviderTypeOutput{
 			Type:            string(pt.Type),
 			DisplayName:     pt.DisplayName,
 			RequiresAPIKey:  pt.RequiresAPIKey,
 			RequiresBaseURL: pt.RequiresBaseURL,
+			ConfigFields:    fields,
+			EnvVarHint:      pt.EnvVarHint,
 			ModelPrefix:     pt.ModelPrefix,
 			BaseURLDefault:  pt.BaseURLDefault,
 			ComingSoon:      pt.ComingSoon,

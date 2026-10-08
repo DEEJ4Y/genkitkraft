@@ -31,7 +31,8 @@ type AgentOutput struct {
 	TopP               float64   `json:"top_p"`
 	TopKEnabled        bool      `json:"top_k_enabled"`
 	TopK               int       `json:"top_k"`
-	ProviderName       string    `json:"provider_name,omitempty"`
+	MaxToolCalls       int       `json:"max_tool_calls"`
+	ProviderName      string    `json:"provider_name,omitempty"`
 	ProviderType       string    `json:"provider_type,omitempty"`
 	SystemPromptName   string    `json:"system_prompt_name,omitempty"`
 	CreatedAt          time.Time `json:"created_at"`
@@ -58,6 +59,7 @@ type CreateAgentInput struct {
 	TopP               *float64 `json:"top_p,omitempty" jsonschema:"top-p value (0-1)"`
 	TopKEnabled        *bool    `json:"top_k_enabled,omitempty" jsonschema:"enable top-k sampling"`
 	TopK               *int     `json:"top_k,omitempty" jsonschema:"top-k value"`
+	MaxToolCalls       *int     `json:"max_tool_calls,omitempty" jsonschema:"maximum tool call iterations per request (default 10)"`
 }
 
 type UpdateAgentInput struct {
@@ -72,6 +74,7 @@ type UpdateAgentInput struct {
 	TopP               *float64 `json:"top_p,omitempty" jsonschema:"top-p value"`
 	TopKEnabled        *bool    `json:"top_k_enabled,omitempty" jsonschema:"enable top-k sampling"`
 	TopK               *int     `json:"top_k,omitempty" jsonschema:"top-k value"`
+	MaxToolCalls       *int     `json:"max_tool_calls,omitempty" jsonschema:"maximum tool call iterations per request"`
 }
 
 type DeleteAgentInput struct {
@@ -144,6 +147,7 @@ func (h *Handler) createAgent(ctx context.Context, _ *mcp.CallToolRequest, input
 		TopP:               input.TopP,
 		TopKEnabled:        input.TopKEnabled,
 		TopK:               input.TopK,
+		MaxToolCalls:       input.MaxToolCalls,
 	})
 	if err != nil {
 		return nil, AgentOutput{}, fmt.Errorf("create agent failed: %w", err)
@@ -164,6 +168,7 @@ func (h *Handler) updateAgent(ctx context.Context, _ *mcp.CallToolRequest, input
 		TopP:               input.TopP,
 		TopKEnabled:        input.TopKEnabled,
 		TopK:               input.TopK,
+		MaxToolCalls:       input.MaxToolCalls,
 	})
 	if err != nil {
 		return nil, AgentOutput{}, fmt.Errorf("update agent failed: %w", err)
@@ -194,7 +199,8 @@ func toAgentOutput(a *agent.Agent) AgentOutput {
 		TopP:               a.TopP,
 		TopKEnabled:        a.TopKEnabled,
 		TopK:               a.TopK,
-		ProviderName:       a.ProviderName,
+		MaxToolCalls:       a.MaxToolCalls,
+		ProviderName:      a.ProviderName,
 		ProviderType:       a.ProviderType,
 		SystemPromptName:   a.SystemPromptName,
 		CreatedAt:          a.CreatedAt,
