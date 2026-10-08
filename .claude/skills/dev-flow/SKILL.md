@@ -295,12 +295,30 @@ func (h *Handler) thingCreate(ctx context.Context, _ *mcp.CallToolRequest, input
 - **Server mounting**: The MCP server is mounted at `/mcp` via `mcp.NewStreamableHTTPHandler` in `internal/services/server.go`
 - **Auth**: If `AUTH_CREDENTIALS` is configured, the MCP endpoint is wrapped with HTTP basic auth automatically
 
+### Keeping MCP Schemas in Sync (MUST follow)
+
+MCP tools reuse the same app commands/queries as the HTTP handlers, but unlike HTTP they have **no code generation**. Regenerating from TypeSpec updates the HTTP path only; the MCP input/output DTOs silently go stale (e.g. a new `builtInToolIds` field was missing from `agent_tools_update`, and `maxToolCalls` from `agents_create`).
+
+Whenever you change a TypeSpec model/route **or** an app command/query params struct, find the matching MCP tool and mirror the change:
+
+- **Input DTO** — add/rename/remove the field (with a `jsonschema` description)
+- **Output DTO and `toXOutput` mapper** — expose the field so `*_get` / `*_list` can read it back
+- **Params mapping** — pass the field into the `commands.*Params` / `queries.*Params`
+- **Descriptions and "(required)" markers** — keep them consistent with the spec (optional in the spec means `omitempty` here)
+
+Find affected tools with `grep -rn "<ParamsStructName>" internal/handlers/mcp_handler/`.
+
+**Replace-style update tools are the dangerous case.** Commands like `UpdateAgentTools` replace the whole config and normalize nil to empty, so a field missing from the MCP input does not stay unchanged: it is **wiped** on every call. Also check overrides that the HTTP handler accepts (e.g. the playground chat overrides) and operations added to the spec (e.g. new routes) and decide explicitly whether each is exposed over MCP or intentionally skipped (note the reason in a comment).
+
+`internal/handlers/mcp_handler/schema_sync_test.go` guards the main input DTOs against their app params. If it fails, add the missing field to the DTO; only add an entry to its allowlist when the omission is intentional.
+
 ### Workflow for Adding MCP Tools
 
 1. **Ensure app layer exists** — The commands/queries your MCP tools will call must already exist (or be created first following hexagonal architecture rules)
 2. **Create or update the tools file** — Add input/output DTOs, registration function, and handler methods in `internal/handlers/mcp_handler/<domain>_tools.go`
 3. **Register in handler.go** — If it's a new file, add `h.register<Domain>Tools(server)` call in `HTTPHandler()`
 4. **Update Handler struct** — If new app dependencies are needed, add them to the struct and `NewHandler()` in `handler.go`, then wire them in `internal/services/server.go`
+5. **Modifying an existing endpoint/command?** Update its existing MCP tool too (see "Keeping MCP Schemas in Sync"), and add the new params struct pair to `schema_sync_test.go`
 
 ## Checklist for New Features
 
@@ -310,6 +328,7 @@ func (h *Handler) thingCreate(ctx context.Context, _ *mcp.CallToolRequest, input
 2. [ ] Import new route file in `spec/main.tsp` if it's a new file
 3. [ ] Run `make generate` to compile spec → generate OpenAPI → generate Go server stubs + TS client
 4. [ ] Verify the generated `ServerInterface` in `internal/api/gen/server.gen.go` has the new methods
+4a. [ ] If you changed an existing model/route, list the changed models and check each against `internal/handlers/mcp_handler/` (MCP DTOs are not generated and will not update themselves)
 
 ### Phase 2: Hexagonal Implementation (follow dependency flow strictly)
 
@@ -319,7 +338,7 @@ func (h *Handler) thingCreate(ctx context.Context, _ *mcp.CallToolRequest, input
 8. [ ] Create commands/queries in `internal/app/commands/` or `internal/app/queries/` (imports ports + domain)
 9. [ ] Add decorators if needed in `internal/app/decorators/` (imports app + executors)
 10. [ ] Add handler with `type_conversion.go` in `internal/handlers/<name>/` (imports app + gen + common)
-11. [ ] Add MCP tools in `internal/handlers/mcp_handler/<domain>_tools.go` if the feature should be exposed via MCP (imports app + mcp SDK)
+11. [ ] Add MCP tools in `internal/handlers/mcp_handler/<domain>_tools.go` if the feature should be exposed via MCP (imports app + mcp SDK). **If you modified an existing command/endpoint, update its existing MCP tool's input/output DTOs, mapper and params mapping too**
 12. [ ] Wire everything in `internal/services/` composition root (imports all layers)
 
 ### Phase 3: Verification
@@ -327,6 +346,7 @@ func (h *Handler) thingCreate(ctx context.Context, _ *mcp.CallToolRequest, input
 13. [ ] Run `go build ./...` and `go vet ./...`
 14. [ ] Write unit tests (mock port interfaces) and integration tests (test containers)
 15. [ ] Verify dependency flow rules: no forbidden imports between layers
+15a. [ ] Run `go test ./internal/handlers/mcp_handler/` to confirm MCP input DTOs still cover the app params
 
 ### Phase 4: Documentation (`website/docs/`)
 

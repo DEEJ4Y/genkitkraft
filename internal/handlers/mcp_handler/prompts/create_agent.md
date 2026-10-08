@@ -73,7 +73,7 @@ Agents are the central unit. Each agent packages a provider, model, system promp
 | **Temperature**   | Controls randomness (0.0–2.0)                          |
 | **Top P**         | Nucleus sampling threshold                             |
 | **Top K**         | Limits the token vocabulary per step                   |
-| **Tools**         | HTTP tools and MCP server tools assigned to this agent |
+| **Tools**         | HTTP tools, MCP server tools and built-in tools (e.g. web_fetch) assigned to this agent |
 
 Generation parameters (temperature, top P, top K) are optional — omitting them uses provider defaults.
 
@@ -709,7 +709,7 @@ Agents are created by combining a configured LLM provider, a system prompt, gene
 1. **Configure an LLM Provider** — Add your API key and select the model you want to use.
 2. **Create a System Prompt** — Write the instructions that will guide the agent's behaviour.
 3. **Define the Agent** — Give it a name, select the provider and prompt, and optionally set any generation parameters (temperature, top P, top K).
-4. **Assign Tools** — Choose which HTTP tools and MCP server tools the agent can use during inference.
+4. **Assign Tools** — Choose which HTTP tools, MCP server tools and built-in tools (such as web_fetch) the agent can use during inference.
 5. **Save and Deploy** — Once saved, the agent is immediately available for testing in the Playground or via the Deploy API.
 6. **Test and Iterate** — Use the Playground to have conversations with your agent, tweak the system prompt, adjust generation parameters, or reassign tools as needed.
 

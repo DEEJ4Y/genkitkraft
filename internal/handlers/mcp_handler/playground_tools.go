@@ -9,6 +9,7 @@ import (
 
 	"github.com/DEEJ4Y/genkitkraft/internal/app/commands"
 	"github.com/DEEJ4Y/genkitkraft/internal/app/queries"
+	agenttoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_tool_repo"
 	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
 )
 
@@ -32,7 +33,7 @@ type ListPlaygroundSessionsOutput struct {
 
 type CreatePlaygroundSessionInput struct {
 	AgentID string `json:"agent_id" jsonschema:"agent ID (required)"`
-	Title   string `json:"title" jsonschema:"session title (required)"`
+	Title   string `json:"title,omitempty" jsonschema:"session title (optional; auto-generated from the first message if omitted)"`
 }
 
 type DeletePlaygroundSessionInput struct {
@@ -57,14 +58,40 @@ type ListPlaygroundMessagesOutput struct {
 	Messages []PlaygroundMessageOutput `json:"messages"`
 }
 
+type DeletePlaygroundSessionOutput struct {
+	Status string `json:"status"`
+}
+
 type PlaygroundChatInput struct {
 	AgentID   string `json:"agent_id" jsonschema:"agent ID (required)"`
-	SessionID string `json:"session_id" jsonschema:"session ID (required)"`
+	SessionID string `json:"session_id" jsonschema:"ID of an existing session for this agent (required); get one from playground_sessions_create or playground_sessions_list"`
 	Content   string `json:"content" jsonschema:"user message content (required)"`
+
+	// Optional per-request overrides. Omitted fields use the agent's saved configuration.
+	ProviderID         *string  `json:"provider_id,omitempty" jsonschema:"override the agent's provider ID"`
+	ModelID            *string  `json:"model_id,omitempty" jsonschema:"override the agent's model ID"`
+	SystemPromptID     *string  `json:"system_prompt_id,omitempty" jsonschema:"override the system prompt ID (empty string to clear the prompt)"`
+	TemperatureEnabled *bool    `json:"temperature_enabled,omitempty" jsonschema:"override whether temperature sampling is enabled"`
+	Temperature        *float64 `json:"temperature,omitempty" jsonschema:"override temperature value"`
+	TopPEnabled        *bool    `json:"top_p_enabled,omitempty" jsonschema:"override whether top-p sampling is enabled"`
+	TopP               *float64 `json:"top_p,omitempty" jsonschema:"override top-p value"`
+	TopKEnabled        *bool    `json:"top_k_enabled,omitempty" jsonschema:"override whether top-k sampling is enabled"`
+	TopK               *int     `json:"top_k,omitempty" jsonschema:"override top-k value"`
+	MaxToolCalls       *int     `json:"max_tool_calls,omitempty" jsonschema:"override maximum tool call iterations"`
+
+	// Optional tool overrides. If any is provided, the tool selection comes from
+	// these fields instead of the agent's saved tool configuration.
+	HttpToolIDs    *[]string                   `json:"http_tool_ids,omitempty" jsonschema:"override the HTTP tool IDs for this request"`
+	McpServers     *[]McpServerToolConfigInput `json:"mcp_servers,omitempty" jsonschema:"override the MCP server tool selections for this request"`
+	BuiltInToolIDs *[]string                   `json:"built_in_tool_ids,omitempty" jsonschema:"override the built-in tool IDs (e.g. web_fetch) for this request"`
 }
 
 type PlaygroundChatOutput struct {
-	Response string `json:"response" jsonschema:"assistant's response"`
+	Response  string    `json:"response" jsonschema:"assistant's response"`
+	MessageID string    `json:"message_id,omitempty" jsonschema:"ID of the saved assistant message"`
+	SessionID string    `json:"session_id" jsonschema:"session the messages were saved to"`
+	Role      string    `json:"role" jsonschema:"role of the response message (assistant)"`
+	CreatedAt time.Time `json:"created_at,omitempty" jsonschema:"when the assistant message was saved"`
 }
 
 // --- Tool registration ---
@@ -77,7 +104,7 @@ func (h *Handler) registerPlaygroundTools(s *mcp.Server) {
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "playground_sessions_create",
-		Description: "Create a new chat session for an agent.",
+		Description: "Create a new chat session for an agent. Returns the session id to pass as session_id to playground_chat.",
 	}, h.createPlaygroundSession)
 
 	mcp.AddTool(s, &mcp.Tool{
@@ -92,7 +119,7 @@ func (h *Handler) registerPlaygroundTools(s *mcp.Server) {
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "playground_chat",
-		Description: "Send a message to an agent and get a response. The message and response are saved to the session history.",
+		Description: "Send a message to an agent within an existing session (create one with playground_sessions_create) and get a response. The message and response are saved to the session history. Optional fields override the agent's model, sampling and tool settings for this request only. Responses are not streamed.",
 	}, h.playgroundChat)
 }
 
@@ -130,15 +157,15 @@ func (h *Handler) createPlaygroundSession(ctx context.Context, _ *mcp.CallToolRe
 	}, nil
 }
 
-func (h *Handler) deletePlaygroundSession(ctx context.Context, _ *mcp.CallToolRequest, input DeletePlaygroundSessionInput) (*mcp.CallToolResult, any, error) {
+func (h *Handler) deletePlaygroundSession(ctx context.Context, _ *mcp.CallToolRequest, input DeletePlaygroundSessionInput) (*mcp.CallToolResult, DeletePlaygroundSessionOutput, error) {
 	err := h.playgroundApp.Commands.DeleteSession.Execute(ctx, commands.DeletePlaygroundSessionParams{
 		ID:      input.ID,
 		AgentID: input.AgentID,
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("delete session failed: %w", err)
+		return nil, DeletePlaygroundSessionOutput{}, fmt.Errorf("delete session failed: %w", err)
 	}
-	return nil, map[string]string{"status": "deleted"}, nil
+	return nil, DeletePlaygroundSessionOutput{Status: "deleted"}, nil
 }
 
 func (h *Handler) listPlaygroundMessages(ctx context.Context, _ *mcp.CallToolRequest, input ListPlaygroundMessagesInput) (*mcp.CallToolResult, ListPlaygroundMessagesOutput, error) {
@@ -171,10 +198,7 @@ func (h *Handler) playgroundChat(ctx context.Context, _ *mcp.CallToolRequest, in
 	}
 
 	// Resolve agent config with tools
-	configResult, err := h.playgroundApp.Queries.ResolveConfig.Execute(ctx, queries.ResolvePlaygroundConfigParams{
-		AgentID:      input.AgentID,
-		IncludeTools: true,
-	})
+	configResult, err := h.playgroundApp.Queries.ResolveConfig.Execute(ctx, toResolvePlaygroundConfigParams(input))
 	if err != nil {
 		return nil, PlaygroundChatOutput{}, fmt.Errorf("resolve config failed: %w", err)
 	}
@@ -206,14 +230,68 @@ func (h *Handler) playgroundChat(ctx context.Context, _ *mcp.CallToolRequest, in
 		return nil, PlaygroundChatOutput{}, fmt.Errorf("chat failed: %w", err)
 	}
 
+	out := PlaygroundChatOutput{Response: content, SessionID: input.SessionID, Role: "assistant"}
+
 	// Save assistant response
 	if content != "" {
-		_, _ = h.playgroundApp.Commands.SaveMessage.Execute(ctx, commands.SavePlaygroundMessageParams{
+		saved, saveErr := h.playgroundApp.Commands.SaveMessage.Execute(ctx, commands.SavePlaygroundMessageParams{
 			SessionID: input.SessionID,
 			Role:      "assistant",
 			Content:   content,
 		})
+		if saveErr == nil {
+			out.MessageID = saved.Message.ID
+			out.CreatedAt = saved.Message.CreatedAt
+		}
 	}
 
-	return nil, PlaygroundChatOutput{Response: content}, nil
+	return nil, out, nil
+}
+
+// toResolvePlaygroundConfigParams maps the chat input, including optional
+// overrides, to the app-layer params. Mirrors the HTTP PlaygroundChat handler.
+func toResolvePlaygroundConfigParams(input PlaygroundChatInput) queries.ResolvePlaygroundConfigParams {
+	params := queries.ResolvePlaygroundConfigParams{
+		AgentID:            input.AgentID,
+		SystemPromptID:     input.SystemPromptID,
+		TemperatureEnabled: input.TemperatureEnabled,
+		Temperature:        input.Temperature,
+		TopPEnabled:        input.TopPEnabled,
+		TopP:               input.TopP,
+		TopKEnabled:        input.TopKEnabled,
+		TopK:               input.TopK,
+		MaxToolCalls:       input.MaxToolCalls,
+		IncludeTools:       true,
+	}
+	if input.ProviderID != nil {
+		params.ProviderID = *input.ProviderID
+	}
+	if input.ModelID != nil {
+		params.ModelID = *input.ModelID
+	}
+
+	if input.HttpToolIDs != nil || input.McpServers != nil || input.BuiltInToolIDs != nil {
+		override := &queries.ToolOverride{}
+		if input.HttpToolIDs != nil {
+			override.HttpToolIDs = *input.HttpToolIDs
+		}
+		if input.BuiltInToolIDs != nil {
+			override.BuiltInToolIDs = *input.BuiltInToolIDs
+		}
+		if input.McpServers != nil {
+			for _, s := range *input.McpServers {
+				toolNames := s.ToolNames
+				if toolNames == nil {
+					toolNames = []string{}
+				}
+				override.McpServers = append(override.McpServers, agenttoolrepo.McpServerToolConfig{
+					McpServerID: s.McpServerID,
+					SelectAll:   s.SelectAll,
+					ToolNames:   toolNames,
+				})
+			}
+		}
+		params.ToolOverride = override
+	}
+	return params
 }
