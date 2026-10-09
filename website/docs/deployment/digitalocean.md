@@ -1,7 +1,7 @@
 ---
 title: DigitalOcean Droplet
 description: Deploy GenKitKraft on a DigitalOcean droplet with Docker Compose, Caddy, and automatic HTTPS.
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # DigitalOcean Droplet
@@ -14,6 +14,12 @@ The result:
 - Caddy gets and renews the TLS certificate automatically.
 - The data stays in a Docker volume when you update or recreate the container.
 - The containers start again automatically after a reboot or a crash.
+
+:::note
+
+Use this page when you want your own DigitalOcean server with a domain and HTTPS. To try GenKitKraft with one click, see [App Platform](./app-platform). To run it on a different host or on your computer, see [Docker](./docker).
+
+:::
 
 ## Prerequisites
 
