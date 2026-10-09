@@ -1,0 +1,41 @@
+spec:
+  name: genkitkraft
+  services:
+    - name: genkitkraft
+      image:
+        registry_type: GHCR
+        registry: deej4y
+        repository: genkitkraft
+        tag: latest
+      http_port: 8080
+      instance_count: 1
+      instance_size_slug: apps-s-1vcpu-1gb
+      health_check:
+        http_path: /livez
+      envs:
+        - key: DATABASE_PROVIDER
+          value: postgres
+        - key: DATABASE_URL
+          scope: RUN_TIME
+          value: ${db.DATABASE_URL}
+        - key: CACHE_PROVIDER
+          value: valkey
+        - key: CACHE_URL
+          scope: RUN_TIME
+          value: ${cache.DATABASE_URL}
+        - key: ENCRYPTION_KEY
+          scope: RUN_TIME
+          type: SECRET
+        - key: AUTH_CREDENTIALS
+          scope: RUN_TIME
+          type: SECRET
+        - key: PUBLIC_API_KEY
+          scope: RUN_TIME
+          type: SECRET
+  databases:
+    - name: db
+      engine: PG
+      production: false
+    - name: cache
+      engine: VALKEY
+      production: false
