@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased — Deploy API history endpoints, chat widget builder and integration guide
+## v0.7.0 — Gap identification, chat widget builder and Deploy API history
 
 ### New features
 
+- **Gap identification** — an agent can now report questions it cannot answer (gaps). Turn it on with `gap_reporting_enabled` on the agent. Gap instructions are added to the agent system prompt. Gap reporting works in the playground, the MCP server and the stateless deploy chat-completions endpoint. Duplicate reports are merged by a review pass. The dashboard has a new **Gaps** tab to triage gaps (resolve, dismiss, reopen). The MCP server has `gaps_*` tools. They are scoped to their agent and support the same status filters and write actions as the API. See `website/docs/guides/gaps.md`.
 - **Deploy API can now list sessions and read history** — two new endpoints under `/api/v1/agents/{agentId}/deploy/`, protected by `PUBLIC_API_KEY` like the rest of the deploy API:
   - `GET /deploy/sessions` lists the agent's sessions (paginated with `limit`/`offset`, response has `total`, most recently updated first, `404` for an unknown agent). The list covers every session of the agent and is not scoped to an end user.
   - `GET /deploy/sessions/{sessionId}/messages` returns the conversation oldest first, with a `status` per message (`complete`, `streaming`, `error`) so partial and failed replies are visible. Previously the only history routes were the playground ones, which use dashboard authentication and ignore the API key (and are open to everyone when `AUTH_CREDENTIALS` is unset).
@@ -12,10 +13,25 @@
 - **Standalone public widget builder** — the same builder is available at `/widget-builder` on the docs website, for anyone using the widget with any backend. Config persists in the browser and can be shared as a link.
 - **`widget-builder/` package** — the builder lives in one shared package consumed by both `ui/` and `website/` via a `file:` dependency (`install-links=true`). Rebuild it with `npm run build` and reinstall in the consuming app after changing it (see `widget-builder/README.md`). The Dockerfile, CI and docs-deploy workflow now build it first.
 
+### Fixes
+
+- **Gap dedup race and lost triage history** (#50, #51) — dedup passes for one agent now run one at a time, so concurrent duplicate `report_gap` calls create one gap. A new report on a resolved or dismissed gap reopens it and keeps the dismissal category and reason. Gaps now have `reopenedFrom`, `reopenedAt` and `lastReportedAt`. `GapDedupTimeout` is now 5 minutes and starts after the lock is taken.
+- **MCP tool schemas synced with the API** (#54, #55) — `agent_tools_update` accepts `built_in_tool_ids` (before, each call removed `web_fetch`). `playground_chat` accepts the same overrides as the HTTP API (model, sampling, max tool calls, HTTP, MCP and built-in tools) and returns the saved message. The `agents_*` tools accept `max_tool_calls`. `provider_types_list` returns `config_fields` and `env_var_hint`. A new `schema_sync_test.go` fails when an MCP input lacks a field of the app command.
+- **`fallback_session_id` for playground MCP tools** — some MCP clients drop `session_id`. `playground_chat` and `playground_messages_list` now accept an optional `fallback_session_id`.
+- **MCP prompts match the code** (#56) — the `create-agent`, `backup` and `restore` prompts now describe `max_tool_calls`, gap reporting, built-in tools and the stream routes. A restore no longer removes the built-in tools of an agent.
+- **Widget builder preview** — a half-typed or unsupported primary color (`grape`, `dark`) no longer blanks the widget, and the dark color scheme applies in the preview.
+
 ### Docs
 
+- **MCP docs** — the MCP quickstart and agent-creation guide list the gaps tools, `built_in_tools_list`, the `backup` and `restore` prompts, the chat overrides and a `session_id` troubleshooting entry.
 - **New guide: Embedding an agent with the chat widget** (`website/docs/guides/chat-widget.md`) — architecture, why the browser must never call the deploy API directly (shared `PUBLIC_API_KEY`, no CORS), the four backend endpoints with Node and Python examples, a security checklist, the custom `ChatProvider`, client integration (npm, CDN, React/Next), and troubleshooting. The backend stores only a `userId → sessionId` mapping; sessions and transcripts come from the new history endpoints.
 - **Deploy API reference** — documents the two new endpoints, and corrects the error section: only `401` uses the OpenAI error format, other errors are `{"error": "..."}`. `api/endpoints.md` also lists the previously missing stream and cancel routes.
+
+### Upgrade notes
+
+- Migration `014_create_agent_gaps` was edited in place. A database that ran an earlier 014 from a pre-release branch must be reset.
+- The gap dedup lock works in one server process. Two instances on one database can still create duplicate gaps.
+- The MCP prompts are embedded in the binary. Rebuild the image to serve the new text.
 
 ### Testing
 
