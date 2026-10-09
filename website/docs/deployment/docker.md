@@ -1,8 +1,14 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 # Docker Deployment
+
+:::note
+
+Use this page when you run GenKitKraft on your own host or on your computer. To try GenKitKraft with one click, see [App Platform](./app-platform). To run it on a DigitalOcean server with HTTPS, see [DigitalOcean Droplet](./digitalocean).
+
+:::
 
 ## Quick Start
 

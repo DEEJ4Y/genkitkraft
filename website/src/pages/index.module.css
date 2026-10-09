@@ -72,6 +72,33 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+.deployHeroButton {
+  margin-left: 0.75rem;
+  display: inline-flex;
+}
+
+/* Deploy section */
+.deploy {
+  padding: 3rem 0;
+  text-align: center;
+}
+
+.deployHeading {
+  font-size: 1.75rem;
+}
+
+.deployText {
+  max-width: 600px;
+  margin: 0 auto 1rem;
+}
+
+.deployNote {
+  max-width: 600px;
+  margin: 1rem auto 0;
+  font-size: 0.9rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
 /* MCP Showcase section */
 .mcpShowcase {
   padding: 3rem 0;

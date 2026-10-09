@@ -90,6 +90,40 @@ function HomepageFeatures() {
   );
 }
 
+const DEPLOY_URL =
+  'https://cloud.digitalocean.com/apps/new?repo=https://github.com/DEEJ4Y/genkitkraft/tree/main';
+const DEPLOY_BUTTON_SRC = 'https://www.deploytodo.com/do-btn-blue.svg';
+
+function DeployButton({className}: {className?: string}) {
+  return (
+    <a href={DEPLOY_URL} className={className}>
+      <img src={DEPLOY_BUTTON_SRC} alt="Deploy to DO" />
+    </a>
+  );
+}
+
+function DeployToDigitalOcean() {
+  return (
+    <section className={styles.deploy}>
+      <div className="container">
+        <Heading as="h2" className={styles.deployHeading}>
+          Deploy in one click
+        </Heading>
+        <p className={styles.deployText}>
+          Create a GenKitKraft app on DigitalOcean App Platform. The button
+          creates the service, a development database, and a cache.
+        </p>
+        <DeployButton />
+        <p className={styles.deployNote}>
+          <strong>Trial defaults:</strong> this deployment uses public default
+          credentials. Replace them before you add a real LLM provider key. See
+          the <Link to="/docs/deployment/app-platform">App Platform guide</Link>.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function McpShowcase() {
   return (
     <section className={styles.mcpShowcase}>
@@ -153,6 +187,7 @@ function HomepageHeader() {
             to="/docs/getting-started/mcp-quickstart">
             Connect via MCP
           </Link>
+          <DeployButton className={styles.deployHeroButton} />
         </div>
       </div>
     </header>
@@ -168,6 +203,7 @@ export default function Home(): ReactNode {
       <HomepageHeader />
       <main>
         <HomepageFeatures />
+        <DeployToDigitalOcean />
         <McpShowcase />
       </main>
     </Layout>

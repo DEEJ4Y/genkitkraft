@@ -6,6 +6,16 @@ sidebar_position: 1
 
 There are three ways to run GenKitKraft: using the pre-built Docker image, Docker Compose, or building from source.
 
+To try GenKitKraft with no server work, deploy it on DigitalOcean App Platform:
+
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/DEEJ4Y/genkitkraft/tree/main)
+
+:::warning
+
+This deployment uses public default credentials. Replace them before you add a real LLM provider key. See the [App Platform guide](../deployment/app-platform). To run GenKitKraft on your own server, see the [DigitalOcean Droplet guide](../deployment/digitalocean).
+
+:::
+
 ## Using the Pre-built Docker Image (Recommended)
 
 ```bash

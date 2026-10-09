@@ -2,6 +2,10 @@
 
 Self-hostable platform for configuring and running LLM agents. Built on [Google Genkit](https://genkit.dev/docs/go/overview) (Go SDK). Configure providers, create agents with custom instructions, connect MCP tool servers, and expose everything through an OpenAI-compatible API.
 
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/DEEJ4Y/genkitkraft/tree/main)
+
+> **Trial defaults:** this deployment uses public default credentials (`admin` / `demo-change-me`) and a public default `ENCRYPTION_KEY`. Anyone who knows them can sign in to your app. After you deploy, update the three environment variables `ENCRYPTION_KEY`, `AUTH_CREDENTIALS`, and `PUBLIC_API_KEY`. Do this before you add a real LLM provider key. See the [App Platform guide](https://DEEJ4Y.github.io/genkitkraft/docs/deployment/app-platform) for the steps.
+
 ## Features
 
 - [x] **Any LLM provider**: Google AI, OpenAI, Anthropic, Vertex AI, Bedrock, Azure, xAI, DeepSeek, Ollama
