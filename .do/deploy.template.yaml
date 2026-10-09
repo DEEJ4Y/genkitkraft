@@ -25,13 +25,13 @@ spec:
           value: redis://valkey:6379
         - key: ENCRYPTION_KEY
           scope: RUN_TIME
-          type: SECRET
+          value: demo-key-change-me-0123456789abc
         - key: AUTH_CREDENTIALS
           scope: RUN_TIME
-          type: SECRET
+          value: admin:demo-change-me
         - key: PUBLIC_API_KEY
           scope: RUN_TIME
-          type: SECRET
+          value: sk-demo-change-me
     - name: valkey
       image:
         registry_type: DOCKER_HUB
