@@ -47,6 +47,8 @@ GenKitKraft supports multiple LLM providers. Each provider is configured once wi
 | **xAI**       | grok-4.20-beta, grok-4-1-fast-reasoning, grok-4-1-fast-non-reasoning, grok-4, grok-code-fast-1                                         |
 | **DeepSeek**  | deepseek-chat, deepseek-reasoner                                                                                                       |
 
+The model list changes over time. This list is a guide only. Use `provider_types_list` to see the supported provider types and their `model_prefix` values. You can type a custom model name when you create an agent.
+
 ### Provider Operations
 
 - **Add** — Select provider type, enter display name and API key.
@@ -73,15 +75,35 @@ Agents are the central unit. Each agent packages a provider, model, system promp
 | **Temperature**   | Controls randomness (0.0–2.0)                          |
 | **Top P**         | Nucleus sampling threshold                             |
 | **Top K**         | Limits the token vocabulary per step                   |
+| **Max Tool Calls** | Maximum number of tool call iterations per request (`max_tool_calls`, default 10) |
+| **Gap Reporting** | Lets the agent report gaps with the `report_gap` tool (`gap_reporting_enabled`, default false). See [Gaps](#31-gaps) |
 | **Tools**         | HTTP tools, MCP server tools and built-in tools (e.g. web_fetch) assigned to this agent |
 
-Generation parameters (temperature, top P, top K) are optional — omitting them uses provider defaults.
+Generation parameters (temperature, top P, top K) are optional — omitting them uses provider defaults. Each one has an `*_enabled` flag (`temperature_enabled`, `top_p_enabled`, `top_k_enabled`). Set the flag to `true` to send the value to the provider.
 
 ### Agent Operations
 
 - Create, read, update, delete agents via UI or API.
 - Assign and re-assign tools independently of the agent definition.
 - Use any agent immediately in the Playground or via the Deploy API.
+
+### 3.1 Gaps
+
+An agent with Gap Reporting on gets a `report_gap` tool. The agent calls it during a conversation when it notices a gap. The call does not change the answer that the user receives. A gap has one of three categories:
+
+- **knowledge** — the agent could not answer a question reliably.
+- **capability** — the agent could not do a requested action (a missing tool, permission, or integration).
+- **improvement** — nothing failed, but the agent sees a way to automate more of the flow.
+
+A background process compares each new report with the open gaps of the agent. It merges the report into a matching gap or creates a new gap. Gaps belong to one agent. `report_gap` is not a tool that you assign. It is on when `gap_reporting_enabled` is `true`.
+
+Gap status values: `open`, `resolved`, `dismissed`. Use these MCP tools to review gaps:
+
+- `gaps_list` — list the gaps of an agent (filter with `status`).
+- `gaps_get` — get one gap, with the sessions and messages where it was seen.
+- `gaps_resolve` — mark a gap as resolved after you fix the cause.
+- `gaps_dismiss` — dismiss a gap with `dismissal_category`: `unrelated`, `insufficient_detail`, `duplicate`, or `other`. A gap dismissed as `unrelated` is permanent and you cannot reopen it.
+- `gaps_reopen` — reopen a resolved or dismissed gap. A new report that matches a resolved or dismissed gap also reopens it. The earlier dismissal stays as history.
 
 ---
 
@@ -105,7 +127,7 @@ Prompts are reusable system instructions stored in a library and referenced by a
 
 ## 5. Tool Integration
 
-Agents can call external tools during inference. GenKitKraft supports two tool types:
+Agents can call external tools during inference. GenKitKraft supports three tool types: HTTP tools, MCP servers, and built-in tools.
 
 ### 5.1 HTTP Tools
 
@@ -130,25 +152,32 @@ Connect external MCP (Model Context Protocol) tool servers. GenKitKraft acts as 
 | Field         | Description                |
 | ------------- | -------------------------- |
 | **Name**      | Display name               |
-| **Transport** | `sse` or `streamable_http` |
+| **Transport** | `sse` or `streamableHttp` |
 | **URL**       | MCP server endpoint        |
 | **Headers**   | Optional auth headers      |
 
-**Transport auto-fallback**: If `streamable_http` is selected and the server doesn't support it, GenKitKraft automatically falls back to SSE transport.
+**Transport auto-fallback**: If `streamableHttp` is selected and the server doesn't support it, GenKitKraft automatically falls back to SSE transport.
 
 After registering an MCP server, use **Discover Tools** to fetch the list of available tools from that server.
 
-### 5.3 Agent Tool Assignment
+### 5.3 Built-in Tools
+
+Built-in tools are part of GenKitKraft. You do not define them. Use `built_in_tools_list` to see the available tools and their IDs. Today the list has `web_fetch`. It fetches static content from a URL and returns it as Markdown. It does not run JavaScript.
+
+### 5.4 Agent Tool Assignment
 
 Each agent has an independent tool configuration:
 
-- Select any combination of HTTP tools.
-- Select specific tools from registered MCP servers (not all tools from a server need to be enabled).
+- Select any combination of HTTP tools (`http_tool_ids`).
+- Select specific tools from registered MCP servers (`mcp_servers`). Not all tools from a server need to be enabled.
+- Select built-in tools (`built_in_tool_ids`).
 - Tool configuration can be updated without modifying the agent itself.
 
-### 5.4 Playground Tool Overrides
+> ⚠️ `agent_tools_update` replaces the whole configuration. Call `agent_tools_get` first. Then send the current values of everything you want to keep in `http_tool_ids`, `mcp_servers`, and `built_in_tool_ids`. If you omit `built_in_tool_ids`, the call disables all built-in tools.
 
-In the Playground, tool assignments can be overridden per session without affecting the saved agent configuration. Overrides can be promoted back to the saved config with **Save Configuration**.
+### 5.5 Playground Tool Overrides
+
+In the Playground, tool assignments can be overridden per session without affecting the saved agent configuration. Overrides can be promoted back to the saved config with **Save Configuration**. Over MCP, `playground_chat` accepts `http_tool_ids`, `mcp_servers`, and `built_in_tool_ids` as overrides for one request.
 
 ---
 
@@ -256,7 +285,7 @@ Generate the header value: `echo -n "admin:changeme" | base64`
 | `playground_messages_list`   | List messages in a session        |
 | `playground_chat`            | Send a message and get a response |
 
-Send the session ID as `session_id`. If you cannot send `session_id`, send the same value as `fallback_session_id`. It takes precedence over `session_id`. In `playground_chat`, the message text goes in `content`.
+Send the session ID as `session_id`. If you cannot send `session_id`, send the same value as `fallback_session_id`. It takes precedence over `session_id`. In `playground_chat`, the message text goes in `content`. `playground_chat` also accepts optional overrides for one request: `provider_id`, `model_id`, `system_prompt_id`, the sampling fields, `max_tool_calls`, and the tool fields. The overrides do not change the saved agent.
 
 #### Gaps
 
@@ -299,9 +328,12 @@ The MCP server ships with a `create-agent` server-side prompt. MCP clients that 
 1. `provider_types_list` — see available provider types
 2. `providers_create` — configure an LLM provider
 3. `prompts_create` — write a system prompt
-4. `agents_create` — create the agent
-5. `playground_sessions_create` — start a chat session
-6. `playground_chat` — test the agent
+4. `agents_create` — create the agent (optional: `max_tool_calls`, `gap_reporting_enabled`)
+5. `http_tools_create`, `mcp_servers_create`, `built_in_tools_list` — find or create the tools the agent needs
+6. `agent_tools_get`, then `agent_tools_update` — assign the tools. Send the full configuration, including `built_in_tool_ids`
+7. `playground_sessions_create` — start a chat session
+8. `playground_chat` — test the agent
+9. `gaps_list` — if Gap Reporting is on, review the gaps that the agent reported
 
 ---
 
@@ -387,6 +419,15 @@ POST /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions
 
 Only the last user message in `messages` is used. Full history is loaded from the session automatically and both the new message and the response are persisted.
 
+#### Reconnect and Cancel
+
+```
+GET  /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/stream  → reconnect to the reply that is streaming (SSE)
+POST /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/cancel  → stop the reply that is streaming (204)
+```
+
+On reconnect, send the `Last-Event-ID` header with the last SSE `id:` that you received. The stream then continues from the next token. Cancel is best-effort. It does nothing if the reply is complete.
+
 ### 7.3 Client Examples
 
 #### Python (OpenAI SDK)
@@ -449,10 +490,11 @@ The Playground provides a browser-based chat interface for testing agents direct
 ### Features
 
 - **Session management** — Create, switch between, and delete named sessions. History is preserved per session.
-- **Configuration overrides** — Override the agent's provider, model, temperature, top P, or top K for the current session without modifying the saved agent.
-- **Tool overrides** — Enable/disable specific HTTP tools or MCP server tools for the session.
+- **Configuration overrides** — Override the agent's provider, model, system prompt, temperature, top P, top K, or max tool calls for the current session without modifying the saved agent.
+- **Tool overrides** — Enable/disable specific HTTP tools, MCP server tools, or built-in tools for the session.
 - **Save configuration** — Promote playground overrides back to the saved agent configuration.
-- **Streaming responses** — Output appears token by token.
+- **Streaming responses** — Output appears token by token. A client can reconnect to a reply that is streaming, and can cancel it.
+- **Gap reporting** — If the agent has Gap Reporting on, gaps reported in the Playground appear on the Gaps tab of the agent.
 
 ### Playground API
 
@@ -461,8 +503,14 @@ GET  /api/v1/agents/{agentId}/playground/sessions             → list sessions
 POST /api/v1/agents/{agentId}/playground/sessions             → create session
 DELETE /api/v1/agents/{agentId}/playground/sessions/{id}      → delete session
 GET  /api/v1/agents/{agentId}/playground/sessions/{id}/messages → list messages
-POST /api/v1/agents/{agentId}/playground/chat                 → send message (SSE)
+POST /api/v1/agents/{agentId}/playground/chat                 → send message (SSE by default, or JSON with "stream": false)
+GET  /api/v1/agents/{agentId}/playground/sessions/{id}/stream → reconnect to the reply that is streaming (SSE)
+POST /api/v1/agents/{agentId}/playground/sessions/{id}/stream/cancel → stop the reply that is streaming (204)
 ```
+
+### Chat Widget
+
+You can put an agent on a website with the open-source AI chat widget. The widget builder (in the dashboard under **Agents → your agent → Widget**) designs the look and gives the embed code. The widget must call your own backend. Your backend then calls the Deploy API with the `PUBLIC_API_KEY`. Never put the key in browser code. For the full guide, see the `Embedding an Agent with the Chat Widget` page in the GenKitKraft documentation.
 
 ---
 
@@ -726,13 +774,16 @@ Agents are created by combining a configured LLM provider, a system prompt, gene
 
 1. **Configure an LLM Provider** — Add your API key and select the model you want to use.
 2. **Create a System Prompt** — Write the instructions that will guide the agent's behaviour.
-3. **Define the Agent** — Give it a name, select the provider and prompt, and optionally set any generation parameters (temperature, top P, top K).
+3. **Define the Agent** — Give it a name, select the provider and prompt, and optionally set any generation parameters (temperature, top P, top K), the maximum number of tool calls, and Gap Reporting.
 4. **Assign Tools** — Choose which HTTP tools, MCP server tools and built-in tools (such as web_fetch) the agent can use during inference.
 5. **Save and Deploy** — Once saved, the agent is immediately available for testing in the Playground or via the Deploy API.
 6. **Test and Iterate** — Use the Playground to have conversations with your agent, tweak the system prompt, adjust generation parameters, or reassign tools as needed.
+7. **Review Gaps** — If Gap Reporting is on, check the Gaps tab (or `gaps_list`) for knowledge, capability, and improvement gaps. Fix the cause, then resolve or dismiss each gap.
+8. **Embed (optional)** — Use the chat widget to put the agent on a website.
 
 ### Tips for Effective Agents
 
 - Start with a clear, extensively detailed, and specific system prompt to define the agent's role and behaviour.
 - Use tools to augment the agent's capabilities, but be mindful of overloading it with too many options.
+- Set `max_tool_calls` high enough for the multi-step tasks that you expect, but low enough to stop runaway tool loops.
 - Leverage the Playground for rapid iteration and testing before finalizing your agent's configuration for production use.
