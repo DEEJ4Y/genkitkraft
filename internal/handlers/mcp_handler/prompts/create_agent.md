@@ -198,6 +198,29 @@ Transport: **Streamable HTTP**
 
 When `AUTH_CREDENTIALS` is set, the MCP endpoint requires HTTP Basic Auth with the same credentials.
 
+Claude Desktop (uses the `mcp-remote` bridge):
+
+```json
+{
+  "mcpServers": {
+    "genkitkraft": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "http://localhost:8080/mcp",
+        "--header",
+        "Authorization:${AUTH_HEADER}"
+      ],
+      "env": {
+        "AUTH_HEADER": "Basic <base64(username:password)>"
+      }
+    }
+  }
+}
+```
+
+Cursor and other clients that connect by URL:
+
 ```json
 {
   "mcpServers": {
