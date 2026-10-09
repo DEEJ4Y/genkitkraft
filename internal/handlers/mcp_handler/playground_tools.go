@@ -42,8 +42,9 @@ type DeletePlaygroundSessionInput struct {
 }
 
 type ListPlaygroundMessagesInput struct {
-	SessionID string `json:"session_id" jsonschema:"session ID (required)"`
-	AgentID   string `json:"agent_id" jsonschema:"agent ID (required)"`
+	SessionID         string `json:"session_id,omitempty" jsonschema:"session ID (required unless fallback_session_id is set)"`
+	FallbackSessionID string `json:"fallback_session_id,omitempty" jsonschema:"optional; the same value as session_id. Use it if session_id cannot be sent. Takes precedence over session_id"`
+	AgentID           string `json:"agent_id" jsonschema:"agent ID (required)"`
 }
 
 type PlaygroundMessageOutput struct {
@@ -63,9 +64,10 @@ type DeletePlaygroundSessionOutput struct {
 }
 
 type PlaygroundChatInput struct {
-	AgentID   string `json:"agent_id" jsonschema:"agent ID (required)"`
-	SessionID string `json:"session_id" jsonschema:"ID of an existing session for this agent (required); get one from playground_sessions_create or playground_sessions_list"`
-	Content   string `json:"content" jsonschema:"user message content (required)"`
+	AgentID           string `json:"agent_id" jsonschema:"agent ID (required)"`
+	SessionID         string `json:"session_id,omitempty" jsonschema:"ID of an existing session for this agent (required unless fallback_session_id is set); get one from playground_sessions_create or playground_sessions_list"`
+	FallbackSessionID string `json:"fallback_session_id,omitempty" jsonschema:"optional; the same value as session_id. Use it if session_id cannot be sent. Takes precedence over session_id"`
+	Content           string `json:"content" jsonschema:"user message content (required)"`
 
 	// Optional per-request overrides. Omitted fields use the agent's saved configuration.
 	ProviderID         *string  `json:"provider_id,omitempty" jsonschema:"override the agent's provider ID"`
@@ -94,6 +96,18 @@ type PlaygroundChatOutput struct {
 	CreatedAt time.Time `json:"created_at,omitempty" jsonschema:"when the assistant message was saved"`
 }
 
+// resolveSessionID picks the session ID for a playground tool call.
+// fallback_session_id takes precedence over session_id.
+func resolveSessionID(fallback, primary string) (string, error) {
+	if fallback != "" {
+		return fallback, nil
+	}
+	if primary != "" {
+		return primary, nil
+	}
+	return "", fmt.Errorf("session_id or fallback_session_id is required")
+}
+
 // --- Tool registration ---
 
 func (h *Handler) registerPlaygroundTools(s *mcp.Server) {
@@ -104,7 +118,7 @@ func (h *Handler) registerPlaygroundTools(s *mcp.Server) {
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "playground_sessions_create",
-		Description: "Create a new chat session for an agent. Returns the session id to pass as session_id to playground_chat.",
+		Description: "Create a new chat session for an agent. Returns the session id to pass as session_id (or fallback_session_id) to playground_chat.",
 	}, h.createPlaygroundSession)
 
 	mcp.AddTool(s, &mcp.Tool{
@@ -119,7 +133,7 @@ func (h *Handler) registerPlaygroundTools(s *mcp.Server) {
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "playground_chat",
-		Description: "Send a message to an agent within an existing session (create one with playground_sessions_create) and get a response. The message and response are saved to the session history. Optional fields override the agent's model, sampling and tool settings for this request only. Responses are not streamed.",
+		Description: "Send a message to an agent within an existing session (create one with playground_sessions_create) and get a response. The message and response are saved to the session history. Optional fields override the agent's model, sampling and tool settings for this request only. Responses are not streamed. If session_id cannot be sent, send the same value as fallback_session_id; it takes precedence.",
 	}, h.playgroundChat)
 }
 
@@ -169,8 +183,12 @@ func (h *Handler) deletePlaygroundSession(ctx context.Context, _ *mcp.CallToolRe
 }
 
 func (h *Handler) listPlaygroundMessages(ctx context.Context, _ *mcp.CallToolRequest, input ListPlaygroundMessagesInput) (*mcp.CallToolResult, ListPlaygroundMessagesOutput, error) {
+	sessionID, err := resolveSessionID(input.FallbackSessionID, input.SessionID)
+	if err != nil {
+		return nil, ListPlaygroundMessagesOutput{}, err
+	}
 	result, err := h.playgroundApp.Queries.ListMessages.Execute(ctx, queries.ListPlaygroundMessagesParams{
-		SessionID: input.SessionID,
+		SessionID: sessionID,
 		AgentID:   input.AgentID,
 	})
 	if err != nil {
@@ -187,9 +205,14 @@ func (h *Handler) listPlaygroundMessages(ctx context.Context, _ *mcp.CallToolReq
 }
 
 func (h *Handler) playgroundChat(ctx context.Context, _ *mcp.CallToolRequest, input PlaygroundChatInput) (*mcp.CallToolResult, PlaygroundChatOutput, error) {
+	sessionID, err := resolveSessionID(input.FallbackSessionID, input.SessionID)
+	if err != nil {
+		return nil, PlaygroundChatOutput{}, err
+	}
+
 	// Save user message
-	_, err := h.playgroundApp.Commands.SaveMessage.Execute(ctx, commands.SavePlaygroundMessageParams{
-		SessionID: input.SessionID,
+	_, err = h.playgroundApp.Commands.SaveMessage.Execute(ctx, commands.SavePlaygroundMessageParams{
+		SessionID: sessionID,
 		Role:      "user",
 		Content:   input.Content,
 	})
@@ -205,7 +228,7 @@ func (h *Handler) playgroundChat(ctx context.Context, _ *mcp.CallToolRequest, in
 
 	// Load conversation history
 	messagesResult, err := h.playgroundApp.Queries.ListMessages.Execute(ctx, queries.ListPlaygroundMessagesParams{
-		SessionID: input.SessionID,
+		SessionID: sessionID,
 		AgentID:   input.AgentID,
 	})
 	if err != nil {
@@ -223,6 +246,7 @@ func (h *Handler) playgroundChat(ctx context.Context, _ *mcp.CallToolRequest, in
 
 	chatReq := configResult.ChatRequest
 	chatReq.Messages = chatMessages
+	chatReq.SessionID = sessionID
 
 	// Non-streaming chat
 	content, err := h.chatProvider.Chat(ctx, chatReq)
@@ -230,12 +254,12 @@ func (h *Handler) playgroundChat(ctx context.Context, _ *mcp.CallToolRequest, in
 		return nil, PlaygroundChatOutput{}, fmt.Errorf("chat failed: %w", err)
 	}
 
-	out := PlaygroundChatOutput{Response: content, SessionID: input.SessionID, Role: "assistant"}
+	out := PlaygroundChatOutput{Response: content, SessionID: sessionID, Role: "assistant"}
 
 	// Save assistant response
 	if content != "" {
 		saved, saveErr := h.playgroundApp.Commands.SaveMessage.Execute(ctx, commands.SavePlaygroundMessageParams{
-			SessionID: input.SessionID,
+			SessionID: sessionID,
 			Role:      "assistant",
 			Content:   content,
 		})

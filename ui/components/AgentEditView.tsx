@@ -5,6 +5,7 @@ import type { components } from '../lib/api/schema'
 import { AgentDeployInfo } from './AgentDeployInfo'
 import { AgentWidgetBuilder } from './AgentWidgetBuilder'
 import { AgentForm } from './AgentForm'
+import { AgentGapsTab } from './AgentGapsTab'
 import { AgentToolsTab } from './AgentToolsTab'
 import { AgentPlayground } from './playground/AgentPlayground'
 
@@ -38,6 +39,7 @@ export function AgentEditView({ agent, onSaved, onCancel }: AgentEditViewProps) 
         <Tabs.List mb="md">
           <Tabs.Tab value="config">Configuration</Tabs.Tab>
           <Tabs.Tab value="tools">Tools</Tabs.Tab>
+          <Tabs.Tab value="gaps">Gaps</Tabs.Tab>
           <Tabs.Tab value="playground">Playground</Tabs.Tab>
           <Tabs.Tab value="deploy">Deploy</Tabs.Tab>
           <Tabs.Tab value="widget">Widget</Tabs.Tab>
@@ -49,6 +51,10 @@ export function AgentEditView({ agent, onSaved, onCancel }: AgentEditViewProps) 
 
         <Tabs.Panel value="tools">
           <AgentToolsTab agentId={agent.id} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="gaps">
+          <AgentGapsTab agentId={agent.id} />
         </Tabs.Panel>
 
         <Tabs.Panel value="playground">

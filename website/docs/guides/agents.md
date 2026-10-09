@@ -42,6 +42,10 @@ Each agent can be assigned specific tools — HTTP tools and MCP server tools �
 
 For detailed instructions on setting up tools and assigning them to agents, see the [Tools guide](./tools).
 
+## Gap Reporting
+
+Each agent can also self-report gaps it notices during a conversation — questions it couldn't answer, actions it couldn't perform, or ideas to automate more of the flow. Enable it via the **Enable Gap Reporting** toggle on the Configuration tab, then review reported gaps on the agent's **Gaps** tab. See the [Gaps guide](./gaps) for details.
+
 ## Editing and Deleting Agents
 
 - Click the **edit** icon on an agent card to modify its configuration.

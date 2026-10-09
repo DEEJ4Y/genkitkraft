@@ -10,6 +10,7 @@ import "./routes/http_tools.tsp";
 import "./routes/mcp_servers.tsp";
 import "./routes/agent_tools.tsp";
 import "./routes/built_in_tools.tsp";
+import "./routes/agent_gaps.tsp";
 
 using TypeSpec.Http;
 

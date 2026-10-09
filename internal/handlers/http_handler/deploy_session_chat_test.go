@@ -13,6 +13,7 @@ import (
 
 	"github.com/DEEJ4Y/genkitkraft/internal/api/gen"
 	"github.com/DEEJ4Y/genkitkraft/internal/domain/playground"
+	agenttoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_tool_repo"
 )
 
 // --- Create session ---
@@ -272,6 +273,26 @@ func TestDeploySessionChat_HistoryAccumulates(t *testing.T) {
 	}
 }
 
+// Regression test: DeploySessionChatCompletions used to resolve agent config
+// without IncludeTools, silently dropping the agent's configured tools (see
+// PR #49 manual test report). Assert built-in tools now reach the provider.
+func TestDeploySessionChat_ConfiguredBuiltInTool_ReachesProvider(t *testing.T) {
+	env := setupTestEnv(t)
+	if err := env.agentToolRepo.Save(context.Background(), agenttoolrepo.AgentToolConfig{
+		AgentID:        env.agentID,
+		BuiltInToolIDs: []string{"web_fetch"},
+	}); err != nil {
+		t.Fatalf("save agent tool config: %v", err)
+	}
+	sessionID := createDeploySession(t, env, "")
+
+	sendSessionChat(t, env, sessionID, "Hello")
+
+	if len(env.mockChat.LastRequest.BuiltInToolIDs) != 1 || env.mockChat.LastRequest.BuiltInToolIDs[0] != "web_fetch" {
+		t.Errorf("LastRequest.BuiltInToolIDs = %v, want [\"web_fetch\"]", env.mockChat.LastRequest.BuiltInToolIDs)
+	}
+}
+
 func TestDeploySessionChat_SystemPromptInjected(t *testing.T) {
 	env := setupTestEnv(t)
 	sessionID := createDeploySession(t, env, "")
@@ -280,6 +301,30 @@ func TestDeploySessionChat_SystemPromptInjected(t *testing.T) {
 
 	if env.mockChat.LastRequest.SystemPrompt != "You are a helpful assistant." {
 		t.Errorf("expected system prompt injected, got %q", env.mockChat.LastRequest.SystemPrompt)
+	}
+}
+
+// Regression test: report_gap under-reported in manual QA because the model
+// had no instructions beyond the tool's own description (see PR #49 manual
+// test report). Assert the stateful deploy-session chat path carries the
+// appended instructions too.
+func TestDeploySessionChat_GapReportingEnabled_AppendsInstructionsToSystemPrompt(t *testing.T) {
+	env := setupTestEnv(t)
+
+	a, err := env.agentRepo.GetByID(context.Background(), env.agentID)
+	if err != nil {
+		t.Fatalf("get agent: %v", err)
+	}
+	a.GapReportingEnabled = true
+	if err := env.agentRepo.Update(context.Background(), a); err != nil {
+		t.Fatalf("enable gap reporting: %v", err)
+	}
+
+	sessionID := createDeploySession(t, env, "")
+	sendSessionChat(t, env, sessionID, "Hello")
+
+	if !strings.Contains(env.mockChat.LastRequest.SystemPrompt, "report_gap") {
+		t.Errorf("expected gap-reporting instructions in system prompt, got %q", env.mockChat.LastRequest.SystemPrompt)
 	}
 }
 

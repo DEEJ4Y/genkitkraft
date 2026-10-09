@@ -23,6 +23,7 @@ type Handler struct {
 	mcpServerApp   *app.McpServerApp
 	agentToolApp   *app.AgentToolApp
 	builtInToolApp *app.BuiltInToolApp
+	gapApp         *app.GapApp
 	chatProvider   chatprovider.ChatProvider
 	mcpDiscovery   mcpdiscovery.McpDiscovery
 	authCfg        config.AuthConfig
@@ -38,6 +39,7 @@ func NewHandler(
 	mcpServerApp *app.McpServerApp,
 	agentToolApp *app.AgentToolApp,
 	builtInToolApp *app.BuiltInToolApp,
+	gapApp *app.GapApp,
 	chatProvider chatprovider.ChatProvider,
 	mcpDiscovery mcpdiscovery.McpDiscovery,
 	authCfg config.AuthConfig,
@@ -52,6 +54,7 @@ func NewHandler(
 		mcpServerApp:   mcpServerApp,
 		agentToolApp:   agentToolApp,
 		builtInToolApp: builtInToolApp,
+		gapApp:         gapApp,
 		chatProvider:   chatProvider,
 		mcpDiscovery:   mcpDiscovery,
 		authCfg:        authCfg,
@@ -76,6 +79,7 @@ func (h *Handler) HTTPHandler() http.Handler {
 	h.registerMcpServerTools(server)
 	h.registerBuiltInToolTools(server)
 	h.registerPlaygroundTools(server)
+	h.registerGapTools(server)
 	h.registerHealthTools(server)
 	h.registerPrompts(server)
 

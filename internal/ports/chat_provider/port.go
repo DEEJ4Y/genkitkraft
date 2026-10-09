@@ -52,6 +52,19 @@ type ChatRequest struct {
 	HttpTools          []HttpToolDefinition
 	McpServers         []McpServerConfig
 	BuiltInToolIDs     []string
+	// AgentID identifies the agent this request is being made on behalf of.
+	// Always set — used to scope the report_gap tool and its resulting
+	// dedup pipeline to the right agent, independent of whether a session
+	// exists.
+	AgentID string
+	// SessionID identifies the playground/deploy session this request belongs
+	// to, if any. Empty for the stateless deploy chat-completions endpoint —
+	// when empty, a reported gap is still recorded, just without a
+	// conversation to attach as a reference.
+	SessionID string
+	// GapReportingEnabled mirrors the reporting agent's gap_reporting_enabled
+	// flag. When true and AgentID is set, the report_gap tool is injected.
+	GapReportingEnabled bool
 }
 
 // ChatProvider defines the contract for chat completions from LLM providers.

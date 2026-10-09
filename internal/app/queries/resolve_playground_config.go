@@ -2,18 +2,23 @@ package queries
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
+	"strings"
 
 	"github.com/DEEJ4Y/genkitkraft/internal/common/errors"
-	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
-	"github.com/DEEJ4Y/genkitkraft/internal/ports/encryptor"
 	agentrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_repo"
 	agenttoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/agent_tool_repo"
+	chatprovider "github.com/DEEJ4Y/genkitkraft/internal/ports/chat_provider"
+	"github.com/DEEJ4Y/genkitkraft/internal/ports/encryptor"
 	httptoolrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/http_tool_repo"
 	mcpserverrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/mcp_server_repo"
 	promptrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/prompt_repo"
 	providerrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/provider_repo"
 )
+
+//go:embed prompts/gap_reporting_instructions.md
+var gapReportingInstructions string
 
 // ToolOverride specifies tool configuration overrides for a chat request.
 type ToolOverride struct {
@@ -152,20 +157,26 @@ func (q *ResolvePlaygroundConfigQuery) Execute(ctx context.Context, params Resol
 		systemPrompt = prompt.Content
 	}
 
+	if a.GapReportingEnabled {
+		systemPrompt = appendGapReportingInstructions(systemPrompt)
+	}
+
 	chatReq := chatprovider.ChatRequest{
-		ProviderType:       string(p.ProviderType),
-		APIKey:             apiKey,
-		BaseURL:            p.BaseURL,
-		Config:             p.RawConfig,
-		ModelID:            modelID,
-		SystemPrompt:       systemPrompt,
-		TemperatureEnabled: temperatureEnabled,
-		Temperature:        temperature,
-		TopPEnabled:        topPEnabled,
-		TopP:               topP,
-		TopKEnabled:        topKEnabled,
-		TopK:               topK,
-		MaxToolCalls:       maxToolCalls,
+		ProviderType:        string(p.ProviderType),
+		APIKey:              apiKey,
+		BaseURL:             p.BaseURL,
+		Config:              p.RawConfig,
+		ModelID:             modelID,
+		SystemPrompt:        systemPrompt,
+		TemperatureEnabled:  temperatureEnabled,
+		Temperature:         temperature,
+		TopPEnabled:         topPEnabled,
+		TopP:                topP,
+		TopKEnabled:         topKEnabled,
+		TopK:                topK,
+		MaxToolCalls:        maxToolCalls,
+		AgentID:             a.ID,
+		GapReportingEnabled: a.GapReportingEnabled,
 	}
 
 	// Resolve tools if requested
@@ -176,6 +187,17 @@ func (q *ResolvePlaygroundConfigQuery) Execute(ctx context.Context, params Resol
 	}
 
 	return ResolvePlaygroundConfigResult{ChatRequest: chatReq}, nil
+}
+
+// appendGapReportingInstructions adds the gap-reporting instruction block to
+// the end of a system prompt, so an agent with gap reporting enabled always
+// knows when to call report_gap even if it has no custom prompt of its own.
+func appendGapReportingInstructions(systemPrompt string) string {
+	instructions := strings.TrimRight(gapReportingInstructions, "\n")
+	if systemPrompt == "" {
+		return instructions
+	}
+	return systemPrompt + "\n\n" + instructions
 }
 
 // resolveTools loads tool configurations and populates the ChatRequest.

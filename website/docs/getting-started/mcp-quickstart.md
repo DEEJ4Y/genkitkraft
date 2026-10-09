@@ -64,7 +64,7 @@ Your MCP client will call GenKitKraft's tools automatically to:
 3. **Create the agent** — wire everything together
 4. **Start chatting** — open a playground session
 
-The built-in **`create-agent` prompt** guides supported clients (like Claude Desktop) through the full workflow automatically.
+The built-in **`create-agent` prompt** guides supported clients (like Claude Desktop) through the full workflow automatically. The server also has a `backup` prompt and a `restore` prompt for your configurations.
 
 ## What's available
 
@@ -75,8 +75,9 @@ GenKitKraft exposes **40+ MCP tools** covering:
 | **Agents** | Create, update, delete, and list agents |
 | **Providers** | Configure LLM providers (OpenAI, Anthropic, Google, etc.) |
 | **Prompts** | Manage system prompts |
-| **Tools** | Add HTTP tools and MCP servers, assign them to agents |
+| **Tools** | Add HTTP tools and MCP servers, assign them and the built-in tools to agents |
 | **Playground** | Chat with agents, manage sessions |
+| **Gaps** | List, resolve, dismiss, and reopen the gaps that agents report |
 | **Health** | Check server status |
 
 ## Next steps

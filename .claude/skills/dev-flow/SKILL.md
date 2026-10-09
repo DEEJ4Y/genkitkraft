@@ -238,7 +238,10 @@ internal/handlers/mcp_handler/
   mcp_server_tools.go     → MCP server management tools
   builtin_tool_tools.go   → Built-in tool tools
   playground_tools.go     → Playground/chat tools
+  gap_tools.go            → Gap review tools
   health_tools.go         → Health check tools
+  prompt_registrations.go → Server-side MCP prompts (create-agent, backup, restore)
+  prompts/                → Embedded prompt text (create_agent.md, backup.md, restore.md)
 ```
 
 ### MCP Tool Pattern
@@ -312,6 +315,21 @@ Find affected tools with `grep -rn "<ParamsStructName>" internal/handlers/mcp_ha
 
 `internal/handlers/mcp_handler/schema_sync_test.go` guards the main input DTOs against their app params. If it fails, add the missing field to the DTO; only add an entry to its allowlist when the omission is intentional.
 
+### Keeping MCP Docs in Sync (MUST follow)
+
+The MCP docs are hand-written, so they go stale in the same way as the MCP DTOs. Whenever you add, rename, or remove an MCP tool, a tool input or output field, or a server-side prompt, update these files in the same change:
+
+- `website/docs/guides/mcp-quickstart.md` — the full tool tables, the prompt table, and troubleshooting
+- `website/docs/guides/mcp-agent-creation-guide.md` — the workflow steps, the parameter names, and the copyable prompt (its tool list)
+- `website/docs/getting-started/mcp-quickstart.md` — the "What's available" table
+- `internal/handlers/mcp_handler/prompts/create_agent.md` — the tool tables in the `create-agent` prompt. This file is embedded in the binary, so rebuild to ship the change. Also check `backup.md` and `restore.md` if they use the tool.
+
+Rules:
+
+- Use the exact tool and field names from the code (for example `content`, not `message`).
+- If the change also affects a user-facing feature page (for example `website/docs/guides/gaps.md`), add a link to the MCP tools there.
+- Check that no tool is missing or invented. List the tool names in code with `grep -rhoE 'Name: +"[a-z_]+"' internal/handlers/mcp_handler/*_tools.go`. Then search for each name in the four files above.
+
 ### Workflow for Adding MCP Tools
 
 1. **Ensure app layer exists** — The commands/queries your MCP tools will call must already exist (or be created first following hexagonal architecture rules)
@@ -319,6 +337,7 @@ Find affected tools with `grep -rn "<ParamsStructName>" internal/handlers/mcp_ha
 3. **Register in handler.go** — If it's a new file, add `h.register<Domain>Tools(server)` call in `HTTPHandler()`
 4. **Update Handler struct** — If new app dependencies are needed, add them to the struct and `NewHandler()` in `handler.go`, then wire them in `internal/services/server.go`
 5. **Modifying an existing endpoint/command?** Update its existing MCP tool too (see "Keeping MCP Schemas in Sync"), and add the new params struct pair to `schema_sync_test.go`
+6. **Update the MCP docs** — Follow "Keeping MCP Docs in Sync" for every new, changed, or removed tool, field, or prompt
 
 ## Chat Widget & Widget Builder
 
@@ -382,7 +401,8 @@ Update user-facing documentation in `website/docs/` to reflect the feature chang
 17. [ ] If page is too large, split into subfolder with multiple pages + `_category_.json`
 18. [ ] Add/update the relevant doc page in `website/docs/<category>/`
 19. [ ] Verify links and cross-references are correct
-20. [ ] If the change touches `widget-builder/` or the `navigableai-chat-widget` version: follow `docs/widget-builder/01-updating-the-widget.md` (refresh the `ui/` and `website/` copies, update versions in `website/docs/guides/chat-widget.md`, re-check hosted-app workarounds, verify in a browser)
+20. [ ] If you added, changed, or removed an MCP tool, field, or prompt: update the MCP docs listed in "Keeping MCP Docs in Sync"
+21. [ ] If the change touches `widget-builder/` or the `navigableai-chat-widget` version: follow `docs/widget-builder/01-updating-the-widget.md` (refresh the `ui/` and `website/` copies, update versions in `website/docs/guides/chat-widget.md`, re-check hosted-app workarounds, verify in a browser)
 
 ## Additional Resources
 

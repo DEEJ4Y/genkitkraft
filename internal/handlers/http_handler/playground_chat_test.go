@@ -114,6 +114,52 @@ func TestPlaygroundChat_Streaming_SequenceIDs(t *testing.T) {
 	}
 }
 
+// Verification test for the PR #49 manual test report, which found
+// report_gap never injected on either chat path. Static tracing found the
+// playground path wiring correct end to end; this exercises the full
+// handler -> ResolveConfig -> provider chain to confirm it at runtime.
+func TestPlaygroundChat_GapReportingEnabled_InjectsSessionAndFlag(t *testing.T) {
+	env := setupTestEnv(t)
+	sessionID := createPlaygroundSession(t, env)
+
+	a, err := env.agentRepo.GetByID(context.Background(), env.agentID)
+	if err != nil {
+		t.Fatalf("get agent: %v", err)
+	}
+	a.GapReportingEnabled = true
+	if err := env.agentRepo.Update(context.Background(), a); err != nil {
+		t.Fatalf("enable gap reporting: %v", err)
+	}
+
+	reqBody := map[string]interface{}{
+		"sessionId": sessionID,
+		"content":   "hi",
+		"stream":    false,
+	}
+	req := httptest.NewRequest(http.MethodPost,
+		"/api/v1/agents/"+env.agentID+"/playground/chat",
+		makeDeployRequest(t, reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	env.mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if !env.mockChat.LastRequest.GapReportingEnabled {
+		t.Errorf("LastRequest.GapReportingEnabled = false, want true")
+	}
+	if env.mockChat.LastRequest.SessionID != sessionID {
+		t.Errorf("LastRequest.SessionID = %q, want %q", env.mockChat.LastRequest.SessionID, sessionID)
+	}
+	if env.mockChat.LastRequest.AgentID != env.agentID {
+		t.Errorf("LastRequest.AgentID = %q, want %q", env.mockChat.LastRequest.AgentID, env.agentID)
+	}
+	if !strings.Contains(env.mockChat.LastRequest.SystemPrompt, "report_gap") {
+		t.Errorf("expected gap-reporting instructions in system prompt, got %q", env.mockChat.LastRequest.SystemPrompt)
+	}
+}
+
 func TestPlaygroundChat_Streaming_MidStreamError_PersistsPartialWithErrorStatus(t *testing.T) {
 	env := setupTestEnv(t)
 	sessionID := createPlaygroundSession(t, env)
