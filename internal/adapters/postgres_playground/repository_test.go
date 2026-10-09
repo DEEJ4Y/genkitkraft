@@ -4,7 +4,9 @@ package postgresplayground_test
 
 import (
 	"context"
+	"sort"
 	"testing"
+	"time"
 
 	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
 	postgresplayground "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_playground"
@@ -74,6 +76,111 @@ func TestPlaygroundRepositoryPostgres(t *testing.T) {
 		}
 		if len(sessions) == 0 {
 			t.Error("expected at least one session")
+		}
+	})
+
+	t.Run("ListSessionsByAgentPagedAndCount", func(t *testing.T) {
+		for i := 0; i < 2; i++ {
+			extra := &playground.Session{AgentID: agentID, Title: "Extra Session"}
+			if err := repo.CreateSession(ctx, extra); err != nil {
+				t.Fatalf("CreateSession (extra): %v", err)
+			}
+			t.Cleanup(func() { repo.DeleteSession(ctx, extra.ID) })
+		}
+
+		all, err := repo.ListSessionsByAgent(ctx, agentID)
+		if err != nil {
+			t.Fatalf("ListSessionsByAgent: %v", err)
+		}
+		total, err := repo.CountSessionsByAgent(ctx, agentID)
+		if err != nil {
+			t.Fatalf("CountSessionsByAgent: %v", err)
+		}
+		if total != len(all) || total < 3 {
+			t.Fatalf("expected count to match list (%d) and be >= 3, got %d", len(all), total)
+		}
+
+		seen := map[string]bool{}
+		for offset := 0; offset < total; offset += 2 {
+			page, err := repo.ListSessionsByAgentPaged(ctx, agentID, 2, offset)
+			if err != nil {
+				t.Fatalf("ListSessionsByAgentPaged(offset=%d): %v", offset, err)
+			}
+			if len(page) == 0 || len(page) > 2 {
+				t.Fatalf("offset %d: expected 1-2 sessions, got %d", offset, len(page))
+			}
+			for _, p := range page {
+				if seen[p.ID] {
+					t.Errorf("session %s returned on more than one page", p.ID)
+				}
+				seen[p.ID] = true
+			}
+		}
+		if len(seen) != total {
+			t.Errorf("expected pages to cover all %d sessions, covered %d", total, len(seen))
+		}
+
+		past, err := repo.ListSessionsByAgentPaged(ctx, agentID, 2, total+10)
+		if err != nil {
+			t.Fatalf("ListSessionsByAgentPaged (past end): %v", err)
+		}
+		if len(past) != 0 {
+			t.Errorf("expected no sessions past the end, got %d", len(past))
+		}
+
+		none, err := repo.CountSessionsByAgent(ctx, uuid.New().String())
+		if err != nil || none != 0 {
+			t.Errorf("expected 0 sessions for an unknown agent, got %d (err %v)", none, err)
+		}
+	})
+
+	t.Run("ListSessionsByAgentPagedStableOrderOnEqualUpdatedAt", func(t *testing.T) {
+		// Force every session of the agent to the same updated_at so the order is decided only by
+		// the tiebreaker (id DESC); pages must then be stable with no gaps or repeats.
+		for i := 0; i < 3; i++ {
+			tie := &playground.Session{AgentID: agentID, Title: "Tie Session"}
+			if err := repo.CreateSession(ctx, tie); err != nil {
+				t.Fatalf("CreateSession (tie): %v", err)
+			}
+			t.Cleanup(func() { repo.DeleteSession(ctx, tie.ID) })
+		}
+
+		if _, err := db.ExecContext(ctx,
+			`UPDATE playground_sessions SET updated_at = $1 WHERE agent_id = $2`,
+			time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC), agentID); err != nil {
+			t.Fatalf("forcing equal updated_at: %v", err)
+		}
+
+		full, err := repo.ListSessionsByAgentPaged(ctx, agentID, 100, 0)
+		if err != nil {
+			t.Fatalf("ListSessionsByAgentPaged (full): %v", err)
+		}
+		if len(full) < 3 {
+			t.Fatalf("expected at least 3 sessions, got %d", len(full))
+		}
+		fullIDs := make([]string, len(full))
+		for i, f := range full {
+			fullIDs[i] = f.ID
+		}
+		if !sort.SliceIsSorted(fullIDs, func(i, j int) bool { return fullIDs[i] > fullIDs[j] }) {
+			t.Errorf("expected ids in descending order on equal updated_at, got %v", fullIDs)
+		}
+
+		var paged []string
+		for offset := 0; offset < len(full); offset++ {
+			page, err := repo.ListSessionsByAgentPaged(ctx, agentID, 1, offset)
+			if err != nil {
+				t.Fatalf("ListSessionsByAgentPaged(limit=1, offset=%d): %v", offset, err)
+			}
+			if len(page) != 1 {
+				t.Fatalf("offset %d: expected exactly 1 session, got %d", offset, len(page))
+			}
+			paged = append(paged, page[0].ID)
+		}
+		for i := range fullIDs {
+			if paged[i] != fullIDs[i] {
+				t.Fatalf("one-at-a-time paging differs from the full page at %d:\npaged: %v\nfull:  %v", i, paged, fullIDs)
+			}
 		}
 	})
 

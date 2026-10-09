@@ -423,6 +423,7 @@ func NewServer(cfg config.Config) (*Server, error) {
 
 	// Create playground queries
 	listSessionsQuery := queries.NewListPlaygroundSessionsQuery(playgroundRepo)
+	listDeploySessionsQuery := queries.NewListDeploySessionsQuery(playgroundRepo, agentRepo)
 	getSessionQuery := queries.NewGetPlaygroundSessionQuery(playgroundRepo)
 	listMessagesQuery := queries.NewListPlaygroundMessagesQuery(playgroundRepo)
 	resolveConfigQuery := queries.NewResolvePlaygroundConfigQuery(agentRepo, providerRepo, promptRepo, enc, agentToolRepo, httpToolRepo, mcpServerRepo)
@@ -439,11 +440,12 @@ func NewServer(cfg config.Config) (*Server, error) {
 			FailStream:    decorators.ApplyLoggingExecutor(failStreamCmd, "FailPlaygroundStream", logger),
 		},
 		Queries: app.PlaygroundQueries{
-			ListSessions:    decorators.ApplyLogging(listSessionsQuery, "ListPlaygroundSessions", logger),
-			GetSession:      decorators.ApplyLogging(getSessionQuery, "GetPlaygroundSession", logger),
-			ListMessages:    decorators.ApplyLogging(listMessagesQuery, "ListPlaygroundMessages", logger),
-			ResolveConfig:   decorators.ApplyLogging(resolveConfigQuery, "ResolvePlaygroundConfig", logger),
-			GetStreamChunks: decorators.ApplyLogging(getStreamChunksQuery, "GetPlaygroundStreamChunks", logger),
+			ListSessions:       decorators.ApplyLogging(listSessionsQuery, "ListPlaygroundSessions", logger),
+			ListDeploySessions: decorators.ApplyLogging(listDeploySessionsQuery, "ListDeploySessions", logger),
+			GetSession:         decorators.ApplyLogging(getSessionQuery, "GetPlaygroundSession", logger),
+			ListMessages:       decorators.ApplyLogging(listMessagesQuery, "ListPlaygroundMessages", logger),
+			ResolveConfig:      decorators.ApplyLogging(resolveConfigQuery, "ResolvePlaygroundConfig", logger),
+			GetStreamChunks:    decorators.ApplyLogging(getStreamChunksQuery, "GetPlaygroundStreamChunks", logger),
 		},
 	}
 

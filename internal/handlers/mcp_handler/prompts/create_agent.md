@@ -73,7 +73,7 @@ Agents are the central unit. Each agent packages a provider, model, system promp
 | **Temperature**   | Controls randomness (0.0–2.0)                          |
 | **Top P**         | Nucleus sampling threshold                             |
 | **Top K**         | Limits the token vocabulary per step                   |
-| **Tools**         | HTTP tools and MCP server tools assigned to this agent |
+| **Tools**         | HTTP tools, MCP server tools and built-in tools (e.g. web_fetch) assigned to this agent |
 
 Generation parameters (temperature, top P, top K) are optional — omitting them uses provider defaults.
 
@@ -355,7 +355,9 @@ The server manages conversation history. The caller only sends the new message e
 
 ```
 POST   /api/v1/agents/{agentId}/deploy/sessions               → create
+GET    /api/v1/agents/{agentId}/deploy/sessions               → list (paginated: ?limit=&offset=)
 GET    /api/v1/agents/{agentId}/deploy/sessions/{sessionId}   → get
+GET    /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/messages → conversation history
 DELETE /api/v1/agents/{agentId}/deploy/sessions/{sessionId}   → delete (clears all messages)
 ```
 
@@ -567,7 +569,9 @@ All endpoints are served on the same port as the UI (default: `8080`).
 | ------ | ----------------------------------------------------------------------- | --------------------------- |
 | POST   | `/api/v1/agents/{agentId}/deploy/chat/completions`                      | Stateless chat completions  |
 | POST   | `/api/v1/agents/{agentId}/deploy/sessions`                              | Create a stateful session   |
+| GET    | `/api/v1/agents/{agentId}/deploy/sessions`                              | List sessions (paginated)   |
 | GET    | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}`                  | Get session metadata        |
+| GET    | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/messages`         | Get conversation history    |
 | DELETE | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}`                  | Delete session and messages |
 | POST   | `/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions` | Stateful chat completions   |
 
@@ -705,7 +709,7 @@ Agents are created by combining a configured LLM provider, a system prompt, gene
 1. **Configure an LLM Provider** — Add your API key and select the model you want to use.
 2. **Create a System Prompt** — Write the instructions that will guide the agent's behaviour.
 3. **Define the Agent** — Give it a name, select the provider and prompt, and optionally set any generation parameters (temperature, top P, top K).
-4. **Assign Tools** — Choose which HTTP tools and MCP server tools the agent can use during inference.
+4. **Assign Tools** — Choose which HTTP tools, MCP server tools and built-in tools (such as web_fetch) the agent can use during inference.
 5. **Save and Deploy** — Once saved, the agent is immediately available for testing in the Playground or via the Deploy API.
 6. **Test and Iterate** — Use the Playground to have conversations with your agent, tweak the system prompt, adjust generation parameters, or reassign tools as needed.
 

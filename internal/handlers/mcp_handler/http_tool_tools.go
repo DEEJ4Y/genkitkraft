@@ -53,8 +53,8 @@ type HttpToolHeaderInput struct {
 
 type CreateHttpToolInput struct {
 	Name         string                `json:"name" jsonschema:"tool name (required)"`
-	Description  string                `json:"description" jsonschema:"tool description (required)"`
-	Method       string                `json:"method" jsonschema:"HTTP method: GET, POST, PUT, DELETE, PATCH (required)"`
+	Description  string                `json:"description,omitempty" jsonschema:"tool description (optional but recommended: the model uses it to decide when to call the tool)"`
+	Method       string                `json:"method" jsonschema:"HTTP method: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS (required)"`
 	URL          string                `json:"url" jsonschema:"URL template (required)"`
 	Headers      []HttpToolHeaderInput `json:"headers,omitempty" jsonschema:"request headers"`
 	BodyTemplate string                `json:"body_template,omitempty" jsonschema:"request body template with {{placeholders}}"`

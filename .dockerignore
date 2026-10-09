@@ -5,6 +5,8 @@ docs/
 website/
 spec/node_modules/
 ui/node_modules/
+widget-builder/node_modules/
+widget-builder/dist/
 ui/.next/
 ui/dist/
 main.exe

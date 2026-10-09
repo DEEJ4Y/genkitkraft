@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased — Deploy API history endpoints, chat widget builder and integration guide
+
+### New features
+
+- **Deploy API can now list sessions and read history** — two new endpoints under `/api/v1/agents/{agentId}/deploy/`, protected by `PUBLIC_API_KEY` like the rest of the deploy API:
+  - `GET /deploy/sessions` lists the agent's sessions (paginated with `limit`/`offset`, response has `total`, most recently updated first, `404` for an unknown agent). The list covers every session of the agent and is not scoped to an end user.
+  - `GET /deploy/sessions/{sessionId}/messages` returns the conversation oldest first, with a `status` per message (`complete`, `streaming`, `error`) so partial and failed replies are visible. Previously the only history routes were the playground ones, which use dashboard authentication and ignore the API key (and are open to everyone when `AUTH_CREDENTIALS` is unset).
+  - Spec-first (`spec/models/deploy.tsp`, `spec/routes/deploy.tsp`), with new `ListDeploySessions` query, `ListSessionsByAgentPaged` and `CountSessionsByAgent` repository methods for SQLite, MySQL/MariaDB and PostgreSQL. A message's `role` is documented as `"user"` or `"assistant"` but typed as a string in the spec, because a second `"user" | "assistant"` enum made the code generator rename the existing playground role constants.
+- **Chat widget builder in the dashboard** — a new **Widget** tab on the agent edit screen (`ui/components/AgentWidgetBuilder.tsx`) for designing the [AI chat widget](https://github.com/techorionai/ai-chat-widget) that embeds an agent in a website. It covers branding, colors (with a WCAG contrast warning), home screen cards, welcome message, sessions list, footer tabs, behaviour and advanced options (custom launcher HTML, named URL actions, Mantine theme JSON), plus presets, JSON import/export and a live preview that injects the real widget with an in-memory provider (no agent call, no API key). It generates npm and CDN embed snippets, the custom provider, and a reference backend.
+- **Standalone public widget builder** — the same builder is available at `/widget-builder` on the docs website, for anyone using the widget with any backend. Config persists in the browser and can be shared as a link.
+- **`widget-builder/` package** — the builder lives in one shared package consumed by both `ui/` and `website/` via a `file:` dependency (`install-links=true`). Rebuild it with `npm run build` and reinstall in the consuming app after changing it (see `widget-builder/README.md`). The Dockerfile, CI and docs-deploy workflow now build it first.
+
+### Docs
+
+- **New guide: Embedding an agent with the chat widget** (`website/docs/guides/chat-widget.md`) — architecture, why the browser must never call the deploy API directly (shared `PUBLIC_API_KEY`, no CORS), the four backend endpoints with Node and Python examples, a security checklist, the custom `ChatProvider`, client integration (npm, CDN, React/Next), and troubleshooting. The backend stores only a `userId → sessionId` mapping; sessions and transcripts come from the new history endpoints.
+- **Deploy API reference** — documents the two new endpoints, and corrects the error section: only `401` uses the OpenAI error format, other errors are `{"error": "..."}`. `api/endpoints.md` also lists the previously missing stream and cancel routes.
+
+### Testing
+
+- 14 handler tests for the new endpoints (`internal/handlers/http_handler/deploy_history_test.go`: shape, snake_case fields, empty lists as `[]`, wrong agent and unknown session or agent as `404`, pagination and clamping, failed replies, agent scoping), key-required tests for the new paths in the deploy auth middleware, and paged-list and count integration tests for the MySQL, MariaDB and PostgreSQL playground adapters.
+- Unit tests for the builder's config state, snippet generator and generated provider and backend example (`widget-builder/src/widgetBuilder.test.ts`). The provider tests execute the generated JavaScript against a fake `fetch`, which caught a CDN-snippet bug where `request()` lost its default argument.
+- New `Frontend` CI job builds and tests `widget-builder`, `ui` and `website`.
+- Verified end to end against a running instance: the generated CDN snippet, a backend following the guide, and a real OpenAI-backed agent (session create/list/history, multi-turn memory, per-user ownership checks).
+
 ## v0.6.1 — MCP discovery timeout and horizontal scaling docs
 
 ### Fixes

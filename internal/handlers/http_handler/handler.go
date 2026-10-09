@@ -782,6 +782,26 @@ func (h *Handler) CreateDeploySession(w http.ResponseWriter, r *http.Request, ag
 	writeJSON(w, http.StatusCreated, toDeploySessionResponse(result.Session))
 }
 
+func (h *Handler) ListDeploySessions(w http.ResponseWriter, r *http.Request, agentId string, params gen.ListDeploySessionsParams) {
+	qParams := toListDeploySessionsParams(agentId, params)
+	result, err := h.playgroundApp.Queries.ListDeploySessions.Execute(r.Context(), qParams)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toDeploySessionListResponse(result))
+}
+
+func (h *Handler) ListDeployMessages(w http.ResponseWriter, r *http.Request, agentId string, sessionId string) {
+	// The query verifies the session belongs to agentId (NotFound otherwise).
+	result, err := h.playgroundApp.Queries.ListMessages.Execute(r.Context(), queries.ListPlaygroundMessagesParams{SessionID: sessionId, AgentID: agentId})
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toDeployMessageListResponse(result))
+}
+
 func (h *Handler) GetDeploySession(w http.ResponseWriter, r *http.Request, agentId string, sessionId string) {
 	result, err := h.playgroundApp.Queries.GetSession.Execute(r.Context(), queries.GetPlaygroundSessionParams{
 		SessionID: sessionId,

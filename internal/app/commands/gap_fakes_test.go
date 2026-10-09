@@ -32,6 +32,12 @@ func (f *fakePlaygroundRepo) ListSessionsByAgent(context.Context, string) ([]*pl
 	return nil, nil
 }
 
+func (f *fakePlaygroundRepo) ListSessionsByAgentPaged(context.Context, string, int, int) ([]*playground.Session, error) {
+	return nil, nil
+}
+
+func (f *fakePlaygroundRepo) CountSessionsByAgent(context.Context, string) (int, error) { return 0, nil }
+
 func (f *fakePlaygroundRepo) DeleteSession(context.Context, string) error { return nil }
 
 func (f *fakePlaygroundRepo) UpdateSessionTitle(context.Context, string, string) error { return nil }

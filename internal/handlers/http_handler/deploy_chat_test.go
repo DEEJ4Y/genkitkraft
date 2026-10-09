@@ -140,6 +140,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	cancelStream := commands.NewCancelPlaygroundStreamCommand(playgroundRepo, streamRegistry)
 	failStream := commands.NewFailPlaygroundStreamCommand(playgroundRepo)
 	listSessions := queries.NewListPlaygroundSessionsQuery(playgroundRepo)
+	listDeploySessions := queries.NewListDeploySessionsQuery(playgroundRepo, agentRepo)
 	getSession := queries.NewGetPlaygroundSessionQuery(playgroundRepo)
 	listMessages := queries.NewListPlaygroundMessagesQuery(playgroundRepo)
 	getStreamChunks := queries.NewGetPlaygroundStreamChunksQuery(playgroundRepo)
@@ -154,11 +155,12 @@ func setupTestEnv(t *testing.T) *testEnv {
 			FailStream:    failStream,
 		},
 		Queries: app.PlaygroundQueries{
-			ListSessions:    listSessions,
-			GetSession:      getSession,
-			ListMessages:    listMessages,
-			ResolveConfig:   resolveConfig,
-			GetStreamChunks: getStreamChunks,
+			ListSessions:       listSessions,
+			ListDeploySessions: listDeploySessions,
+			GetSession:         getSession,
+			ListMessages:       listMessages,
+			ResolveConfig:      resolveConfig,
+			GetStreamChunks:    getStreamChunks,
 		},
 	}
 

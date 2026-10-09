@@ -295,12 +295,41 @@ func (h *Handler) thingCreate(ctx context.Context, _ *mcp.CallToolRequest, input
 - **Server mounting**: The MCP server is mounted at `/mcp` via `mcp.NewStreamableHTTPHandler` in `internal/services/server.go`
 - **Auth**: If `AUTH_CREDENTIALS` is configured, the MCP endpoint is wrapped with HTTP basic auth automatically
 
+### Keeping MCP Schemas in Sync (MUST follow)
+
+MCP tools reuse the same app commands/queries as the HTTP handlers, but unlike HTTP they have **no code generation**. Regenerating from TypeSpec updates the HTTP path only; the MCP input/output DTOs silently go stale (e.g. a new `builtInToolIds` field was missing from `agent_tools_update`, and `maxToolCalls` from `agents_create`).
+
+Whenever you change a TypeSpec model/route **or** an app command/query params struct, find the matching MCP tool and mirror the change:
+
+- **Input DTO** — add/rename/remove the field (with a `jsonschema` description)
+- **Output DTO and `toXOutput` mapper** — expose the field so `*_get` / `*_list` can read it back
+- **Params mapping** — pass the field into the `commands.*Params` / `queries.*Params`
+- **Descriptions and "(required)" markers** — keep them consistent with the spec (optional in the spec means `omitempty` here)
+
+Find affected tools with `grep -rn "<ParamsStructName>" internal/handlers/mcp_handler/`.
+
+**Replace-style update tools are the dangerous case.** Commands like `UpdateAgentTools` replace the whole config and normalize nil to empty, so a field missing from the MCP input does not stay unchanged: it is **wiped** on every call. Also check overrides that the HTTP handler accepts (e.g. the playground chat overrides) and operations added to the spec (e.g. new routes) and decide explicitly whether each is exposed over MCP or intentionally skipped (note the reason in a comment).
+
+`internal/handlers/mcp_handler/schema_sync_test.go` guards the main input DTOs against their app params. If it fails, add the missing field to the DTO; only add an entry to its allowlist when the omission is intentional.
+
 ### Workflow for Adding MCP Tools
 
 1. **Ensure app layer exists** — The commands/queries your MCP tools will call must already exist (or be created first following hexagonal architecture rules)
 2. **Create or update the tools file** — Add input/output DTOs, registration function, and handler methods in `internal/handlers/mcp_handler/<domain>_tools.go`
 3. **Register in handler.go** — If it's a new file, add `h.register<Domain>Tools(server)` call in `HTTPHandler()`
 4. **Update Handler struct** — If new app dependencies are needed, add them to the struct and `NewHandler()` in `handler.go`, then wire them in `internal/services/server.go`
+5. **Modifying an existing endpoint/command?** Update its existing MCP tool too (see "Keeping MCP Schemas in Sync"), and add the new params struct pair to `schema_sync_test.go`
+
+## Chat Widget & Widget Builder
+
+Applies to any change under `widget-builder/`, or any bump of the `navigableai-chat-widget` version. Full procedure: `docs/widget-builder/01-updating-the-widget.md`.
+
+**Rules that are easy to miss:**
+
+1. **`ui/` and `website/` hold a copy of `widget-builder`, not a symlink** (`file:../widget-builder` with `install-links=true`). After changing it: `npm run build` in `widget-builder/`, then in each app `rm -rf node_modules/genkitkraft-widget-builder && npm install`, then clear bundler caches (`rm -rf .next/cache dist/cache` for `ui`; `rm -rf node_modules/.cache/webpack` and `npx docusaurus clear` for `website`), then restart the dev server. A bare `npm install` or a rebuild alone leaves the app on old code.
+2. **A widget version bump touches several places together:** `widget-builder/package.json` and its lockfile, `WIDGET_VERSION` in `widget-builder/src/constants.ts`, and the hard-coded versions in `website/docs/guides/chat-widget.md`. Keep the provider source in `src/providerSource.ts` identical to the copy in that doc.
+3. **Re-check the workarounds for the hosted iframe app** (invalid primary colors, `grape`/`dark` as hex, same config shape on update as on init, waiting for the iframe `load`). They are listed in the doc. Remove any the new version fixes, with their tests.
+4. **Verify in a real browser against the hosted iframe**, not only with vitest: pick every primary color, type a hex color character by character, apply each preset, and watch the console (including the iframe) for errors.
 
 ## Checklist for New Features
 
@@ -310,6 +339,7 @@ func (h *Handler) thingCreate(ctx context.Context, _ *mcp.CallToolRequest, input
 2. [ ] Import new route file in `spec/main.tsp` if it's a new file
 3. [ ] Run `make generate` to compile spec → generate OpenAPI → generate Go server stubs + TS client
 4. [ ] Verify the generated `ServerInterface` in `internal/api/gen/server.gen.go` has the new methods
+4a. [ ] If you changed an existing model/route, list the changed models and check each against `internal/handlers/mcp_handler/` (MCP DTOs are not generated and will not update themselves)
 
 ### Phase 2: Hexagonal Implementation (follow dependency flow strictly)
 
@@ -319,7 +349,7 @@ func (h *Handler) thingCreate(ctx context.Context, _ *mcp.CallToolRequest, input
 8. [ ] Create commands/queries in `internal/app/commands/` or `internal/app/queries/` (imports ports + domain)
 9. [ ] Add decorators if needed in `internal/app/decorators/` (imports app + executors)
 10. [ ] Add handler with `type_conversion.go` in `internal/handlers/<name>/` (imports app + gen + common)
-11. [ ] Add MCP tools in `internal/handlers/mcp_handler/<domain>_tools.go` if the feature should be exposed via MCP (imports app + mcp SDK)
+11. [ ] Add MCP tools in `internal/handlers/mcp_handler/<domain>_tools.go` if the feature should be exposed via MCP (imports app + mcp SDK). **If you modified an existing command/endpoint, update its existing MCP tool's input/output DTOs, mapper and params mapping too**
 12. [ ] Wire everything in `internal/services/` composition root (imports all layers)
 
 ### Phase 3: Verification
@@ -327,6 +357,7 @@ func (h *Handler) thingCreate(ctx context.Context, _ *mcp.CallToolRequest, input
 13. [ ] Run `go build ./...` and `go vet ./...`
 14. [ ] Write unit tests (mock port interfaces) and integration tests (test containers)
 15. [ ] Verify dependency flow rules: no forbidden imports between layers
+15a. [ ] Run `go test ./internal/handlers/mcp_handler/` to confirm MCP input DTOs still cover the app params
 
 ### Phase 4: Documentation (`website/docs/`)
 
@@ -351,8 +382,10 @@ Update user-facing documentation in `website/docs/` to reflect the feature chang
 17. [ ] If page is too large, split into subfolder with multiple pages + `_category_.json`
 18. [ ] Add/update the relevant doc page in `website/docs/<category>/`
 19. [ ] Verify links and cross-references are correct
+20. [ ] If the change touches `widget-builder/` or the `navigableai-chat-widget` version: follow `docs/widget-builder/01-updating-the-widget.md` (refresh the `ui/` and `website/` copies, update versions in `website/docs/guides/chat-widget.md`, re-check hosted-app workarounds, verify in a browser)
 
 ## Additional Resources
 
 - [Hexagonal Architecture Guide](docs/hexagonal-architecture/README.md) - project structure, patterns, dependency rules
 - [TypeSpec Guide](docs/api-spec/01-typespec-guide.md) - API contract definitions
+- [Updating the Chat Widget Builder](docs/widget-builder/01-updating-the-widget.md) - refreshing the `ui/`/`website/` copies, bumping the widget version, hosted-app workarounds

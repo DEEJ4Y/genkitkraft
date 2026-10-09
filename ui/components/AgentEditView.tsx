@@ -1,7 +1,9 @@
 import { Button, Stack, Tabs, Text } from '@mantine/core'
 import { IconArrowLeft } from '@tabler/icons-react'
+import { useState } from 'react'
 import type { components } from '../lib/api/schema'
 import { AgentDeployInfo } from './AgentDeployInfo'
+import { AgentWidgetBuilder } from './AgentWidgetBuilder'
 import { AgentForm } from './AgentForm'
 import { AgentGapsTab } from './AgentGapsTab'
 import { AgentToolsTab } from './AgentToolsTab'
@@ -16,6 +18,7 @@ interface AgentEditViewProps {
 }
 
 export function AgentEditView({ agent, onSaved, onCancel }: AgentEditViewProps) {
+  const [tab, setTab] = useState('config')
   return (
     <Stack>
       <Button
@@ -32,13 +35,14 @@ export function AgentEditView({ agent, onSaved, onCancel }: AgentEditViewProps) 
         {agent.name}
       </Text>
 
-      <Tabs defaultValue="config">
+      <Tabs value={tab} onChange={(v) => setTab(v ?? 'config')}>
         <Tabs.List mb="md">
           <Tabs.Tab value="config">Configuration</Tabs.Tab>
           <Tabs.Tab value="tools">Tools</Tabs.Tab>
           <Tabs.Tab value="gaps">Gaps</Tabs.Tab>
           <Tabs.Tab value="playground">Playground</Tabs.Tab>
           <Tabs.Tab value="deploy">Deploy</Tabs.Tab>
+          <Tabs.Tab value="widget">Widget</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="config">
@@ -59,6 +63,11 @@ export function AgentEditView({ agent, onSaved, onCancel }: AgentEditViewProps) 
 
         <Tabs.Panel value="deploy">
           <AgentDeployInfo agentId={agent.id} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="widget">
+          {/* Mounted only while active: the preview injects the widget into the page. */}
+          {tab === 'widget' && <AgentWidgetBuilder agentId={agent.id} agentName={agent.name} />}
         </Tabs.Panel>
       </Tabs>
     </Stack>

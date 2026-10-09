@@ -35,6 +35,9 @@ type ServerInterface interface {
 	// Deploy chat completions
 	// (POST /api/v1/agents/{agentId}/deploy/chat/completions)
 	DeployChatCompletions(w http.ResponseWriter, r *http.Request, agentId string)
+	// List deploy sessions
+	// (GET /api/v1/agents/{agentId}/deploy/sessions)
+	ListDeploySessions(w http.ResponseWriter, r *http.Request, agentId string, params ListDeploySessionsParams)
 	// Create deploy session
 	// (POST /api/v1/agents/{agentId}/deploy/sessions)
 	CreateDeploySession(w http.ResponseWriter, r *http.Request, agentId string)
@@ -53,6 +56,9 @@ type ServerInterface interface {
 	// Reconnect to deploy session chat completions stream
 	// (GET /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/stream)
 	DeploySessionChatCompletionsStream(w http.ResponseWriter, r *http.Request, agentId string, sessionId string)
+	// List deploy session messages
+	// (GET /api/v1/agents/{agentId}/deploy/sessions/{sessionId}/messages)
+	ListDeployMessages(w http.ResponseWriter, r *http.Request, agentId string, sessionId string)
 	// List agent gaps
 	// (GET /api/v1/agents/{agentId}/gaps)
 	ListGaps(w http.ResponseWriter, r *http.Request, agentId string, params ListGapsParams)
@@ -317,6 +323,50 @@ func (siw *ServerInterfaceWrapper) DeployChatCompletions(w http.ResponseWriter, 
 	handler.ServeHTTP(w, r)
 }
 
+// ListDeploySessions operation middleware
+func (siw *ServerInterfaceWrapper) ListDeploySessions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListDeploySessionsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", false, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListDeploySessions(w, r, agentId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // CreateDeploySession operation middleware
 func (siw *ServerInterfaceWrapper) CreateDeploySession(w http.ResponseWriter, r *http.Request) {
 
@@ -503,6 +553,40 @@ func (siw *ServerInterfaceWrapper) DeploySessionChatCompletionsStream(w http.Res
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeploySessionChatCompletionsStream(w, r, agentId, sessionId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListDeployMessages operation middleware
+func (siw *ServerInterfaceWrapper) ListDeployMessages(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "agentId" -------------
+	var agentId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "agentId", r.PathValue("agentId"), &agentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "agentId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", r.PathValue("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sessionId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListDeployMessages(w, r, agentId, sessionId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1676,12 +1760,14 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents", wrapper.ListAgents)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents", wrapper.CreateAgent)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/chat/completions", wrapper.DeployChatCompletions)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions", wrapper.ListDeploySessions)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions", wrapper.CreateDeploySession)
 	m.HandleFunc("DELETE "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}", wrapper.DeleteDeploySession)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}", wrapper.GetDeploySession)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions", wrapper.DeploySessionChatCompletions)
 	m.HandleFunc("POST "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/cancel", wrapper.CancelDeploySessionChatCompletions)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/chat/completions/stream", wrapper.DeploySessionChatCompletionsStream)
+	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/messages", wrapper.ListDeployMessages)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/gaps", wrapper.ListGaps)
 	m.HandleFunc("GET "+options.BaseURL+"/api/v1/agents/{agentId}/gaps/{gapId}", wrapper.GetGap)
 	m.HandleFunc("PUT "+options.BaseURL+"/api/v1/agents/{agentId}/gaps/{gapId}", wrapper.UpdateGap)

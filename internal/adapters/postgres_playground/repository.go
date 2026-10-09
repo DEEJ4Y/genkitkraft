@@ -80,6 +80,35 @@ func (r *PlaygroundRepository) ListSessionsByAgent(ctx context.Context, agentID 
 	return sessions, rows.Err()
 }
 
+func (r *PlaygroundRepository) ListSessionsByAgentPaged(ctx context.Context, agentID string, limit, offset int) ([]*playground.Session, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, agent_id, title, created_at, updated_at
+		 FROM playground_sessions WHERE agent_id = $1 ORDER BY updated_at DESC, id DESC LIMIT $2 OFFSET $3`, agentID, limit, offset)
+	if err != nil {
+		return nil, apperrors.NewAppErrorf(apperrors.Internal, "listing playground sessions: %v", err)
+	}
+	defer rows.Close()
+
+	var sessions []*playground.Session
+	for rows.Next() {
+		var s playground.Session
+		if err := rows.Scan(&s.ID, &s.AgentID, &s.Title, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			return nil, apperrors.NewAppErrorf(apperrors.Internal, "scanning playground session: %v", err)
+		}
+		sessions = append(sessions, &s)
+	}
+	return sessions, rows.Err()
+}
+
+func (r *PlaygroundRepository) CountSessionsByAgent(ctx context.Context, agentID string) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM playground_sessions WHERE agent_id = $1`, agentID).Scan(&count)
+	if err != nil {
+		return 0, apperrors.NewAppErrorf(apperrors.Internal, "counting playground sessions: %v", err)
+	}
+	return count, nil
+}
+
 func (r *PlaygroundRepository) DeleteSession(ctx context.Context, id string) error {
 	result, err := r.db.ExecContext(ctx, `DELETE FROM playground_sessions WHERE id = $1`, id)
 	if err != nil {

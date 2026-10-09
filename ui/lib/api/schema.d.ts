@@ -135,7 +135,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List deploy sessions
+         * @description List the agent's deploy sessions with pagination, most recently updated first. The list covers every session of the agent (including ones created in the dashboard playground) and is not scoped to an end user: callers that serve multiple end users must keep their own mapping of user to session ID.
+         */
+        get: operations["listDeploySessions"];
         put?: never;
         /**
          * Create deploy session
@@ -224,6 +228,26 @@ export interface paths {
          * @description Reconnect to the assistant reply currently (or most recently) streaming for this session. Send a `Last-Event-ID` header with the last SSE `id:` received to resume from the next token instead of replaying the whole reply. Response is an SSE stream of `chat.completion.chunk` events.
          */
         get: operations["deploySessionChatCompletionsStream"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{agentId}/deploy/sessions/{sessionId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List deploy session messages
+         * @description List the messages of a deploy session in chronological order (the conversation history).
+         */
+        get: operations["listDeployMessages"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1101,6 +1125,54 @@ export interface components {
             /** @description The content of the message. */
             content: string;
         };
+        /** @description The messages of a deploy session, oldest first. */
+        "Models.DeployMessageListResponse": {
+            /** @description Messages in chronological order. */
+            messages: components["schemas"]["Models.DeployMessageResponse"][];
+        };
+        /** @description A message stored in a deploy session. */
+        "Models.DeployMessageResponse": {
+            /** @description Unique message ID. */
+            id: string;
+            /** @description ID of the session this message belongs to. */
+            session_id: string;
+            /** @description The role of the message author: "user" or "assistant". */
+            role: string;
+            /** @description The message content. For an assistant message that is still streaming or failed, this is the partial content so far. */
+            content: string;
+            /** @description Generation status of the message. */
+            status: components["schemas"]["Models.DeployMessageStatus"];
+            /**
+             * Format: date-time
+             * @description When this message was created (ISO 8601).
+             */
+            created_at: string;
+        };
+        /**
+         * @description Generation state of a stored deploy message.
+         * @enum {string}
+         */
+        "Models.DeployMessageStatus": "complete" | "streaming" | "error";
+        /** @description Paginated list of deploy sessions for an agent. Includes every session of the agent, regardless of who created it. */
+        "Models.DeploySessionListResponse": {
+            /** @description Sessions, most recently updated first. */
+            sessions: components["schemas"]["Models.DeploySessionResponse"][];
+            /**
+             * Format: int32
+             * @description Total number of sessions for the agent.
+             */
+            total: number;
+            /**
+             * Format: int32
+             * @description Maximum number of sessions returned.
+             */
+            limit: number;
+            /**
+             * Format: int32
+             * @description Number of sessions skipped.
+             */
+            offset: number;
+        };
         /** @description A deploy session for stateful chat with an agent. */
         "Models.DeploySessionResponse": {
             /** @description Unique session ID. */
@@ -1968,6 +2040,49 @@ export interface operations {
             };
         };
     };
+    listDeploySessions: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.DeploySessionListResponse"];
+                };
+            };
+            /** @description Access is unauthorized. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
     createDeploySession: {
         parameters: {
             query?: never;
@@ -2204,6 +2319,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Models.DeployChatCompletionResponse"];
+                };
+            };
+            /** @description Access is unauthorized. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+            /** @description The server cannot find the requested resource. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.ErrorResponse"];
+                };
+            };
+        };
+    };
+    listDeployMessages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request has succeeded. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Models.DeployMessageListResponse"];
                 };
             };
             /** @description Access is unauthorized. */

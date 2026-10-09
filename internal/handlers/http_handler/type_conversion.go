@@ -553,6 +553,54 @@ func hasSystemMessage(messages []gen.ModelsDeployChatMessage) bool {
 	return false
 }
 
+func toListDeploySessionsParams(agentID string, params gen.ListDeploySessionsParams) queries.ListDeploySessionsParams {
+	limit := 20
+	offset := 0
+	if params.Limit != nil {
+		limit = int(*params.Limit)
+	}
+	if params.Offset != nil {
+		offset = int(*params.Offset)
+	}
+	return queries.ListDeploySessionsParams{AgentID: agentID, Limit: limit, Offset: offset}
+}
+
+func toDeploySessionListResponse(result queries.ListDeploySessionsResult) gen.ModelsDeploySessionListResponse {
+	sessions := make([]gen.ModelsDeploySessionResponse, len(result.Sessions))
+	for i, s := range result.Sessions {
+		sessions[i] = toDeploySessionResponse(s)
+	}
+	return gen.ModelsDeploySessionListResponse{
+		Sessions: sessions,
+		Total:    int32(result.Total),
+		Limit:    int32(result.Limit),
+		Offset:   int32(result.Offset),
+	}
+}
+
+func toDeployMessageResponse(m *playground.Message) gen.ModelsDeployMessageResponse {
+	status := gen.ModelsDeployMessageStatus(m.Status)
+	if m.Status == "" {
+		status = gen.Complete
+	}
+	return gen.ModelsDeployMessageResponse{
+		Id:        m.ID,
+		SessionId: m.SessionID,
+		Role:      m.Role,
+		Content:   m.Content,
+		Status:    status,
+		CreatedAt: m.CreatedAt,
+	}
+}
+
+func toDeployMessageListResponse(result queries.ListPlaygroundMessagesResult) gen.ModelsDeployMessageListResponse {
+	messages := make([]gen.ModelsDeployMessageResponse, len(result.Messages))
+	for i, m := range result.Messages {
+		messages[i] = toDeployMessageResponse(m)
+	}
+	return gen.ModelsDeployMessageListResponse{Messages: messages}
+}
+
 func toDeploySessionResponse(s *playground.Session) gen.ModelsDeploySessionResponse {
 	return gen.ModelsDeploySessionResponse{
 		Id:        s.ID,

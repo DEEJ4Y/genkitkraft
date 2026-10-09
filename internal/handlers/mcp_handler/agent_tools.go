@@ -60,7 +60,7 @@ type CreateAgentInput struct {
 	TopP                *float64 `json:"top_p,omitempty" jsonschema:"top-p value (0-1)"`
 	TopKEnabled         *bool    `json:"top_k_enabled,omitempty" jsonschema:"enable top-k sampling"`
 	TopK                *int     `json:"top_k,omitempty" jsonschema:"top-k value"`
-	MaxToolCalls        *int     `json:"max_tool_calls,omitempty" jsonschema:"max tool calls allowed per turn"`
+	MaxToolCalls        *int     `json:"max_tool_calls,omitempty" jsonschema:"maximum tool call iterations per request (default 10)"`
 	GapReportingEnabled *bool    `json:"gap_reporting_enabled,omitempty" jsonschema:"enable the report_gap tool for this agent"`
 }
 
@@ -76,7 +76,7 @@ type UpdateAgentInput struct {
 	TopP                *float64 `json:"top_p,omitempty" jsonschema:"top-p value"`
 	TopKEnabled         *bool    `json:"top_k_enabled,omitempty" jsonschema:"enable top-k sampling"`
 	TopK                *int     `json:"top_k,omitempty" jsonschema:"top-k value"`
-	MaxToolCalls        *int     `json:"max_tool_calls,omitempty" jsonschema:"new max tool calls per turn"`
+	MaxToolCalls        *int     `json:"max_tool_calls,omitempty" jsonschema:"maximum tool call iterations per request"`
 	GapReportingEnabled *bool    `json:"gap_reporting_enabled,omitempty" jsonschema:"enable or disable the report_gap tool for this agent"`
 }
 
