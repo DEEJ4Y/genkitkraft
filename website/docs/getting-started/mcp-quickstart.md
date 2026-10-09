@@ -16,13 +16,14 @@ The MCP server is available at `http://localhost:8080/mcp` using the **Streamabl
 
 ### Claude Desktop
 
-Add this to your `claude_desktop_config.json`:
+Claude Desktop connects to a remote server through the `mcp-remote` bridge. This needs [Node.js](https://nodejs.org) (for `npx`). Add this to your `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "genkitkraft": {
-      "url": "http://localhost:8080/mcp"
+      "command": "npx",
+      "args": ["mcp-remote", "http://localhost:8080/mcp"]
     }
   }
 }
@@ -40,11 +41,34 @@ In Cursor settings, add an MCP server:
 Any client that supports Streamable HTTP transport can connect using the URL above.
 
 :::tip Authentication
-If you've set [`AUTH_CREDENTIALS`](/docs/configuration/environment-variables#auth_credentials), add a Basic Auth header:
+If you've set [`AUTH_CREDENTIALS`](/docs/configuration/environment-variables#auth_credentials), add a Basic Auth header.
+
+In Cursor and other clients that connect by URL:
 
 ```json
 "headers": {
   "Authorization": "Basic <base64-encoded username:password>"
+}
+```
+
+In Claude Desktop, pass the header to `mcp-remote`:
+
+```json
+{
+  "mcpServers": {
+    "genkitkraft": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "http://localhost:8080/mcp",
+        "--header",
+        "Authorization:${AUTH_HEADER}"
+      ],
+      "env": {
+        "AUTH_HEADER": "Basic <base64-encoded username:password>"
+      }
+    }
+  }
 }
 ```
 

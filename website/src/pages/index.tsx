@@ -56,7 +56,8 @@ const FeatureList: FeatureItem[] = [
 const mcpConfigSnippet = `{
   "mcpServers": {
     "genkitkraft": {
-      "url": "http://localhost:8080/mcp"
+      "command": "npx",
+      "args": ["mcp-remote", "http://localhost:8080/mcp"]
     }
   }
 }`;
@@ -123,7 +124,7 @@ function McpShowcase() {
             </div>
           </div>
           <div className={clsx('col col--6', styles.mcpCode)}>
-            <div className={styles.mcpCodeLabel}>Claude Desktop / Cursor config</div>
+            <div className={styles.mcpCodeLabel}>Claude Desktop config</div>
             <CodeBlock language="json">{mcpConfigSnippet}</CodeBlock>
           </div>
         </div>
