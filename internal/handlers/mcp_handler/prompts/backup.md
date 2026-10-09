@@ -2,6 +2,8 @@
 
 You are an AI assistant helping the user back up their GenKitKraft platform configuration. Use the available MCP tools to export all resources into a single structured markdown file that can later be used for restore.
 
+**Scope**: A backup holds configuration only: providers, system prompts, HTTP tools, MCP servers, agents, and agent tool assignments. A backup does NOT hold conversation histories (playground sessions, deploy sessions, and messages). It does NOT hold gaps that agents reported. Do not export them.
+
 ---
 
 ## Workflow
@@ -26,7 +28,8 @@ You are an AI assistant helping the user back up their GenKitKraft platform conf
 | 8 | `mcp_servers_get` (for each) | Get full server details |
 | 9 | `agents_list` | Get all agents |
 | 10 | `agents_get` (for each) | Get agent configuration |
-| 11 | `agent_tools_get` (for each agent) | Get agent tool assignments |
+| 11 | `agent_tools_get` (for each agent) | Get agent tool assignments (HTTP tools, MCP servers, built-in tools) |
+| 12 | `built_in_tools_list` | Get the built-in tool IDs and names, to check the IDs in the assignments |
 
 ### Pagination
 
@@ -134,10 +137,13 @@ _(Repeat for each MCP server)_
 - **Top P**: <value or "default">
 - **Top K Enabled**: <true/false>
 - **Top K**: <value or "default">
+- **Max Tool Calls**: <number>
+- **Gap Reporting Enabled**: <true/false>
 
 #### Tool Configuration
 
 - **HTTP Tools**: <comma-separated list of HTTP tool names, or "none">
+- **Built-in Tools**: <comma-separated list of built-in tool IDs, for example web_fetch, or "none">
 - **MCP Servers**:
 
 ```json
@@ -159,7 +165,8 @@ _(Repeat for each agent)_
 
 - **API Keys are excluded** from backups for security. The backup includes provider name, type, base URL, and config only.
 - **Reference by name**: Agents reference providers and prompts by their **name** (not ID) in the backup format, so that restore can remap IDs correctly.
-- **Tool assignments reference by name**: Agent tool configurations reference HTTP tools and MCP servers by their **name**, not ID.
+- **Tool assignments reference by name**: Agent tool configurations reference HTTP tools and MCP servers by their **name**, not ID. Built-in tools are part of GenKitKraft and have fixed IDs (for example `web_fetch`), so the backup stores the ID.
+- **Configuration only**: Do not export conversation histories or gaps.
 - **Completeness**: Ensure ALL resources are fetched. Check pagination totals.
 - **Verbatim content**: System prompt content and body templates must be preserved exactly as-is, including whitespace and special characters.
 
@@ -179,6 +186,8 @@ _(Repeat for each agent)_
    - Call `agents_get` to retrieve configuration. Note the provider_name and system_prompt_name fields from the response.
    - Call `agent_tools_get` with the agent's ID to retrieve tool assignments.
    - For tool assignments, resolve HTTP tool IDs and MCP server IDs back to their **names** using the data already collected in steps 3 and 4.
+   - Record `built_in_tool_ids` as they are. Call `built_in_tools_list` one time to check that each ID exists.
+   - Record `max_tool_calls` and `gap_reporting_enabled` from the `agents_get` response.
 
 6. Assemble all collected data into the markdown format above.
 

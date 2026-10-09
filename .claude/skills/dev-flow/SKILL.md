@@ -322,13 +322,42 @@ The MCP docs are hand-written, so they go stale in the same way as the MCP DTOs.
 - `website/docs/guides/mcp-quickstart.md` — the full tool tables, the prompt table, and troubleshooting
 - `website/docs/guides/mcp-agent-creation-guide.md` — the workflow steps, the parameter names, and the copyable prompt (its tool list)
 - `website/docs/getting-started/mcp-quickstart.md` — the "What's available" table
-- `internal/handlers/mcp_handler/prompts/create_agent.md` — the tool tables in the `create-agent` prompt. This file is embedded in the binary, so rebuild to ship the change. Also check `backup.md` and `restore.md` if they use the tool.
+- `internal/handlers/mcp_handler/prompts/create_agent.md` — the tool tables in the `create-agent` prompt. This file is embedded in the binary, so rebuild to ship the change. Also check `backup.md` and `restore.md` if they use the tool or the changed field. See "Keeping MCP Prompts in Sync".
 
 Rules:
 
 - Use the exact tool and field names from the code (for example `content`, not `message`).
 - If the change also affects a user-facing feature page (for example `website/docs/guides/gaps.md`), add a link to the MCP tools there.
 - Check that no tool is missing or invented. List the tool names in code with `grep -rhoE 'Name: +"[a-z_]+"' internal/handlers/mcp_handler/*_tools.go`. Then search for each name in the four files above.
+
+### Keeping MCP Prompts in Sync (MUST follow)
+
+The server-side MCP prompts (`create-agent`, `backup`, `restore`) are hand-written text in `internal/handlers/mcp_handler/prompts/`. They tell an LLM how to use the platform. They go stale when a capability changes, and then the LLM gives wrong instructions or a restore loses data. This applies to **any** change to an app capability, not only to MCP tools. Before you finish, ask: "Does this change a capability that a prompt describes?" If yes, update the prompt in the same change.
+
+| If you change... | Update |
+| --- | --- |
+| An agent field or behavior (for example `max_tool_calls`, `gap_reporting_enabled`) | `create_agent.md` (agent fields table, workflow, tips) |
+| Provider types, provider fields, or the model list | `create_agent.md` (LLM Providers) |
+| A tool type (HTTP tool, MCP server, built-in tool) or how tools are assigned | `create_agent.md` (Tool Integration) |
+| A feature with its own page in `website/docs/guides/` (for example gaps, chat widget) | `create_agent.md` (add or update a short section and link the page) |
+| A playground or deploy endpoint, an SSE behavior, or a request override | `create_agent.md` (Deploy API, Playground, REST API Reference) |
+| Auth, environment variables, or deployment options | `create_agent.md` (Authentication, Configuration, Deployment) |
+| A saved **configuration** entity or field (provider, prompt, HTTP tool, MCP server, agent, agent tool assignment) | `backup.md` **and** `restore.md` |
+
+Rules for `backup.md` and `restore.md`:
+
+- **Only configuration is in scope.** Conversation histories (playground sessions, deploy sessions, messages) and runtime data (for example reported gaps) are NOT backed up or restored. Do not add them.
+- A new configuration field must be in the backup output format, in the backup step list, in the restore create/update call, and in the restore report. Check the app command params (for example `CreateAgentParams`) for fields that the prompts do not use.
+- Replace-style updates (for example `agent_tools_update`) wipe any field that the restore call omits. Send every list the tool accepts.
+- Backup references use names, not IDs. Restore remaps names to new IDs in dependency order (providers, prompts, HTTP tools, MCP servers, agents, tool configuration). A new entity that agents depend on must fit this order.
+- Never put secrets in a backup (for example provider API keys).
+
+How to check:
+
+- `grep -n "<field or tool name>" internal/handlers/mcp_handler/prompts/*.md` for each new or changed field or tool.
+- Use the exact tool names, field names, and enum values from the code (for example `streamableHttp`, not `streamable_http`).
+- The prompts are embedded with `go:embed`. Rebuild to ship the change, and call `prompts/get` on a running server to see the new text.
+- If you change a prompt description, update `prompt_registrations.go` and the prompt table in `website/docs/guides/mcp-quickstart.md`.
 
 ### Workflow for Adding MCP Tools
 
@@ -338,6 +367,7 @@ Rules:
 4. **Update Handler struct** — If new app dependencies are needed, add them to the struct and `NewHandler()` in `handler.go`, then wire them in `internal/services/server.go`
 5. **Modifying an existing endpoint/command?** Update its existing MCP tool too (see "Keeping MCP Schemas in Sync"), and add the new params struct pair to `schema_sync_test.go`
 6. **Update the MCP docs** — Follow "Keeping MCP Docs in Sync" for every new, changed, or removed tool, field, or prompt
+7. **Update the MCP prompts** — Follow "Keeping MCP Prompts in Sync" (`create_agent.md`, and `backup.md` and `restore.md` for configuration)
 
 ## Chat Widget & Widget Builder
 
@@ -359,6 +389,8 @@ Applies to any change under `widget-builder/`, or any bump of the `navigableai-c
 3. [ ] Run `make generate` to compile spec → generate OpenAPI → generate Go server stubs + TS client
 4. [ ] Verify the generated `ServerInterface` in `internal/api/gen/server.gen.go` has the new methods
 4a. [ ] If you changed an existing model/route, list the changed models and check each against `internal/handlers/mcp_handler/` (MCP DTOs are not generated and will not update themselves)
+
+4b. [ ] If the change adds or changes a capability (not only an MCP tool), list which of `create_agent.md`, `backup.md`, `restore.md` describe it (see "Keeping MCP Prompts in Sync")
 
 ### Phase 2: Hexagonal Implementation (follow dependency flow strictly)
 
@@ -402,6 +434,7 @@ Update user-facing documentation in `website/docs/` to reflect the feature chang
 18. [ ] Add/update the relevant doc page in `website/docs/<category>/`
 19. [ ] Verify links and cross-references are correct
 20. [ ] If you added, changed, or removed an MCP tool, field, or prompt: update the MCP docs listed in "Keeping MCP Docs in Sync"
+20a. [ ] Review the MCP prompts (`create_agent.md`, `backup.md`, `restore.md`) for every changed capability and update them (see "Keeping MCP Prompts in Sync"). Backup and restore cover configuration only, never conversation histories
 21. [ ] If the change touches `widget-builder/` or the `navigableai-chat-widget` version: follow `docs/widget-builder/01-updating-the-widget.md` (refresh the `ui/` and `website/` copies, update versions in `website/docs/guides/chat-widget.md`, re-check hosted-app workarounds, verify in a browser)
 
 ## Additional Resources
