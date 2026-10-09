@@ -256,6 +256,24 @@ Generate the header value: `echo -n "admin:changeme" | base64`
 | `playground_messages_list`   | List messages in a session        |
 | `playground_chat`            | Send a message and get a response |
 
+Send the session ID as `session_id`. If you cannot send `session_id`, send the same value as `fallback_session_id`. It takes precedence over `session_id`. In `playground_chat`, the message text goes in `content`.
+
+#### Gaps
+
+| Tool            | Description                                                |
+| --------------- | ---------------------------------------------------------- |
+| `gaps_list`     | List the gaps an agent reported, with pagination           |
+| `gaps_get`      | Get a gap by ID                                            |
+| `gaps_resolve`  | Mark a gap as resolved                                     |
+| `gaps_dismiss`  | Dismiss a gap with a reason category                       |
+| `gaps_reopen`   | Reopen a resolved or dismissed gap                         |
+
+#### Built-in Tools
+
+| Tool                  | Description                                                               |
+| --------------------- | ------------------------------------------------------------------------- |
+| `built_in_tools_list` | List all built-in tools. Assign them with `agent_tools_update` (`built_in_tool_ids`) |
+
 #### Auth
 
 | Tool              | Description                   |
@@ -274,7 +292,7 @@ Generate the header value: `echo -n "admin:changeme" | base64`
 
 ### Built-in `create-agent` Prompt
 
-The MCP server ships with a `create-agent` server-side prompt. MCP clients that support server-side prompts (like Claude Desktop) can load this to give the LLM a full walkthrough of the correct agent-creation workflow.
+The MCP server ships with a `create-agent` server-side prompt. MCP clients that support server-side prompts (like Claude Desktop) can load this to give the LLM a full walkthrough of the correct agent-creation workflow. The server also has a `backup` prompt and a `restore` prompt for GenKitKraft configurations.
 
 ### Example Agent Creation Workflow via MCP
 

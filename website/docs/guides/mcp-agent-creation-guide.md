@@ -76,13 +76,17 @@ If you want your agent to call external APIs or MCP servers:
 
 1. Create HTTP tools with `http_tools_create` and/or register external MCP servers with `mcp_servers_create`
 2. Discover MCP server tools with `mcp_servers_list_tools`
-3. Assign them to the agent with `agent_tools_update`
+3. Assign them to the agent with `agent_tools_update`. To give the agent a built-in tool (for example `web_fetch`), get its ID from `built_in_tools_list` and send it in `built_in_tool_ids`.
 
 ### 6. Chat with the agent
 
-1. Create a session: `playground_sessions_create` with `agent_id` and a `title`
-2. Send messages: `playground_chat` with `agent_id`, `session_id`, and `message`
+1. Create a session: `playground_sessions_create` with `agent_id`. The `title` is optional.
+2. Send messages: `playground_chat` with `agent_id`, `session_id`, and `content`
 3. View history: `playground_messages_list` with `agent_id` and `session_id`
+
+If your client cannot send `session_id`, send the same value as `fallback_session_id`. When both fields are set, `fallback_session_id` takes precedence.
+
+`playground_chat` also accepts optional overrides (model, sampling settings, `max_tool_calls`, and tool lists). They apply to that request only.
 
 ---
 
@@ -104,7 +108,10 @@ AGENTS: agents_create, agents_list, agents_get, agents_update, agents_delete
 AGENT TOOLS: agent_tools_get, agent_tools_update
 HTTP TOOLS: http_tools_create, http_tools_list, http_tools_get, http_tools_update, http_tools_delete
 MCP SERVERS: mcp_servers_create, mcp_servers_list, mcp_servers_get, mcp_servers_update, mcp_servers_delete, mcp_servers_list_tools
+BUILT-IN TOOLS: built_in_tools_list
 PLAYGROUND: playground_sessions_create, playground_sessions_list, playground_sessions_delete, playground_messages_list, playground_chat
+GAPS: gaps_list, gaps_get, gaps_resolve, gaps_dismiss, gaps_reopen
+AUTH: auth_login, auth_logout, auth_get_me, auth_get_status
 HEALTH: health_liveness, health_readiness
 
 To create a new agent, follow this order:
@@ -115,10 +122,12 @@ To create a new agent, follow this order:
 5. agents_create — create the agent (name, provider_id, model_id, system_prompt_id). Save the returned id.
 6. http_tools_create / mcp_servers_create — create tools for the agent (optional)
 7. agent_tools_update — assign tools to the agent (optional)
-8. playground_sessions_create — start a chat session (agent_id, title). Save the returned id.
-9. playground_chat — send a message (agent_id, session_id, message)
+8. playground_sessions_create — start a chat session (agent_id, title is optional). Save the returned id.
+9. playground_chat — send a message (agent_id, session_id, content)
 
 Key notes:
+- If you cannot send session_id, send the same value as fallback_session_id. It takes precedence over session_id.
+- built_in_tools_list shows the built-in tools. Assign them with agent_tools_update (built_in_tool_ids).
 - All IDs are UUIDs returned by create operations. Always use the exact ID from the response.
 - Model IDs depend on the provider: gpt-4o (OpenAI), gemini-2.0-flash (Google AI), claude-sonnet-4-20250514 (Anthropic).
 - agent_tools_update replaces the entire tool configuration — include all tools you want assigned.
@@ -126,6 +135,10 @@ Key notes:
 ```
 
 </details>
+
+## Backup and Restore Prompts
+
+The MCP server also includes a **`backup`** prompt and a **`restore`** prompt. The `backup` prompt guides the LLM to export all configurations to a markdown file. The `restore` prompt guides the LLM to import them again and to resolve conflicts.
 
 ## Complete Tool Reference
 

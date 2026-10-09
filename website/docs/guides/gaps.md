@@ -38,6 +38,8 @@ From here you can:
 - **Dismiss** a gap with a reason — unrelated, insufficient detail, duplicate, or other. A gap dismissed as **unrelated** is permanent and can't be reopened; other dismissals can be reopened later.
 - **Reopen** a resolved or dismissed (non-unrelated) gap.
 
+You can do the same from an MCP client with the `gaps_list`, `gaps_get`, `gaps_resolve`, `gaps_dismiss`, and `gaps_reopen` tools. See the [MCP Quickstart](/docs/guides/mcp-quickstart#gaps).
+
 ### When a gap comes back
 
 A new report that matches a resolved or dismissed gap reopens it. The gap keeps its triage history:

@@ -177,3 +177,70 @@ func TestPlaygroundChatTool_GapReportingEnabled_ReachesProvider(t *testing.T) {
 		t.Errorf("LastRequest.AgentID = %q, want %q", env.mockChat.LastRequest.AgentID, env.agentID)
 	}
 }
+
+func TestPlaygroundChatTool_FallbackSessionID(t *testing.T) {
+	cases := []struct {
+		name     string
+		primary  func(env *playgroundToolTestEnv) string
+		fallback func(env *playgroundToolTestEnv) string
+		wantErr  bool
+	}{
+		{"only session_id", func(e *playgroundToolTestEnv) string { return e.sessionID }, func(*playgroundToolTestEnv) string { return "" }, false},
+		{"only fallback_session_id", func(*playgroundToolTestEnv) string { return "" }, func(e *playgroundToolTestEnv) string { return e.sessionID }, false},
+		{"fallback wins over session_id", func(*playgroundToolTestEnv) string { return "does-not-exist" }, func(e *playgroundToolTestEnv) string { return e.sessionID }, false},
+		{"neither", func(*playgroundToolTestEnv) string { return "" }, func(*playgroundToolTestEnv) string { return "" }, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			env := setupPlaygroundToolTestEnv(t)
+			_, out, err := env.handler.playgroundChat(context.Background(), nil, PlaygroundChatInput{
+				AgentID:           env.agentID,
+				SessionID:         tc.primary(env),
+				FallbackSessionID: tc.fallback(env),
+				Content:           "hi",
+			})
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected an error when no session id is set")
+				}
+				if env.mockChat.LastRequest.SessionID != "" {
+					t.Errorf("provider was called with SessionID %q", env.mockChat.LastRequest.SessionID)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("playgroundChat: %v", err)
+			}
+			if out.SessionID != env.sessionID || env.mockChat.LastRequest.SessionID != env.sessionID {
+				t.Errorf("session = %q / %q, want %q", out.SessionID, env.mockChat.LastRequest.SessionID, env.sessionID)
+			}
+		})
+	}
+}
+
+func TestListPlaygroundMessagesTool_FallbackSessionID(t *testing.T) {
+	env := setupPlaygroundToolTestEnv(t)
+	ctx := context.Background()
+
+	if _, _, err := env.handler.playgroundChat(ctx, nil, PlaygroundChatInput{AgentID: env.agentID, FallbackSessionID: env.sessionID, Content: "hi"}); err != nil {
+		t.Fatalf("playgroundChat: %v", err)
+	}
+
+	for name, in := range map[string]ListPlaygroundMessagesInput{
+		"only session_id": {AgentID: env.agentID, SessionID: env.sessionID},
+		"only fallback":   {AgentID: env.agentID, FallbackSessionID: env.sessionID},
+		"fallback wins":   {AgentID: env.agentID, SessionID: "does-not-exist", FallbackSessionID: env.sessionID},
+	} {
+		_, out, err := env.handler.listPlaygroundMessages(ctx, nil, in)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if len(out.Messages) != 2 {
+			t.Errorf("%s: got %d messages, want 2", name, len(out.Messages))
+		}
+	}
+
+	if _, _, err := env.handler.listPlaygroundMessages(ctx, nil, ListPlaygroundMessagesInput{AgentID: env.agentID}); err == nil {
+		t.Error("expected an error when no session id is set")
+	}
+}
