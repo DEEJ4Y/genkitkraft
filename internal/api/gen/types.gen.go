@@ -528,17 +528,29 @@ type ModelsGapResponse struct {
 	// Details What was missing, blocked, or could be improved.
 	Details string `json:"details"`
 
-	// DismissalCategory Reason category, present only when status is dismissed.
+	// DismissalCategory Reason category of the last dismissal. Kept as triage history after the
+	// gap is reopened, so it can be present when status is open.
 	DismissalCategory *ModelsGapDismissalCategory `json:"dismissalCategory,omitempty"`
 
-	// DismissalReason Free-text dismissal reason, if provided.
+	// DismissalReason Free-text reason of the last dismissal, if provided. Kept after reopen.
 	DismissalReason *string `json:"dismissalReason,omitempty"`
 
 	// Id Unique gap ID.
 	Id string `json:"id"`
 
+	// LastReportedAt When a report last created this gap or merged into it.
+	LastReportedAt time.Time `json:"lastReportedAt"`
+
 	// References Conversations this gap was observed in.
 	References []ModelsGapReference `json:"references"`
+
+	// ReopenedAt When the gap was last reopened. Absent when never reopened.
+	ReopenedAt *time.Time `json:"reopenedAt,omitempty"`
+
+	// ReopenedFrom Status the gap had before it was last reopened (by a new report or by a
+	// person). Absent when the gap was never reopened. Only "resolved" or
+	// "dismissed".
+	ReopenedFrom *ModelsGapStatus `json:"reopenedFrom,omitempty"`
 
 	// Status Review lifecycle status.
 	Status ModelsGapStatus `json:"status"`

@@ -807,16 +807,22 @@ func toBuiltInToolResponse(t builtintool.BuiltInTool) gen.ModelsBuiltInToolRespo
 
 func toGapResponse(g queries.GapWithReferences) gen.ModelsGapResponse {
 	resp := gen.ModelsGapResponse{
-		Id:         g.Gap.ID,
-		AgentId:    g.Gap.AgentID,
-		Category:   gen.ModelsGapCategory(g.Gap.Category),
-		Context:    g.Gap.Context,
-		Details:    g.Gap.Details,
-		Status:     gen.ModelsGapStatus(g.Gap.Status),
-		References: make([]gen.ModelsGapReference, len(g.References)),
-		CreatedAt:  g.Gap.CreatedAt,
-		UpdatedAt:  g.Gap.UpdatedAt,
+		Id:             g.Gap.ID,
+		AgentId:        g.Gap.AgentID,
+		Category:       gen.ModelsGapCategory(g.Gap.Category),
+		Context:        g.Gap.Context,
+		Details:        g.Gap.Details,
+		Status:         gen.ModelsGapStatus(g.Gap.Status),
+		References:     make([]gen.ModelsGapReference, len(g.References)),
+		LastReportedAt: g.Gap.LastReportedAt,
+		CreatedAt:      g.Gap.CreatedAt,
+		UpdatedAt:      g.Gap.UpdatedAt,
 	}
+	if g.Gap.ReopenedFrom != "" {
+		rf := gen.ModelsGapStatus(g.Gap.ReopenedFrom)
+		resp.ReopenedFrom = &rf
+	}
+	resp.ReopenedAt = g.Gap.ReopenedAt
 	if g.Gap.SuggestedResolution != "" {
 		resp.SuggestedResolution = &g.Gap.SuggestedResolution
 	}

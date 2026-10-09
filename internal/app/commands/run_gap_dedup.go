@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -39,6 +40,58 @@ Respond with ONLY a single JSON object, no markdown fences, no commentary:
 
 Merge only when the new report is clearly about the same underlying gap (same missing information, same missing capability, or the same improvement idea) as an existing one. When merging, combine details so nothing from either report is lost. When uncertain, prefer "create".`
 
+// agentLocks serializes dedup passes per agent. Each pass reads the agent's
+// gaps, asks the LLM for a decision, then writes. Without the lock, two
+// concurrent passes (for example two report_gap calls in one turn) both read
+// before either writes, so a duplicate report creates a second gap.
+// The lock lives in this process only. It does not protect a deployment with
+// more than one server instance on a shared database.
+type agentLocks struct {
+	mu      sync.Mutex
+	entries map[string]*agentLockEntry
+}
+
+type agentLockEntry struct {
+	sem  chan struct{}
+	refs int
+}
+
+// lock waits for the agent's lock or for ctx to end. On success it returns
+// the unlock function.
+func (l *agentLocks) lock(ctx context.Context, agentID string) (func(), error) {
+	l.mu.Lock()
+	if l.entries == nil {
+		l.entries = make(map[string]*agentLockEntry)
+	}
+	e, ok := l.entries[agentID]
+	if !ok {
+		e = &agentLockEntry{sem: make(chan struct{}, 1)}
+		l.entries[agentID] = e
+	}
+	e.refs++
+	l.mu.Unlock()
+
+	release := func() {
+		l.mu.Lock()
+		e.refs--
+		if e.refs == 0 {
+			delete(l.entries, agentID)
+		}
+		l.mu.Unlock()
+	}
+
+	select {
+	case e.sem <- struct{}{}:
+		return func() {
+			<-e.sem
+			release()
+		}, nil
+	case <-ctx.Done():
+		release()
+		return nil, ctx.Err()
+	}
+}
+
 type RunGapDedupParams struct {
 	SessionID           string
 	AgentID             string
@@ -69,6 +122,7 @@ type RunGapDedupCommand struct {
 	playgroundRepo playgroundrepo.PlaygroundRepository
 	chatProvider   chatprovider.ChatProvider
 	logger         zerolog.Logger
+	locks          agentLocks
 }
 
 func NewRunGapDedupCommand(
@@ -91,7 +145,18 @@ func NewRunGapDedupCommand(
 	}
 }
 
+// Execute runs one dedup pass. ctx bounds the wait for the per-agent lock.
+// GapDedupTimeout bounds the pass itself and starts after the lock is taken.
 func (c *RunGapDedupCommand) Execute(ctx context.Context, params RunGapDedupParams) error {
+	unlock, err := c.locks.lock(ctx, params.AgentID)
+	if err != nil {
+		return fmt.Errorf("waiting for earlier dedup passes of the agent: %w", err)
+	}
+	defer unlock()
+
+	ctx, cancel := context.WithTimeout(ctx, GapDedupTimeout)
+	defer cancel()
+
 	a, err := c.agentRepo.GetByID(ctx, params.AgentID)
 	if err != nil {
 		return fmt.Errorf("loading agent: %w", err)
@@ -174,9 +239,11 @@ func (c *RunGapDedupCommand) applyDedupDecision(ctx context.Context, params RunG
 			if decision.SuggestedResolution != "" {
 				g.SuggestedResolution = decision.SuggestedResolution
 			}
-			g.Status = gap.StatusOpen
-			g.DismissalCategory = ""
-			g.DismissalReason = ""
+			// Keep the dismissal category and reason as triage history. Reopen
+			// records which status the gap came from.
+			now := time.Now().UTC()
+			g.Reopen(now)
+			g.LastReportedAt = now
 			if err := c.gapRepo.Update(ctx, g); err != nil {
 				return "", err
 			}

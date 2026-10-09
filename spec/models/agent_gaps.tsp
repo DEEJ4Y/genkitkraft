@@ -58,11 +58,23 @@ model GapResponse {
   /** Review lifecycle status. */
   status: GapStatus;
 
-  /** Reason category, present only when status is dismissed. */
+  /** Reason category of the last dismissal. Kept as triage history after the
+   * gap is reopened, so it can be present when status is open. */
   dismissalCategory?: GapDismissalCategory;
 
-  /** Free-text dismissal reason, if provided. */
+  /** Free-text reason of the last dismissal, if provided. Kept after reopen. */
   dismissalReason?: string;
+
+  /** Status the gap had before it was last reopened (by a new report or by a
+   * person). Absent when the gap was never reopened. Only "resolved" or
+   * "dismissed". */
+  reopenedFrom?: GapStatus;
+
+  /** When the gap was last reopened. Absent when never reopened. */
+  reopenedAt?: utcDateTime;
+
+  /** When a report last created this gap or merged into it. */
+  lastReportedAt: utcDateTime;
 
   /** Conversations this gap was observed in. */
   references: GapReference[];

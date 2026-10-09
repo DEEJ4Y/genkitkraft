@@ -11,6 +11,9 @@ CREATE TABLE agent_gaps (
     status               TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'resolved', 'dismissed')),
     dismissal_category   TEXT CHECK(dismissal_category IN ('unrelated', 'insufficient_detail', 'duplicate', 'other')),
     dismissal_reason     TEXT,
+    reopened_from        TEXT CHECK(reopened_from IN ('resolved', 'dismissed')),
+    reopened_at          TIMESTAMP,
+    last_reported_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

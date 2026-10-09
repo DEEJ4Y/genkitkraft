@@ -143,6 +143,11 @@ export function AgentGapsTab({ agentId }: AgentGapsTabProps) {
                       <Badge size="sm" color={STATUS_COLORS[g.status] ?? 'gray'} variant="filled">
                         {g.status}
                       </Badge>
+                      {g.status === 'open' && g.reopenedFrom && (
+                        <Badge size="sm" color="orange" variant="light">
+                          Reopened after {g.reopenedFrom}
+                        </Badge>
+                      )}
                     </Group>
                     <Text size="sm" fw={500}>
                       {g.context}
@@ -155,12 +160,20 @@ export function AgentGapsTab({ agentId }: AgentGapsTabProps) {
                         Suggestion: {g.suggestedResolution}
                       </Text>
                     )}
-                    {g.status === 'dismissed' && g.dismissalCategory && (
+                    {g.dismissalCategory && (g.status === 'dismissed' || g.status === 'open') && (
                       <Text size="xs" c="dimmed">
-                        Dismissed: {g.dismissalCategory}
+                        {g.status === 'dismissed' ? 'Dismissed' : 'Previously dismissed'}: {g.dismissalCategory}
                         {g.dismissalReason ? ` — ${g.dismissalReason}` : ''}
                       </Text>
                     )}
+                    {g.reopenedAt && (
+                      <Text size="xs" c="dimmed">
+                        Last reopened: {new Date(g.reopenedAt).toLocaleString()}
+                      </Text>
+                    )}
+                    <Text size="xs" c="dimmed">
+                      Last reported: {new Date(g.lastReportedAt).toLocaleString()}
+                    </Text>
                     {g.references.length > 0 && (
                       <Text size="xs" c="dimmed">
                         Seen in:{' '}

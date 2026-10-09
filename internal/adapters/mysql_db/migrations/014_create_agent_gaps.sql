@@ -11,6 +11,9 @@ CREATE TABLE agent_gaps (
     status               VARCHAR(20) NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'resolved', 'dismissed')),
     dismissal_category   VARCHAR(30) CHECK(dismissal_category IN ('unrelated', 'insufficient_detail', 'duplicate', 'other')),
     dismissal_reason     TEXT,
+    reopened_from        VARCHAR(20) CHECK(reopened_from IN ('resolved', 'dismissed')),
+    reopened_at          DATETIME(6),
+    last_reported_at     DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     created_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE

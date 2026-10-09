@@ -1253,10 +1253,29 @@ export interface components {
             suggestedResolution?: string;
             /** @description Review lifecycle status. */
             status: components["schemas"]["Models.GapStatus"];
-            /** @description Reason category, present only when status is dismissed. */
+            /**
+             * @description Reason category of the last dismissal. Kept as triage history after the
+             *     gap is reopened, so it can be present when status is open.
+             */
             dismissalCategory?: components["schemas"]["Models.GapDismissalCategory"];
-            /** @description Free-text dismissal reason, if provided. */
+            /** @description Free-text reason of the last dismissal, if provided. Kept after reopen. */
             dismissalReason?: string;
+            /**
+             * @description Status the gap had before it was last reopened (by a new report or by a
+             *     person). Absent when the gap was never reopened. Only "resolved" or
+             *     "dismissed".
+             */
+            reopenedFrom?: components["schemas"]["Models.GapStatus"];
+            /**
+             * Format: date-time
+             * @description When the gap was last reopened. Absent when never reopened.
+             */
+            reopenedAt?: string;
+            /**
+             * Format: date-time
+             * @description When a report last created this gap or merged into it.
+             */
+            lastReportedAt: string;
             /** @description Conversations this gap was observed in. */
             references: components["schemas"]["Models.GapReference"][];
             /**

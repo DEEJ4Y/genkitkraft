@@ -52,8 +52,11 @@ func TestReopenGap_NonTerminalDismissal_Succeeds(t *testing.T) {
 	if repo.LastUpdate.Status != gap.StatusOpen {
 		t.Errorf("status = %q, want %q", repo.LastUpdate.Status, gap.StatusOpen)
 	}
-	if repo.LastUpdate.DismissalCategory != "" || repo.LastUpdate.DismissalReason != "" {
-		t.Errorf("dismissal fields not cleared: category=%q reason=%q", repo.LastUpdate.DismissalCategory, repo.LastUpdate.DismissalReason)
+	if repo.LastUpdate.DismissalCategory != gap.DismissalDuplicate || repo.LastUpdate.DismissalReason != "matched another report" {
+		t.Errorf("dismissal fields not kept as history: category=%q reason=%q", repo.LastUpdate.DismissalCategory, repo.LastUpdate.DismissalReason)
+	}
+	if repo.LastUpdate.ReopenedFrom != gap.StatusDismissed || repo.LastUpdate.ReopenedAt == nil {
+		t.Errorf("reopen history = from %q at %v, want dismissed with a timestamp", repo.LastUpdate.ReopenedFrom, repo.LastUpdate.ReopenedAt)
 	}
 	if result.Gap.Status != gap.StatusOpen {
 		t.Errorf("result.Gap.Status = %q, want %q", result.Gap.Status, gap.StatusOpen)

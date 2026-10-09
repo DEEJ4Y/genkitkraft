@@ -26,6 +26,8 @@ Enabling the flag also appends an internal instruction block to the end of the a
 
 Reported gaps aren't written straight to the list. A background pipeline reviews each new report against the agent's existing open gaps and either merges it into a matching gap (combining details) or creates a new one — so repeatedly hitting the same blind spot doesn't flood the tab with duplicates. This runs asynchronously, using the agent's own configured provider and model; it never adds latency to the conversation the gap was reported from.
 
+The server runs one review at a time for each agent. If one reply reports the same gap twice, the second review sees the gap that the first review created, so both reports merge into one gap.
+
 ## Reviewing gaps
 
 Open the agent's **Gaps** tab to see every reported gap, with its category, context, details, and any suggested resolution. Each gap also lists the playground or deploy sessions it was observed in — reports from the stateless Deploy chat-completions endpoint show up as "(stateless call)" instead, since there's no conversation to point to.
@@ -36,8 +38,18 @@ From here you can:
 - **Dismiss** a gap with a reason — unrelated, insufficient detail, duplicate, or other. A gap dismissed as **unrelated** is permanent and can't be reopened; other dismissals can be reopened later.
 - **Reopen** a resolved or dismissed (non-unrelated) gap.
 
+### When a gap comes back
+
+A new report that matches a resolved or dismissed gap reopens it. The gap keeps its triage history:
+
+- The tab shows **Reopened after resolved** or **Reopened after dismissed**.
+- The earlier dismissal category and reason stay visible as "Previously dismissed".
+- The tab shows when the gap was last reopened and when it was last reported.
+
+A gap that keeps coming back after you resolved it may need a better fix. A gap dismissed as **unrelated** never reopens. A new report that matches it creates a new gap.
+
 ## Scope and limitations
 
 - Gap reporting is available on the Playground, stateful Deploy session APIs, and the stateless Deploy chat-completions endpoint. The stateless endpoint has no persisted conversation, so reports from it carry no session or message reference — the gap's own category/context/details still capture everything needed to review it.
 - Gaps are scoped to the reporting agent — they aren't shared or correlated across agents.
-- Two near-simultaneous reports for the same underlying gap can occasionally create separate entries instead of merging; review the Gaps tab periodically to catch duplicates.
+- The one-review-at-a-time rule works inside one server process. If you run more than one server instance on the same database, near-simultaneous reports can still create separate entries. Review the Gaps tab to catch duplicates.

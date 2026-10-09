@@ -36,6 +36,9 @@ type GapOutput struct {
 	Status              string               `json:"status"`
 	DismissalCategory   string               `json:"dismissal_category,omitempty"`
 	DismissalReason     string               `json:"dismissal_reason,omitempty"`
+	ReopenedFrom        string               `json:"reopened_from,omitempty"`
+	ReopenedAt          *time.Time           `json:"reopened_at,omitempty"`
+	LastReportedAt      time.Time            `json:"last_reported_at"`
 	References          []GapReferenceOutput `json:"references"`
 	CreatedAt           time.Time            `json:"created_at"`
 	UpdatedAt           time.Time            `json:"updated_at"`
@@ -98,7 +101,7 @@ func (h *Handler) registerGapTools(s *mcp.Server) {
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "gaps_reopen",
-		Description: "Reopen a resolved or dismissed gap. Fails if the gap was dismissed as \"unrelated\", which is terminal.",
+		Description: "Reopen a resolved or dismissed gap. The dismissal category and reason stay as history, and reopened_from records the earlier status. Fails if the gap was dismissed as \"unrelated\", which is terminal.",
 	}, h.reopenGap)
 }
 
@@ -184,6 +187,9 @@ func toGapOutput(g queries.GapWithReferences) GapOutput {
 		Status:              string(g.Gap.Status),
 		DismissalCategory:   g.Gap.DismissalCategory,
 		DismissalReason:     g.Gap.DismissalReason,
+		ReopenedFrom:        string(g.Gap.ReopenedFrom),
+		ReopenedAt:          g.Gap.ReopenedAt,
+		LastReportedAt:      g.Gap.LastReportedAt,
 		References:          refs,
 		CreatedAt:           g.Gap.CreatedAt,
 		UpdatedAt:           g.Gap.UpdatedAt,

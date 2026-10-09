@@ -48,8 +48,16 @@ type Gap struct {
 	Status              Status
 	DismissalCategory   string
 	DismissalReason     string
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
+	// ReopenedFrom is the status the gap had before it was last reopened
+	// ("resolved" or "dismissed"). Empty when the gap was never reopened.
+	// DismissalCategory and DismissalReason are kept on reopen as triage
+	// history.
+	ReopenedFrom Status
+	ReopenedAt   *time.Time
+	// LastReportedAt is when a report last created or merged into this gap.
+	LastReportedAt time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // IsTerminal reports whether the gap can never be reopened again — true only
@@ -57,6 +65,19 @@ type Gap struct {
 // UI-triggered reopen and the background dedup pipeline's merge path agree.
 func (g *Gap) IsTerminal() bool {
 	return g.Status == StatusDismissed && g.DismissalCategory == DismissalUnrelated
+}
+
+// Reopen moves a resolved or dismissed gap back to open and records which
+// status it came from. The dismissal category and reason stay in place as
+// triage history. Reopening a gap that is already open changes nothing. Callers
+// must check IsTerminal first.
+func (g *Gap) Reopen(now time.Time) {
+	if g.Status == StatusOpen {
+		return
+	}
+	g.ReopenedFrom = g.Status
+	g.ReopenedAt = &now
+	g.Status = StatusOpen
 }
 
 // Reference ties a Gap to the conversation (and, when resolvable, message)

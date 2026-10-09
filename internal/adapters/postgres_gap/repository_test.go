@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	postgresdb "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_db"
 	postgresgap "github.com/DEEJ4Y/genkitkraft/internal/adapters/postgres_gap"
@@ -124,6 +125,31 @@ func TestGapRepositoryPostgres(t *testing.T) {
 		if got.Status != gap.StatusDismissed || got.DismissalCategory != gap.DismissalDuplicate ||
 			got.DismissalReason != "matches an earlier report" || got.SuggestedResolution != "add a source" {
 			t.Errorf("fields after update: got %+v", got)
+		}
+	})
+
+	t.Run("ReopenHistoryRoundTrip", func(t *testing.T) {
+		reportedAt := time.Now().UTC().Truncate(time.Millisecond)
+		g.Reopen(reportedAt)
+		g.LastReportedAt = reportedAt
+		if err := repo.Update(ctx, g); err != nil {
+			t.Fatalf("Update: %v", err)
+		}
+		got, err := repo.GetByID(ctx, g.ID)
+		if err != nil {
+			t.Fatalf("GetByID: %v", err)
+		}
+		if got.Status != gap.StatusOpen || got.ReopenedFrom != gap.StatusDismissed {
+			t.Errorf("status=%q reopenedFrom=%q, want open and dismissed", got.Status, got.ReopenedFrom)
+		}
+		if got.ReopenedAt == nil || !got.ReopenedAt.Equal(reportedAt) {
+			t.Errorf("ReopenedAt = %v, want %v", got.ReopenedAt, reportedAt)
+		}
+		if !got.LastReportedAt.Equal(reportedAt) {
+			t.Errorf("LastReportedAt = %v, want %v", got.LastReportedAt, reportedAt)
+		}
+		if got.DismissalCategory != gap.DismissalDuplicate || got.DismissalReason != "matches an earlier report" {
+			t.Errorf("dismissal history lost: %q / %q", got.DismissalCategory, got.DismissalReason)
 		}
 	})
 

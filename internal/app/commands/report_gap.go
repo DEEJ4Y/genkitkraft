@@ -12,9 +12,14 @@ import (
 	playgroundrepo "github.com/DEEJ4Y/genkitkraft/internal/ports/playground_repo"
 )
 
-// GapDedupTimeout bounds the detached dedup pipeline goroutine so it can
-// never run forever if the LLM call hangs.
-const GapDedupTimeout = 2 * time.Minute
+// GapDedupTimeout bounds one dedup pass (LLM call plus writes) so it can
+// never run forever if the LLM call hangs. It starts after the pass takes the
+// per-agent lock, so time spent waiting in the queue does not count.
+const GapDedupTimeout = 5 * time.Minute
+
+// GapDedupLockWait bounds how long a report waits for earlier passes of the
+// same agent to finish. A report that waits longer is dropped and logged.
+const GapDedupLockWait = 10 * time.Minute
 
 // ReportGapCommand implements gapreporter.Reporter. It validates the report
 // and launches the dedup pipeline on a context detached from the caller's —
@@ -54,7 +59,7 @@ func (c *ReportGapCommand) Report(ctx context.Context, p gapreporter.ReportParam
 		}
 	}
 
-	dedupCtx, cancel := context.WithTimeout(context.Background(), GapDedupTimeout)
+	dedupCtx, cancel := context.WithTimeout(context.Background(), GapDedupLockWait+GapDedupTimeout)
 	go func() {
 		defer cancel()
 		if err := c.dedup.Execute(dedupCtx, RunGapDedupParams{

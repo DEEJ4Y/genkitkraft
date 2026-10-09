@@ -2292,6 +2292,7 @@ components:
         - context
         - details
         - status
+        - lastReportedAt
         - references
         - createdAt
         - updatedAt
@@ -2322,10 +2323,27 @@ components:
         dismissalCategory:
           allOf:
             - $ref: '#/components/schemas/Models.GapDismissalCategory'
-          description: Reason category, present only when status is dismissed.
+          description: |-
+            Reason category of the last dismissal. Kept as triage history after the
+            gap is reopened, so it can be present when status is open.
         dismissalReason:
           type: string
-          description: Free-text dismissal reason, if provided.
+          description: Free-text reason of the last dismissal, if provided. Kept after reopen.
+        reopenedFrom:
+          allOf:
+            - $ref: '#/components/schemas/Models.GapStatus'
+          description: |-
+            Status the gap had before it was last reopened (by a new report or by a
+            person). Absent when the gap was never reopened. Only "resolved" or
+            "dismissed".
+        reopenedAt:
+          type: string
+          format: date-time
+          description: When the gap was last reopened. Absent when never reopened.
+        lastReportedAt:
+          type: string
+          format: date-time
+          description: When a report last created this gap or merged into it.
         references:
           type: array
           items:

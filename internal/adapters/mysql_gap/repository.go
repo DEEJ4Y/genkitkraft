@@ -25,6 +25,13 @@ func NewGapRepository(db *sql.DB) *GapRepository {
 	return &GapRepository{db: db}
 }
 
+func nullableTime(t *time.Time) any {
+	if t == nil {
+		return nil
+	}
+	return *t
+}
+
 func nullableString(s string) any {
 	if s == "" {
 		return nil
@@ -34,19 +41,25 @@ func nullableString(s string) any {
 
 func scanGap(row interface{ Scan(dest ...any) error }) (*gap.Gap, error) {
 	var g gap.Gap
-	var suggestedResolution, dismissalCategory, dismissalReason sql.NullString
+	var suggestedResolution, dismissalCategory, dismissalReason, reopenedFrom sql.NullString
+	var reopenedAt sql.NullTime
 	err := row.Scan(&g.ID, &g.AgentID, &g.Category, &g.Context, &g.Details, &suggestedResolution,
-		&g.Status, &dismissalCategory, &dismissalReason, &g.CreatedAt, &g.UpdatedAt)
+		&g.Status, &dismissalCategory, &dismissalReason, &reopenedFrom, &reopenedAt, &g.LastReportedAt, &g.CreatedAt, &g.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	g.SuggestedResolution = suggestedResolution.String
 	g.DismissalCategory = dismissalCategory.String
 	g.DismissalReason = dismissalReason.String
+	g.ReopenedFrom = gap.Status(reopenedFrom.String)
+	if reopenedAt.Valid {
+		t := reopenedAt.Time
+		g.ReopenedAt = &t
+	}
 	return &g, nil
 }
 
-const gapColumns = `id, agent_id, category, context, details, suggested_resolution, status, dismissal_category, dismissal_reason, created_at, updated_at`
+const gapColumns = `id, agent_id, category, context, details, suggested_resolution, status, dismissal_category, dismissal_reason, reopened_from, reopened_at, last_reported_at, created_at, updated_at`
 
 func (r *GapRepository) List(ctx context.Context, agentID string, status gap.Status, limit, offset int) ([]*gap.Gap, error) {
 	query := `SELECT ` + gapColumns + ` FROM agent_gaps WHERE agent_id = ?`
@@ -110,11 +123,14 @@ func (r *GapRepository) Create(ctx context.Context, g *gap.Gap) error {
 	if g.Status == "" {
 		g.Status = gap.StatusOpen
 	}
+	if g.LastReportedAt.IsZero() {
+		g.LastReportedAt = now
+	}
 
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO agent_gaps (id, agent_id, category, context, details, suggested_resolution, status, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		g.ID, g.AgentID, g.Category, g.Context, g.Details, nullableString(g.SuggestedResolution), g.Status, g.CreatedAt, g.UpdatedAt)
+		`INSERT INTO agent_gaps (id, agent_id, category, context, details, suggested_resolution, status, last_reported_at, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		g.ID, g.AgentID, g.Category, g.Context, g.Details, nullableString(g.SuggestedResolution), g.Status, g.LastReportedAt, g.CreatedAt, g.UpdatedAt)
 	if err != nil {
 		return apperrors.NewAppErrorf(apperrors.Internal, "creating gap: %v", err)
 	}
@@ -123,12 +139,19 @@ func (r *GapRepository) Create(ctx context.Context, g *gap.Gap) error {
 
 func (r *GapRepository) Update(ctx context.Context, g *gap.Gap) error {
 	g.UpdatedAt = time.Now().UTC().Truncate(time.Microsecond)
+	g.LastReportedAt = g.LastReportedAt.Truncate(time.Microsecond)
+	if g.ReopenedAt != nil {
+		t := g.ReopenedAt.Truncate(time.Microsecond)
+		g.ReopenedAt = &t
+	}
 
 	result, err := r.db.ExecContext(ctx,
 		`UPDATE agent_gaps SET category = ?, context = ?, details = ?, suggested_resolution = ?,
-		 status = ?, dismissal_category = ?, dismissal_reason = ?, updated_at = ? WHERE id = ?`,
+		 status = ?, dismissal_category = ?, dismissal_reason = ?,
+		 reopened_from = ?, reopened_at = ?, last_reported_at = ?, updated_at = ? WHERE id = ?`,
 		g.Category, g.Context, g.Details, nullableString(g.SuggestedResolution),
-		g.Status, nullableString(g.DismissalCategory), nullableString(g.DismissalReason), g.UpdatedAt, g.ID)
+		g.Status, nullableString(g.DismissalCategory), nullableString(g.DismissalReason),
+		nullableString(string(g.ReopenedFrom)), nullableTime(g.ReopenedAt), g.LastReportedAt, g.UpdatedAt, g.ID)
 	if err != nil {
 		return apperrors.NewAppErrorf(apperrors.Internal, "updating gap: %v", err)
 	}
