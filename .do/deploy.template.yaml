@@ -22,7 +22,7 @@ spec:
           value: valkey
         - key: CACHE_URL
           scope: RUN_TIME
-          value: ${cache.DATABASE_URL}
+          value: redis://valkey:6379
         - key: ENCRYPTION_KEY
           scope: RUN_TIME
           type: SECRET
@@ -32,10 +32,18 @@ spec:
         - key: PUBLIC_API_KEY
           scope: RUN_TIME
           type: SECRET
+    - name: valkey
+      image:
+        registry_type: DOCKER_HUB
+        registry: valkey
+        repository: valkey
+        tag: 8-alpine
+      run_command: valkey-server --maxmemory 64mb --maxmemory-policy noeviction
+      internal_ports:
+        - 6379
+      instance_count: 1
+      instance_size_slug: apps-s-1vcpu-0.5gb
   databases:
     - name: db
       engine: PG
-      production: false
-    - name: cache
-      engine: VALKEY
       production: false
