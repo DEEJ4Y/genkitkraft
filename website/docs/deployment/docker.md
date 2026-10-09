@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # Docker Deployment
@@ -111,7 +111,7 @@ services:
     environment:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       AUTH_CREDENTIALS: ${AUTH_CREDENTIALS}
-      DATABASE_PROVIDER: mysql   # or mariadb
+      DATABASE_PROVIDER: mysql # or mariadb
       DATABASE_URL: genkitkraft:${DB_PASSWORD}@tcp(db:3306)/genkitkraft?parseTime=true
     depends_on:
       db:
@@ -158,7 +158,7 @@ services:
       AUTH_CREDENTIALS: ${AUTH_CREDENTIALS}
       DATABASE_PROVIDER: postgres
       DATABASE_URL: postgres://genkitkraft:${DB_PASSWORD}@db:5432/genkitkraft?sslmode=disable
-      CACHE_PROVIDER: valkey   # or redis
+      CACHE_PROVIDER: valkey # or redis
       CACHE_URL: valkey://cache:6379
     depends_on:
       db:
@@ -169,7 +169,14 @@ services:
 
   cache:
     image: valkey/valkey:8-alpine
-    command: ["valkey-server", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    command:
+      [
+        "valkey-server",
+        "--maxmemory",
+        "256mb",
+        "--maxmemory-policy",
+        "noeviction",
+      ]
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
@@ -192,16 +199,24 @@ The connection is checked at startup, so a misconfigured `CACHE_URL` fails immed
 
 GenKitKraft exposes health check endpoints:
 
-| Endpoint | Description |
-|---|---|
-| `GET /livez` | Returns 200 if the server is running |
+| Endpoint      | Description                                    |
+| ------------- | ---------------------------------------------- |
+| `GET /livez`  | Returns 200 if the server is running           |
 | `GET /readyz` | Returns 200 if the server is ready, 503 if not |
 
 Example Docker Compose health check:
 
 ```yaml
 healthcheck:
-  test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/readyz"]
+  test:
+    [
+      "CMD",
+      "wget",
+      "--no-verbose",
+      "--tries=1",
+      "--spider",
+      "http://localhost:8080/readyz",
+    ]
   interval: 30s
   timeout: 5s
   retries: 3
