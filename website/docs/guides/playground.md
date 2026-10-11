@@ -28,6 +28,7 @@ In the playground config bar, you can temporarily override:
 - **Provider** — Test with a different LLM provider.
 - **Model** — Try a different model. If the model doesn't exist in the dropdown, simply type the correct model name (e.g., `gpt-5-mini`) and it will be saved for future use.
 - **Temperature, Top P, Top K** — Experiment with generation parameters.
+- **Reasoning Effort** — Turn reasoning (thinking) on or off, or try another value. See [Reasoning Effort](./agents#reasoning-effort).
 - **Max Tool Calls** — Override the maximum number of tool call iterations per request.
 
 These overrides apply only to the current playground session and don't modify the agent's saved configuration.

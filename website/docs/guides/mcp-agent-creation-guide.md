@@ -86,7 +86,7 @@ If you want your agent to call external APIs or MCP servers:
 
 If your client cannot send `session_id`, send the same value as `fallback_session_id`. When both fields are set, `fallback_session_id` takes precedence.
 
-`playground_chat` also accepts optional overrides (model, sampling settings, `max_tool_calls`, and tool lists). They apply to that request only.
+`playground_chat` also accepts optional overrides (model, sampling settings, reasoning effort, `max_tool_calls`, and tool lists). They apply to that request only.
 
 ---
 

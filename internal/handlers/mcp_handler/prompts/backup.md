@@ -137,6 +137,8 @@ _(Repeat for each MCP server)_
 - **Top P**: <value or "default">
 - **Top K Enabled**: <true/false>
 - **Top K**: <value or "default">
+- **Reasoning Effort Enabled**: <true/false>
+- **Reasoning Effort**: <value or "none">
 - **Max Tool Calls**: <number>
 - **Gap Reporting Enabled**: <true/false>
 

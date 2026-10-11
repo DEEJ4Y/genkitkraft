@@ -158,7 +158,7 @@ Once connected, your MCP client will discover all available tools automatically.
 
 `playground_chat` and `playground_messages_list` need a session ID. Send it as `session_id`. If your client cannot send `session_id`, send the same value as `fallback_session_id`. When both fields are set, `fallback_session_id` takes precedence.
 
-`playground_chat` accepts the same optional overrides as the HTTP API: provider, model, system prompt, sampling settings (`temperature`, `top_p`, `top_k`), `max_tool_calls`, `http_tool_ids`, `mcp_servers` and `built_in_tool_ids`. An override applies to that request only. It does not change the saved agent.
+`playground_chat` accepts the same optional overrides as the HTTP API: provider, model, system prompt, sampling settings (`temperature`, `top_p`, `top_k`), reasoning effort (`reasoning_effort_enabled`, `reasoning_effort`), `max_tool_calls`, `http_tool_ids`, `mcp_servers` and `built_in_tool_ids`. An override applies to that request only. It does not change the saved agent.
 
 ### Gaps
 

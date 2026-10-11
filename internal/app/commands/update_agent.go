@@ -11,19 +11,22 @@ import (
 )
 
 type UpdateAgentParams struct {
-	ID                  string
-	Name                *string
-	ProviderID          *string
-	ModelID             *string
-	SystemPromptID      *string // nil=don't change, ""=clear, "uuid"=set
-	TemperatureEnabled  *bool
-	Temperature         *float64
-	TopPEnabled         *bool
-	TopP                *float64
-	TopKEnabled         *bool
-	TopK                *int
-	MaxToolCalls        *int
-	GapReportingEnabled *bool
+	ID                 string
+	Name               *string
+	ProviderID         *string
+	ModelID            *string
+	SystemPromptID     *string // nil=don't change, ""=clear, "uuid"=set
+	TemperatureEnabled *bool
+	Temperature        *float64
+	TopPEnabled        *bool
+	TopP               *float64
+	TopKEnabled        *bool
+	TopK               *int
+	// nil = don't change.
+	ReasoningEffortEnabled *bool
+	ReasoningEffort        *string
+	MaxToolCalls           *int
+	GapReportingEnabled    *bool
 }
 
 type UpdateAgentResult struct {
@@ -85,6 +88,18 @@ func (c *UpdateAgentCommand) Execute(ctx context.Context, params UpdateAgentPara
 	}
 	if params.TopK != nil {
 		a.TopK = *params.TopK
+	}
+	if params.ReasoningEffortEnabled != nil {
+		a.ReasoningEffortEnabled = *params.ReasoningEffortEnabled
+	}
+	if params.ReasoningEffort != nil {
+		a.ReasoningEffort = *params.ReasoningEffort
+	}
+	if params.ReasoningEffortEnabled != nil || params.ReasoningEffort != nil {
+		a.ReasoningEffort, err = normalizeReasoningEffort(a.ReasoningEffortEnabled, a.ReasoningEffort)
+		if err != nil {
+			return UpdateAgentResult{}, err
+		}
 	}
 	if params.MaxToolCalls != nil {
 		a.MaxToolCalls = *params.MaxToolCalls

@@ -19,6 +19,7 @@ Agents are the core concept in GenKitKraft — they combine a provider, model, a
      - **Temperature** — Controls randomness (0 = deterministic, higher = more creative).
      - **Top P** — Nucleus sampling threshold.
      - **Top K** — Limits token selection to the top K candidates.
+     - **Reasoning Effort** — Off by default. Turn it on to set how much the model reasons (thinking). See [Reasoning Effort](#reasoning-effort).
      - **Max Tool Calls** — Maximum number of tool call iterations per request (default 10).
 4. Click **Save**.
 
@@ -30,6 +31,29 @@ Agents are the core concept in GenKitKraft — they combine a provider, model, a
 | **Top P**          | 0.0–1.0 | Controls diversity via nucleus sampling. The model considers only the smallest set of tokens whose cumulative probability exceeds this threshold.          |
 | **Top K**          | Integer | Restricts the model's choices to the K most likely tokens at each step. Lower values make output more predictable.                                         |
 | **Max Tool Calls** | Integer | Limits how many tool call iterations the agent can perform in a single request. Prevents runaway loops when tools trigger additional tool calls. Default is 10. |
+
+## Reasoning Effort
+
+Some models can reason (think) before they answer. The **Reasoning Effort** option sets how much. It is off by default. When it is off, GenKitKraft sends the same request as before. When it is on, GenKitKraft adds the setting that the provider uses for reasoning.
+
+1. Turn on the **Reasoning Effort** toggle.
+2. Select a value from the list, or type your own value. The list shows the values for the provider of the agent. A typed value is sent to the provider as it is, so you can use new values when a provider adds them.
+
+| Provider | Setting that is sent | Values in the list |
+| --- | --- | --- |
+| Google AI, Vertex AI | Thinking level, or thinking budget when the value is a number | `minimal`, `low`, `medium`, `high`, `-1` (dynamic) |
+| Anthropic | Thinking budget in tokens | `1024`, `2048`, `4096`, `8192`, `16384` |
+| Ollama | `think` | `true`, `false`, `low`, `medium`, `high` |
+| OpenAI, Azure OpenAI, xAI, DeepSeek, OpenAI-compatible | `reasoning_effort` | `minimal`, `low`, `medium`, `high` |
+| Azure AI Foundry, Bedrock | Not supported | — |
+
+:::note
+- The model must support reasoning. If it does not, the provider returns an error.
+- For Anthropic, the value must be a whole number of at least 1024. While reasoning effort is on, GenKitKraft does not send Temperature, Top P, or Top K, because Anthropic does not accept them with thinking.
+- For Gemini 3 models, use a level. For Gemini 2.5 models, use a token budget.
+:::
+
+You can also change reasoning effort for one playground session. See the [Playground guide](./playground).
 
 ## Configuring Tools
 

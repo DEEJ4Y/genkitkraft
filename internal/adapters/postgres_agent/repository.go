@@ -28,7 +28,8 @@ func NewAgentRepository(db *sql.DB) *AgentRepository {
 const listQuery = `
 SELECT a.id, a.name, a.provider_id, a.model_id, a.system_prompt_id,
        a.temperature_enabled, a.temperature, a.top_p_enabled, a.top_p,
-       a.top_k_enabled, a.top_k, a.max_tool_calls, a.gap_reporting_enabled, a.created_at, a.updated_at,
+       a.top_k_enabled, a.top_k, a.reasoning_effort_enabled, a.reasoning_effort,
+       a.max_tool_calls, a.gap_reporting_enabled, a.created_at, a.updated_at,
        COALESCE(p.name, '') AS provider_name,
        COALESCE(p.provider_type, '') AS provider_type,
        COALESCE(pr.name, '') AS system_prompt_name
@@ -40,7 +41,8 @@ ORDER BY a.created_at DESC LIMIT $1 OFFSET $2`
 const getByIDQuery = `
 SELECT a.id, a.name, a.provider_id, a.model_id, a.system_prompt_id,
        a.temperature_enabled, a.temperature, a.top_p_enabled, a.top_p,
-       a.top_k_enabled, a.top_k, a.max_tool_calls, a.gap_reporting_enabled, a.created_at, a.updated_at,
+       a.top_k_enabled, a.top_k, a.reasoning_effort_enabled, a.reasoning_effort,
+       a.max_tool_calls, a.gap_reporting_enabled, a.created_at, a.updated_at,
        COALESCE(p.name, '') AS provider_name,
        COALESCE(p.provider_type, '') AS provider_type,
        COALESCE(pr.name, '') AS system_prompt_name
@@ -97,10 +99,12 @@ func (r *AgentRepository) Create(ctx context.Context, a *agent.Agent) error {
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO agents (id, name, provider_id, model_id, system_prompt_id,
 		 temperature_enabled, temperature, top_p_enabled, top_p, top_k_enabled, top_k,
+		 reasoning_effort_enabled, reasoning_effort,
 		 max_tool_calls, gap_reporting_enabled, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
 		a.ID, a.Name, a.ProviderID, a.ModelID, nullString(a.SystemPromptID),
 		a.TemperatureEnabled, a.Temperature, a.TopPEnabled, a.TopP, a.TopKEnabled, a.TopK,
+		a.ReasoningEffortEnabled, a.ReasoningEffort,
 		a.MaxToolCalls, a.GapReportingEnabled, a.CreatedAt, a.UpdatedAt)
 	if err != nil {
 		return apperrors.NewAppErrorf(apperrors.Internal, "creating agent: %v", err)
@@ -114,10 +118,12 @@ func (r *AgentRepository) Update(ctx context.Context, a *agent.Agent) error {
 	result, err := r.db.ExecContext(ctx,
 		`UPDATE agents SET name = $1, provider_id = $2, model_id = $3, system_prompt_id = $4,
 		 temperature_enabled = $5, temperature = $6, top_p_enabled = $7, top_p = $8,
-		 top_k_enabled = $9, top_k = $10, max_tool_calls = $11, gap_reporting_enabled = $12, updated_at = $13 WHERE id = $14`,
+		 top_k_enabled = $9, top_k = $10, reasoning_effort_enabled = $11, reasoning_effort = $12,
+		 max_tool_calls = $13, gap_reporting_enabled = $14, updated_at = $15 WHERE id = $16`,
 		a.Name, a.ProviderID, a.ModelID, nullString(a.SystemPromptID),
 		a.TemperatureEnabled, a.Temperature, a.TopPEnabled, a.TopP,
-		a.TopKEnabled, a.TopK, a.MaxToolCalls, a.GapReportingEnabled, a.UpdatedAt, a.ID)
+		a.TopKEnabled, a.TopK, a.ReasoningEffortEnabled, a.ReasoningEffort,
+		a.MaxToolCalls, a.GapReportingEnabled, a.UpdatedAt, a.ID)
 	if err != nil {
 		return apperrors.NewAppErrorf(apperrors.Internal, "updating agent: %v", err)
 	}
@@ -154,7 +160,8 @@ func scanAgent(rows *sql.Rows) (*agent.Agent, error) {
 	if err := rows.Scan(
 		&a.ID, &a.Name, &a.ProviderID, &a.ModelID, &systemPromptID,
 		&a.TemperatureEnabled, &a.Temperature, &a.TopPEnabled, &a.TopP,
-		&a.TopKEnabled, &a.TopK, &a.MaxToolCalls, &a.GapReportingEnabled, &a.CreatedAt, &a.UpdatedAt,
+		&a.TopKEnabled, &a.TopK, &a.ReasoningEffortEnabled, &a.ReasoningEffort,
+		&a.MaxToolCalls, &a.GapReportingEnabled, &a.CreatedAt, &a.UpdatedAt,
 		&a.ProviderName, &a.ProviderType, &a.SystemPromptName,
 	); err != nil {
 		return nil, apperrors.NewAppErrorf(apperrors.Internal, "scanning agent: %v", err)
@@ -171,7 +178,8 @@ func scanAgentRow(row *sql.Row) (*agent.Agent, error) {
 	if err := row.Scan(
 		&a.ID, &a.Name, &a.ProviderID, &a.ModelID, &systemPromptID,
 		&a.TemperatureEnabled, &a.Temperature, &a.TopPEnabled, &a.TopP,
-		&a.TopKEnabled, &a.TopK, &a.MaxToolCalls, &a.GapReportingEnabled, &a.CreatedAt, &a.UpdatedAt,
+		&a.TopKEnabled, &a.TopK, &a.ReasoningEffortEnabled, &a.ReasoningEffort,
+		&a.MaxToolCalls, &a.GapReportingEnabled, &a.CreatedAt, &a.UpdatedAt,
 		&a.ProviderName, &a.ProviderType, &a.SystemPromptName,
 	); err != nil {
 		return nil, err // caller handles sql.ErrNoRows

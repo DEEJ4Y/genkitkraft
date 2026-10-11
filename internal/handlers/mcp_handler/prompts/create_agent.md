@@ -75,11 +75,24 @@ Agents are the central unit. Each agent packages a provider, model, system promp
 | **Temperature**   | Controls randomness (0.0–2.0)                          |
 | **Top P**         | Nucleus sampling threshold                             |
 | **Top K**         | Limits the token vocabulary per step                   |
+| **Reasoning Effort** | Turns on provider-specific reasoning (thinking) and sets how much (`reasoning_effort_enabled`, default false; `reasoning_effort`, a text value). See below |
 | **Max Tool Calls** | Maximum number of tool call iterations per request (`max_tool_calls`, default 10) |
 | **Gap Reporting** | Lets the agent report gaps with the `report_gap` tool (`gap_reporting_enabled`, default false). See [Gaps](#31-gaps) |
 | **Tools**         | HTTP tools, MCP server tools and built-in tools (e.g. web_fetch) assigned to this agent |
 
 Generation parameters (temperature, top P, top K) are optional — omitting them uses provider defaults. Each one has an `*_enabled` flag (`temperature_enabled`, `top_p_enabled`, `top_k_enabled`). Set the flag to `true` to send the value to the provider.
+
+Reasoning effort is off by default. When `reasoning_effort_enabled` is `false`, the agent behaves as before and `reasoning_effort` is ignored. When it is `true`, `reasoning_effort` is required and is sent to the provider in the provider's own format:
+
+| Provider type | `reasoning_effort` value |
+| --- | --- |
+| `google_ai`, `vertex_ai` | A level (`minimal`, `low`, `medium`, `high`) or a thinking token budget as a number (for example `2048`, `0` for off, `-1` for dynamic) |
+| `anthropic` | Thinking token budget as a whole number, at least `1024` (for example `2048`). While it is on, temperature, top P and top K are not sent |
+| `ollama` | `low`, `medium`, `high` (GPT-OSS models), or `true` / `false` (other thinking models) |
+| `openai`, `azure_openai`, `xai`, `deepseek`, `openai_compatible` | `minimal`, `low`, `medium`, `high`, or another value that the model accepts (for example `none`, `xhigh`) |
+| `azure_ai_foundry`, `bedrock` | Not supported. The value is ignored |
+
+Any other text is sent as typed, so new provider values work without a platform update. The model must support reasoning, or the provider returns an error.
 
 ### Agent Operations
 
@@ -513,7 +526,7 @@ The Playground provides a browser-based chat interface for testing agents direct
 ### Features
 
 - **Session management** — Create, switch between, and delete named sessions. History is preserved per session.
-- **Configuration overrides** — Override the agent's provider, model, system prompt, temperature, top P, top K, or max tool calls for the current session without modifying the saved agent.
+- **Configuration overrides** — Override the agent's provider, model, system prompt, temperature, top P, top K, reasoning effort (`reasoning_effort_enabled`, `reasoning_effort`), or max tool calls for the current session without modifying the saved agent.
 - **Tool overrides** — Enable/disable specific HTTP tools, MCP server tools, or built-in tools for the session.
 - **Save configuration** — Promote playground overrides back to the saved agent configuration.
 - **Streaming responses** — Output appears token by token. A client can reconnect to a reply that is streaming, and can cancel it.
@@ -797,7 +810,7 @@ Agents are created by combining a configured LLM provider, a system prompt, gene
 
 1. **Configure an LLM Provider** — Add your API key and select the model you want to use.
 2. **Create a System Prompt** — Write the instructions that will guide the agent's behaviour.
-3. **Define the Agent** — Give it a name, select the provider and prompt, and optionally set any generation parameters (temperature, top P, top K), the maximum number of tool calls, and Gap Reporting.
+3. **Define the Agent** — Give it a name, select the provider and prompt, and optionally set any generation parameters (temperature, top P, top K) and reasoning effort, the maximum number of tool calls, and Gap Reporting.
 4. **Assign Tools** — Choose which HTTP tools, MCP server tools and built-in tools (such as web_fetch) the agent can use during inference.
 5. **Save and Deploy** — Once saved, the agent is immediately available for testing in the Playground or via the Deploy API.
 6. **Test and Iterate** — Use the Playground to have conversations with your agent, tweak the system prompt, adjust generation parameters, or reassign tools as needed.

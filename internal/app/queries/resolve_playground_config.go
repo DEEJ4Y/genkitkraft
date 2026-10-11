@@ -39,7 +39,10 @@ type ResolvePlaygroundConfigParams struct {
 	TopP               *float64
 	TopKEnabled        *bool
 	TopK               *int
-	MaxToolCalls       *int
+	// ReasoningEffortEnabled and ReasoningEffort are optional overrides. nil = use agent value.
+	ReasoningEffortEnabled *bool
+	ReasoningEffort        *string
+	MaxToolCalls           *int
 	// Optional tool overrides — nil means use agent defaults
 	ToolOverride *ToolOverride
 	// IncludeTools controls whether tools are resolved. Deploy and playground set this true.
@@ -120,6 +123,18 @@ func (q *ResolvePlaygroundConfigQuery) Execute(ctx context.Context, params Resol
 	if params.TopKEnabled != nil {
 		topKEnabled = *params.TopKEnabled
 	}
+	reasoningEffortEnabled := a.ReasoningEffortEnabled
+	if params.ReasoningEffortEnabled != nil {
+		reasoningEffortEnabled = *params.ReasoningEffortEnabled
+	}
+	reasoningEffort := a.ReasoningEffort
+	if params.ReasoningEffort != nil {
+		reasoningEffort = *params.ReasoningEffort
+	}
+	reasoningEffort = strings.TrimSpace(reasoningEffort)
+	if reasoningEffortEnabled && reasoningEffort == "" {
+		return ResolvePlaygroundConfigResult{}, errors.NewAppError(errors.InvalidInput, "reasoning effort is required when reasoning effort is enabled")
+	}
 	maxToolCalls := a.MaxToolCalls
 	if params.MaxToolCalls != nil {
 		maxToolCalls = *params.MaxToolCalls
@@ -162,19 +177,23 @@ func (q *ResolvePlaygroundConfigQuery) Execute(ctx context.Context, params Resol
 	}
 
 	chatReq := chatprovider.ChatRequest{
-		ProviderType:        string(p.ProviderType),
-		APIKey:              apiKey,
-		BaseURL:             p.BaseURL,
-		Config:              p.RawConfig,
-		ModelID:             modelID,
-		SystemPrompt:        systemPrompt,
-		TemperatureEnabled:  temperatureEnabled,
-		Temperature:         temperature,
-		TopPEnabled:         topPEnabled,
-		TopP:                topP,
-		TopKEnabled:         topKEnabled,
-		TopK:                topK,
-		MaxToolCalls:        maxToolCalls,
+		ProviderType:       string(p.ProviderType),
+		APIKey:             apiKey,
+		BaseURL:            p.BaseURL,
+		Config:             p.RawConfig,
+		ModelID:            modelID,
+		SystemPrompt:       systemPrompt,
+		TemperatureEnabled: temperatureEnabled,
+		Temperature:        temperature,
+		TopPEnabled:        topPEnabled,
+		TopP:               topP,
+		TopKEnabled:        topKEnabled,
+		TopK:               topK,
+		MaxToolCalls:       maxToolCalls,
+
+		ReasoningEffortEnabled: reasoningEffortEnabled,
+		ReasoningEffort:        reasoningEffort,
+
 		AgentID:             a.ID,
 		GapReportingEnabled: a.GapReportingEnabled,
 	}

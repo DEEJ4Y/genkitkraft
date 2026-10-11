@@ -89,6 +89,12 @@ model PlaygroundChatRequest {
   /** Optional top-k override for testing. */
   topK?: int32;
 
+  /** Optional reasoning effort enabled override for testing. */
+  reasoningEffortEnabled?: boolean;
+
+  /** Optional reasoning effort override for testing. */
+  reasoningEffort?: string;
+
   /** Optional max tool calls override for testing. */
   maxToolCalls?: int32;
 

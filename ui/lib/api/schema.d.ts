@@ -876,6 +876,10 @@ export interface components {
              * @description Top-k sampling.
              */
             topK: number;
+            /** @description Whether reasoning effort (thinking) is enabled. */
+            reasoningEffortEnabled: boolean;
+            /** @description Provider-specific reasoning effort value (for example low, medium, high, or a token budget). */
+            reasoningEffort: string;
             /**
              * Format: int32
              * @description Maximum number of tool call iterations per request.
@@ -988,6 +992,10 @@ export interface components {
              * @description Top-k sampling (default 40).
              */
             topK?: number;
+            /** @description Whether reasoning effort (thinking) is enabled (default false). */
+            reasoningEffortEnabled?: boolean;
+            /** @description Provider-specific reasoning effort value (default empty). Required when reasoning effort is enabled. */
+            reasoningEffort?: string;
             /**
              * Format: int32
              * @description Maximum number of tool call iterations per request (default 10).
@@ -1501,6 +1509,10 @@ export interface components {
              * @description Optional top-k override for testing.
              */
             topK?: number;
+            /** @description Optional reasoning effort enabled override for testing. */
+            reasoningEffortEnabled?: boolean;
+            /** @description Optional reasoning effort override for testing. */
+            reasoningEffort?: string;
             /**
              * Format: int32
              * @description Optional max tool calls override for testing.
@@ -1714,6 +1726,10 @@ export interface components {
              * @description Updated top-k sampling.
              */
             topK?: number;
+            /** @description Updated reasoning effort enabled flag. */
+            reasoningEffortEnabled?: boolean;
+            /** @description Updated provider-specific reasoning effort value. */
+            reasoningEffort?: string;
             /**
              * Format: int32
              * @description Updated maximum tool call iterations.

@@ -223,19 +223,23 @@ func toProviderTypeListResponse(result queries.ListProviderTypesResult) gen.Mode
 
 func toAgentResponse(a *agent.Agent) gen.ModelsAgentResponse {
 	resp := gen.ModelsAgentResponse{
-		Id:                  a.ID,
-		Name:                a.Name,
-		ProviderId:          a.ProviderID,
-		ProviderName:        a.ProviderName,
-		ProviderType:        gen.ModelsProviderType(a.ProviderType),
-		ModelId:             a.ModelID,
-		TemperatureEnabled:  a.TemperatureEnabled,
-		Temperature:         float32(a.Temperature),
-		TopPEnabled:         a.TopPEnabled,
-		TopP:                float32(a.TopP),
-		TopKEnabled:         a.TopKEnabled,
-		TopK:                int32(a.TopK),
-		MaxToolCalls:        int32(a.MaxToolCalls),
+		Id:                 a.ID,
+		Name:               a.Name,
+		ProviderId:         a.ProviderID,
+		ProviderName:       a.ProviderName,
+		ProviderType:       gen.ModelsProviderType(a.ProviderType),
+		ModelId:            a.ModelID,
+		TemperatureEnabled: a.TemperatureEnabled,
+		Temperature:        float32(a.Temperature),
+		TopPEnabled:        a.TopPEnabled,
+		TopP:               float32(a.TopP),
+		TopKEnabled:        a.TopKEnabled,
+		TopK:               int32(a.TopK),
+		MaxToolCalls:       int32(a.MaxToolCalls),
+
+		ReasoningEffortEnabled: a.ReasoningEffortEnabled,
+		ReasoningEffort:        a.ReasoningEffort,
+
 		GapReportingEnabled: a.GapReportingEnabled,
 		CreatedAt:           a.CreatedAt,
 		UpdatedAt:           a.UpdatedAt,
@@ -286,6 +290,8 @@ func toCreateAgentParams(req gen.ModelsCreateAgentRequest) commands.CreateAgentP
 		t := int(*req.TopK)
 		params.TopK = &t
 	}
+	params.ReasoningEffortEnabled = req.ReasoningEffortEnabled
+	params.ReasoningEffort = req.ReasoningEffort
 	if req.MaxToolCalls != nil {
 		t := int(*req.MaxToolCalls)
 		params.MaxToolCalls = &t
@@ -317,6 +323,8 @@ func toUpdateAgentParams(id string, req gen.ModelsUpdateAgentRequest) commands.U
 		t := int(*req.TopK)
 		params.TopK = &t
 	}
+	params.ReasoningEffortEnabled = req.ReasoningEffortEnabled
+	params.ReasoningEffort = req.ReasoningEffort
 	if req.MaxToolCalls != nil {
 		t := int(*req.MaxToolCalls)
 		params.MaxToolCalls = &t

@@ -20,6 +20,12 @@ import { IconArrowLeft } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchClient } from '../lib/api/client'
 import { MODEL_OPTIONS } from '../lib/model-options'
+import {
+  defaultReasoningEffort,
+  supportsReasoningEffort,
+  validateReasoningEffort,
+} from '../lib/reasoning-options'
+import { ReasoningEffortField } from './ReasoningEffortField'
 import type { components } from '../lib/api/schema'
 
 type AgentResponse = components['schemas']['Models.AgentResponse']
@@ -43,6 +49,10 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
   const [topPEnabled, setTopPEnabled] = useState(agent?.topPEnabled ?? false)
   const [topK, setTopK] = useState(agent?.topK ?? 40)
   const [topKEnabled, setTopKEnabled] = useState(agent?.topKEnabled ?? false)
+  const [reasoningEffortEnabled, setReasoningEffortEnabled] = useState(
+    agent?.reasoningEffortEnabled ?? false
+  )
+  const [reasoningEffort, setReasoningEffort] = useState(agent?.reasoningEffort ?? '')
   const [maxToolCalls, setMaxToolCalls] = useState(agent?.maxToolCalls ?? 10)
   const [gapReportingEnabled, setGapReportingEnabled] = useState(agent?.gapReportingEnabled ?? false)
   const [saving, setSaving] = useState(false)
@@ -85,9 +95,14 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
       if (prevProviderId !== '') {
         setModelId('')
         setModelSearch('')
+        // Reasoning effort values differ per provider, so start from the new default.
+        setReasoningEffort(defaultReasoningEffort(selectedProviderType))
       }
     }
-  }, [providerId, prevProviderId])
+  }, [providerId, prevProviderId, selectedProviderType])
+
+  // A provider that ignores the option (for example Bedrock) is never saved as "on".
+  const reasoningSupported = !selectedProviderType || supportsReasoningEffort(selectedProviderType)
 
   const presetModels = MODEL_OPTIONS[selectedProviderType] ?? []
 
@@ -119,6 +134,15 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
       setError('Model is required')
       return
     }
+    const reasoningError = validateReasoningEffort(
+      selectedProviderType,
+      reasoningEffortEnabled,
+      reasoningEffort
+    )
+    if (reasoningError) {
+      setError(reasoningError)
+      return
+    }
 
     setSaving(true)
     setError('')
@@ -138,6 +162,8 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
             topP,
             topKEnabled,
             topK,
+            reasoningEffortEnabled: reasoningSupported && reasoningEffortEnabled,
+            reasoningEffort: reasoningEffort.trim(),
             maxToolCalls,
             gapReportingEnabled,
           } as any,
@@ -156,6 +182,8 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
             topP,
             topKEnabled,
             topK,
+            reasoningEffortEnabled: reasoningSupported && reasoningEffortEnabled,
+            reasoningEffort: reasoningEffort.trim(),
             maxToolCalls,
             gapReportingEnabled,
           } as any,
@@ -399,6 +427,16 @@ export function AgentForm({ agent, onSaved, onCancel }: AgentFormProps) {
           disabled={!topKEnabled}
         />
       </div>
+
+      <ReasoningEffortField
+        providerType={selectedProviderType}
+        enabled={reasoningEffortEnabled}
+        value={reasoningEffort}
+        onChange={(enabled, value) => {
+          setReasoningEffortEnabled(enabled)
+          setReasoningEffort(value)
+        }}
+      />
 
       <div>
         <Text size="sm" fw={500} mb={4}>

@@ -11,18 +11,21 @@ import (
 )
 
 type CreateAgentParams struct {
-	Name                string
-	ProviderID          string
-	ModelID             string
-	SystemPromptID      string
-	TemperatureEnabled  *bool
-	Temperature         *float64
-	TopPEnabled         *bool
-	TopP                *float64
-	TopKEnabled         *bool
-	TopK                *int
-	MaxToolCalls        *int
-	GapReportingEnabled *bool
+	Name               string
+	ProviderID         string
+	ModelID            string
+	SystemPromptID     string
+	TemperatureEnabled *bool
+	Temperature        *float64
+	TopPEnabled        *bool
+	TopP               *float64
+	TopKEnabled        *bool
+	TopK               *int
+	// ReasoningEffortEnabled defaults to false. ReasoningEffort defaults to "".
+	ReasoningEffortEnabled *bool
+	ReasoningEffort        *string
+	MaxToolCalls           *int
+	GapReportingEnabled    *bool
 }
 
 type CreateAgentResult struct {
@@ -86,6 +89,18 @@ func (c *CreateAgentCommand) Execute(ctx context.Context, params CreateAgentPara
 	if params.TopKEnabled != nil {
 		topKEnabled = *params.TopKEnabled
 	}
+	reasoningEffortEnabled := false
+	if params.ReasoningEffortEnabled != nil {
+		reasoningEffortEnabled = *params.ReasoningEffortEnabled
+	}
+	reasoningEffort := ""
+	if params.ReasoningEffort != nil {
+		reasoningEffort = *params.ReasoningEffort
+	}
+	reasoningEffort, normErr := normalizeReasoningEffort(reasoningEffortEnabled, reasoningEffort)
+	if normErr != nil {
+		return CreateAgentResult{}, normErr
+	}
 	maxToolCalls := agent.DefaultMaxToolCalls
 	if params.MaxToolCalls != nil {
 		maxToolCalls = *params.MaxToolCalls
@@ -108,6 +123,9 @@ func (c *CreateAgentCommand) Execute(ctx context.Context, params CreateAgentPara
 		TopK:                topK,
 		MaxToolCalls:        maxToolCalls,
 		GapReportingEnabled: gapReportingEnabled,
+
+		ReasoningEffortEnabled: reasoningEffortEnabled,
+		ReasoningEffort:        reasoningEffort,
 	}
 
 	if err := c.repo.Create(ctx, a); err != nil {
