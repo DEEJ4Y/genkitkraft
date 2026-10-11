@@ -1670,6 +1670,8 @@ components:
         - topP
         - topKEnabled
         - topK
+        - reasoningEffortEnabled
+        - reasoningEffort
         - maxToolCalls
         - gapReportingEnabled
         - createdAt
@@ -1721,6 +1723,12 @@ components:
           type: integer
           format: int32
           description: Top-k sampling.
+        reasoningEffortEnabled:
+          type: boolean
+          description: Whether reasoning effort (thinking) is enabled.
+        reasoningEffort:
+          type: string
+          description: Provider-specific reasoning effort value (for example low, medium, high, or a token budget).
         maxToolCalls:
           type: integer
           format: int32
@@ -1899,6 +1907,12 @@ components:
           type: integer
           format: int32
           description: Top-k sampling (default 40).
+        reasoningEffortEnabled:
+          type: boolean
+          description: Whether reasoning effort (thinking) is enabled (default false).
+        reasoningEffort:
+          type: string
+          description: Provider-specific reasoning effort value (default empty). Required when reasoning effort is enabled.
         maxToolCalls:
           type: integer
           format: int32
@@ -2695,6 +2709,12 @@ components:
           type: integer
           format: int32
           description: Optional top-k override for testing.
+        reasoningEffortEnabled:
+          type: boolean
+          description: Optional reasoning effort enabled override for testing.
+        reasoningEffort:
+          type: string
+          description: Optional reasoning effort override for testing.
         maxToolCalls:
           type: integer
           format: int32
@@ -3039,6 +3059,12 @@ components:
           type: integer
           format: int32
           description: Updated top-k sampling.
+        reasoningEffortEnabled:
+          type: boolean
+          description: Updated reasoning effort enabled flag.
+        reasoningEffort:
+          type: string
+          description: Updated provider-specific reasoning effort value.
         maxToolCalls:
           type: integer
           format: int32

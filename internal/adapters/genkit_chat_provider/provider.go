@@ -95,7 +95,11 @@ func (cp *ChatProvider) Chat(ctx context.Context, req chatprovider.ChatRequest) 
 		opts = append(opts, ai.WithMessages(messages...))
 	}
 
-	if cfg := buildConfig(req); cfg != nil {
+	cfg, err := buildConfig(req)
+	if err != nil {
+		return "", err
+	}
+	if cfg != nil {
 		opts = append(opts, ai.WithConfig(cfg))
 	}
 
@@ -149,7 +153,11 @@ func (cp *ChatProvider) doStream(ctx context.Context, req chatprovider.ChatReque
 	}
 
 	// Build provider-specific config.
-	if cfg := buildConfig(req); cfg != nil {
+	cfg, err := buildConfig(req)
+	if err != nil {
+		return err
+	}
+	if cfg != nil {
 		opts = append(opts, ai.WithConfig(cfg))
 	}
 
@@ -208,26 +216,48 @@ func buildMessages(messages []chatprovider.ChatMessage) []*ai.Message {
 }
 
 // buildConfig creates the provider-specific generation config based on the provider type.
-func buildConfig(req chatprovider.ChatRequest) any {
+// It returns an untyped nil when no parameter is set, so the caller can skip WithConfig.
+// It returns an error when the reasoning effort value is not valid for the provider.
+func buildConfig(req chatprovider.ChatRequest) (any, error) {
 	pt := provider.ProviderType(req.ProviderType)
 
 	switch pt {
 	case provider.GoogleAI, provider.VertexAI:
-		return buildGoogleConfig(req)
+		cfg := buildGoogleConfig(req)
+		if cfg == nil {
+			return nil, nil
+		}
+		return cfg, nil
 	case provider.Anthropic:
-		return buildAnthropicConfig(req)
+		cfg, err := buildAnthropicConfig(req)
+		if err != nil {
+			return nil, err
+		}
+		if cfg == nil {
+			return nil, nil
+		}
+		return cfg, nil
 	case provider.Ollama:
-		return buildOllamaConfig(req)
+		cfg := buildOllamaConfig(req)
+		if cfg == nil {
+			return nil, nil
+		}
+		return cfg, nil
 	default:
 		// OpenAI and compatible providers: genkit handles default config.
 		// Only pass config if we have parameters to set.
-		return buildOpenAICompatibleConfig(req)
+		return buildOpenAICompatibleConfig(req), nil
 	}
 }
 
 func buildGoogleConfig(req chatprovider.ChatRequest) *genai.GenerateContentConfig {
 	cfg := &genai.GenerateContentConfig{}
 	hasConfig := false
+
+	if req.ReasoningEffortEnabled {
+		cfg.ThinkingConfig = googleThinkingConfig(req.ReasoningEffort)
+		hasConfig = true
+	}
 
 	if req.TemperatureEnabled {
 		cfg.Temperature = genai.Ptr(float32(req.Temperature))
@@ -248,34 +278,46 @@ func buildGoogleConfig(req chatprovider.ChatRequest) *genai.GenerateContentConfi
 	return cfg
 }
 
-func buildAnthropicConfig(req chatprovider.ChatRequest) *anthropicsdk.MessageNewParams {
+func buildAnthropicConfig(req chatprovider.ChatRequest) (*anthropicsdk.MessageNewParams, error) {
 	cfg := &anthropicsdk.MessageNewParams{
-		MaxTokens: 4096,
+		MaxTokens: anthropicDefaultMaxTokens,
 	}
-	hasConfig := true // Always set max_tokens for Anthropic.
+
+	if req.ReasoningEffortEnabled {
+		budget, err := anthropicThinkingBudget(req.ReasoningEffort)
+		if err != nil {
+			return nil, err
+		}
+		cfg.Thinking = anthropicsdk.ThinkingConfigParamOfEnabled(budget)
+		// The thinking budget counts toward max_tokens and must be smaller than it.
+		cfg.MaxTokens = budget + anthropicDefaultMaxTokens
+		// Extended thinking does not accept temperature, top_p, or top_k, so
+		// the sampling options are not sent while thinking is on.
+		return cfg, nil
+	}
 
 	if req.TemperatureEnabled {
 		cfg.Temperature = anthropicsdk.Float(req.Temperature)
-		hasConfig = true
 	}
 	if req.TopPEnabled {
 		cfg.TopP = anthropicsdk.Float(req.TopP)
-		hasConfig = true
 	}
 	if req.TopKEnabled {
 		cfg.TopK = anthropicsdk.Int(int64(req.TopK))
-		hasConfig = true
 	}
 
-	if !hasConfig {
-		return nil
-	}
-	return cfg
+	// Always return the config: max_tokens is required for Anthropic.
+	return cfg, nil
 }
 
 func buildOllamaConfig(req chatprovider.ChatRequest) *ollama.GenerateContentConfig {
 	cfg := &ollama.GenerateContentConfig{}
 	hasConfig := false
+
+	if req.ReasoningEffortEnabled {
+		cfg.Think = ollamaThinkOption(req.ReasoningEffort)
+		hasConfig = true
+	}
 
 	if req.TemperatureEnabled {
 		cfg.Temperature = &req.Temperature
@@ -297,11 +339,19 @@ func buildOllamaConfig(req chatprovider.ChatRequest) *ollama.GenerateContentConf
 }
 
 // buildOpenAICompatibleConfig builds an openai.ChatCompletionNewParams with
-// temperature and topP when enabled. The OpenAI API does not support topK,
-// so that parameter is intentionally skipped.
+// temperature, topP, and reasoning effort when enabled. The OpenAI API does
+// not support topK, so that parameter is intentionally skipped.
+//
+// Azure AI Foundry and Bedrock also reach this function, but their plugins
+// ignore a typed config, so reasoning effort is not set for them.
 func buildOpenAICompatibleConfig(req chatprovider.ChatRequest) any {
 	cfg := &openai.ChatCompletionNewParams{}
 	hasConfig := false
+
+	if req.ReasoningEffortEnabled && SupportsReasoningEffort(provider.ProviderType(req.ProviderType)) {
+		cfg.ReasoningEffort = openai.ReasoningEffort(strings.TrimSpace(req.ReasoningEffort))
+		hasConfig = true
+	}
 
 	if req.TemperatureEnabled {
 		cfg.Temperature = openai.Float(req.Temperature)

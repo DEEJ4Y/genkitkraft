@@ -34,6 +34,8 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
     topP: agent.topP,
     topKEnabled: agent.topKEnabled,
     topK: agent.topK,
+    reasoningEffortEnabled: agent.reasoningEffortEnabled,
+    reasoningEffort: agent.reasoningEffort,
     maxToolCalls: agent.maxToolCalls,
     streaming: true,
   })
@@ -110,6 +112,12 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
       topP: config.topP !== agent.topP ? config.topP : undefined,
       topKEnabled: config.topKEnabled !== agent.topKEnabled ? config.topKEnabled : undefined,
       topK: config.topK !== agent.topK ? config.topK : undefined,
+      reasoningEffortEnabled:
+        config.reasoningEffortEnabled !== agent.reasoningEffortEnabled
+          ? config.reasoningEffortEnabled
+          : undefined,
+      reasoningEffort:
+        config.reasoningEffort !== agent.reasoningEffort ? config.reasoningEffort : undefined,
       maxToolCalls: config.maxToolCalls !== agent.maxToolCalls ? config.maxToolCalls : undefined,
       httpToolIds: toolsHaveOverrides ? toolConfig.httpToolIds : undefined,
       mcpServers: toolsHaveOverrides ? toolConfig.mcpServers : undefined,
@@ -193,6 +201,8 @@ export function AgentPlayground({ agent }: AgentPlaygroundProps) {
           topP: config.topP,
           topKEnabled: config.topKEnabled,
           topK: config.topK,
+          reasoningEffortEnabled: config.reasoningEffortEnabled,
+          reasoningEffort: config.reasoningEffort.trim(),
           maxToolCalls: config.maxToolCalls,
         } as any,
       })

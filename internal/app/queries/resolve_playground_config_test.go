@@ -108,3 +108,95 @@ func TestResolvePlaygroundConfig_NoGapReportingInstructions_WhenDisabled(t *test
 		t.Errorf("ChatRequest.SystemPrompt = %q, want exactly %q with nothing appended", result.ChatRequest.SystemPrompt, customPrompt)
 	}
 }
+
+func resolveReasoningQuery(a *agent.Agent) *queries.ResolvePlaygroundConfigQuery {
+	agentRepo := &mock.AgentRepository{GetByIDResult: a}
+	providerRepo := &mock.ProviderRepository{
+		GetByIDResult: &provider.Provider{ID: "provider-1", ProviderType: provider.OpenAI, BaseURL: "https://api.openai.com/v1"},
+	}
+	return queries.NewResolvePlaygroundConfigQuery(agentRepo, providerRepo, &mock.PromptRepository{}, nil, nil, nil, nil)
+}
+
+// Reasoning effort is off by default, so a plain agent gives a ChatRequest
+// that is the same as before the option existed.
+func TestResolvePlaygroundConfig_ReasoningEffort_DisabledByDefault(t *testing.T) {
+	q := resolveReasoningQuery(&agent.Agent{ID: "agent-1", ProviderID: "provider-1", ModelID: "o3"})
+
+	result, err := q.Execute(context.Background(), queries.ResolvePlaygroundConfigParams{AgentID: "agent-1"})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if result.ChatRequest.ReasoningEffortEnabled {
+		t.Error("ChatRequest.ReasoningEffortEnabled = true, want false")
+	}
+	if result.ChatRequest.ReasoningEffort != "" {
+		t.Errorf("ChatRequest.ReasoningEffort = %q, want empty", result.ChatRequest.ReasoningEffort)
+	}
+}
+
+func TestResolvePlaygroundConfig_ReasoningEffort_FromAgent(t *testing.T) {
+	q := resolveReasoningQuery(&agent.Agent{
+		ID: "agent-1", ProviderID: "provider-1", ModelID: "o3",
+		ReasoningEffortEnabled: true, ReasoningEffort: "high",
+	})
+
+	result, err := q.Execute(context.Background(), queries.ResolvePlaygroundConfigParams{AgentID: "agent-1"})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !result.ChatRequest.ReasoningEffortEnabled || result.ChatRequest.ReasoningEffort != "high" {
+		t.Errorf("ChatRequest reasoning = (%v, %q), want (true, %q)",
+			result.ChatRequest.ReasoningEffortEnabled, result.ChatRequest.ReasoningEffort, "high")
+	}
+}
+
+func TestResolvePlaygroundConfig_ReasoningEffort_Overrides(t *testing.T) {
+	enabled, value := true, "  low "
+	q := resolveReasoningQuery(&agent.Agent{ID: "agent-1", ProviderID: "provider-1", ModelID: "o3"})
+
+	result, err := q.Execute(context.Background(), queries.ResolvePlaygroundConfigParams{
+		AgentID:                "agent-1",
+		ReasoningEffortEnabled: &enabled,
+		ReasoningEffort:        &value,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !result.ChatRequest.ReasoningEffortEnabled || result.ChatRequest.ReasoningEffort != "low" {
+		t.Errorf("ChatRequest reasoning = (%v, %q), want (true, %q)",
+			result.ChatRequest.ReasoningEffortEnabled, result.ChatRequest.ReasoningEffort, "low")
+	}
+}
+
+// An override can turn the option off even when the agent has it on.
+func TestResolvePlaygroundConfig_ReasoningEffort_OverrideCanDisable(t *testing.T) {
+	enabled := false
+	q := resolveReasoningQuery(&agent.Agent{
+		ID: "agent-1", ProviderID: "provider-1", ModelID: "o3",
+		ReasoningEffortEnabled: true, ReasoningEffort: "high",
+	})
+
+	result, err := q.Execute(context.Background(), queries.ResolvePlaygroundConfigParams{
+		AgentID:                "agent-1",
+		ReasoningEffortEnabled: &enabled,
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if result.ChatRequest.ReasoningEffortEnabled {
+		t.Error("ChatRequest.ReasoningEffortEnabled = true, want false")
+	}
+}
+
+func TestResolvePlaygroundConfig_ReasoningEffort_EnabledWithoutValueIsRejected(t *testing.T) {
+	enabled := true
+	q := resolveReasoningQuery(&agent.Agent{ID: "agent-1", ProviderID: "provider-1", ModelID: "o3"})
+
+	_, err := q.Execute(context.Background(), queries.ResolvePlaygroundConfigParams{
+		AgentID:                "agent-1",
+		ReasoningEffortEnabled: &enabled,
+	})
+	if err == nil {
+		t.Fatal("Execute: expected an error when reasoning effort is enabled with no value")
+	}
+}

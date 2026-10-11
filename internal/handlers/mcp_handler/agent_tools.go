@@ -20,24 +20,26 @@ type ListAgentsInput struct {
 }
 
 type AgentOutput struct {
-	ID                  string    `json:"id"`
-	Name                string    `json:"name"`
-	ProviderID          string    `json:"provider_id"`
-	ModelID             string    `json:"model_id"`
-	SystemPromptID      string    `json:"system_prompt_id,omitempty"`
-	TemperatureEnabled  bool      `json:"temperature_enabled"`
-	Temperature         float64   `json:"temperature"`
-	TopPEnabled         bool      `json:"top_p_enabled"`
-	TopP                float64   `json:"top_p"`
-	TopKEnabled         bool      `json:"top_k_enabled"`
-	TopK                int       `json:"top_k"`
-	MaxToolCalls        int       `json:"max_tool_calls"`
-	GapReportingEnabled bool      `json:"gap_reporting_enabled"`
-	ProviderName        string    `json:"provider_name,omitempty"`
-	ProviderType        string    `json:"provider_type,omitempty"`
-	SystemPromptName    string    `json:"system_prompt_name,omitempty"`
-	CreatedAt           time.Time `json:"created_at"`
-	UpdatedAt           time.Time `json:"updated_at"`
+	ID                     string    `json:"id"`
+	Name                   string    `json:"name"`
+	ProviderID             string    `json:"provider_id"`
+	ModelID                string    `json:"model_id"`
+	SystemPromptID         string    `json:"system_prompt_id,omitempty"`
+	TemperatureEnabled     bool      `json:"temperature_enabled"`
+	Temperature            float64   `json:"temperature"`
+	TopPEnabled            bool      `json:"top_p_enabled"`
+	TopP                   float64   `json:"top_p"`
+	TopKEnabled            bool      `json:"top_k_enabled"`
+	TopK                   int       `json:"top_k"`
+	ReasoningEffortEnabled bool      `json:"reasoning_effort_enabled"`
+	ReasoningEffort        string    `json:"reasoning_effort"`
+	MaxToolCalls           int       `json:"max_tool_calls"`
+	GapReportingEnabled    bool      `json:"gap_reporting_enabled"`
+	ProviderName           string    `json:"provider_name,omitempty"`
+	ProviderType           string    `json:"provider_type,omitempty"`
+	SystemPromptName       string    `json:"system_prompt_name,omitempty"`
+	CreatedAt              time.Time `json:"created_at"`
+	UpdatedAt              time.Time `json:"updated_at"`
 }
 
 type ListAgentsOutput struct {
@@ -50,34 +52,38 @@ type GetAgentInput struct {
 }
 
 type CreateAgentInput struct {
-	Name                string   `json:"name" jsonschema:"agent name (required)"`
-	ProviderID          string   `json:"provider_id" jsonschema:"LLM provider ID (required)"`
-	ModelID             string   `json:"model_id" jsonschema:"model identifier (required)"`
-	SystemPromptID      string   `json:"system_prompt_id,omitempty" jsonschema:"system prompt ID"`
-	TemperatureEnabled  *bool    `json:"temperature_enabled,omitempty" jsonschema:"enable temperature sampling"`
-	Temperature         *float64 `json:"temperature,omitempty" jsonschema:"temperature value (0-2)"`
-	TopPEnabled         *bool    `json:"top_p_enabled,omitempty" jsonschema:"enable top-p sampling"`
-	TopP                *float64 `json:"top_p,omitempty" jsonschema:"top-p value (0-1)"`
-	TopKEnabled         *bool    `json:"top_k_enabled,omitempty" jsonschema:"enable top-k sampling"`
-	TopK                *int     `json:"top_k,omitempty" jsonschema:"top-k value"`
-	MaxToolCalls        *int     `json:"max_tool_calls,omitempty" jsonschema:"maximum tool call iterations per request (default 10)"`
-	GapReportingEnabled *bool    `json:"gap_reporting_enabled,omitempty" jsonschema:"enable the report_gap tool for this agent"`
+	Name                   string   `json:"name" jsonschema:"agent name (required)"`
+	ProviderID             string   `json:"provider_id" jsonschema:"LLM provider ID (required)"`
+	ModelID                string   `json:"model_id" jsonschema:"model identifier (required)"`
+	SystemPromptID         string   `json:"system_prompt_id,omitempty" jsonschema:"system prompt ID"`
+	TemperatureEnabled     *bool    `json:"temperature_enabled,omitempty" jsonschema:"enable temperature sampling"`
+	Temperature            *float64 `json:"temperature,omitempty" jsonschema:"temperature value (0-2)"`
+	TopPEnabled            *bool    `json:"top_p_enabled,omitempty" jsonschema:"enable top-p sampling"`
+	TopP                   *float64 `json:"top_p,omitempty" jsonschema:"top-p value (0-1)"`
+	TopKEnabled            *bool    `json:"top_k_enabled,omitempty" jsonschema:"enable top-k sampling"`
+	TopK                   *int     `json:"top_k,omitempty" jsonschema:"top-k value"`
+	ReasoningEffortEnabled *bool    `json:"reasoning_effort_enabled,omitempty" jsonschema:"enable reasoning effort (thinking). Default false. Not supported by Azure AI Foundry and Bedrock"`
+	ReasoningEffort        *string  `json:"reasoning_effort,omitempty" jsonschema:"provider-specific reasoning effort value. Required when reasoning_effort_enabled is true. google_ai/vertex_ai: minimal, low, medium, high, or a token budget number. anthropic: thinking token budget (whole number, at least 1024). openai and compatible providers: minimal, low, medium, high. ollama: low, medium, high, true, or false"`
+	MaxToolCalls           *int     `json:"max_tool_calls,omitempty" jsonschema:"maximum tool call iterations per request (default 10)"`
+	GapReportingEnabled    *bool    `json:"gap_reporting_enabled,omitempty" jsonschema:"enable the report_gap tool for this agent"`
 }
 
 type UpdateAgentInput struct {
-	ID                  string   `json:"id" jsonschema:"agent ID (required)"`
-	Name                *string  `json:"name,omitempty" jsonschema:"new agent name"`
-	ProviderID          *string  `json:"provider_id,omitempty" jsonschema:"new provider ID"`
-	ModelID             *string  `json:"model_id,omitempty" jsonschema:"new model ID"`
-	SystemPromptID      *string  `json:"system_prompt_id,omitempty" jsonschema:"new system prompt ID (empty string to clear)"`
-	TemperatureEnabled  *bool    `json:"temperature_enabled,omitempty" jsonschema:"enable temperature sampling"`
-	Temperature         *float64 `json:"temperature,omitempty" jsonschema:"temperature value"`
-	TopPEnabled         *bool    `json:"top_p_enabled,omitempty" jsonschema:"enable top-p sampling"`
-	TopP                *float64 `json:"top_p,omitempty" jsonschema:"top-p value"`
-	TopKEnabled         *bool    `json:"top_k_enabled,omitempty" jsonschema:"enable top-k sampling"`
-	TopK                *int     `json:"top_k,omitempty" jsonschema:"top-k value"`
-	MaxToolCalls        *int     `json:"max_tool_calls,omitempty" jsonschema:"maximum tool call iterations per request"`
-	GapReportingEnabled *bool    `json:"gap_reporting_enabled,omitempty" jsonschema:"enable or disable the report_gap tool for this agent"`
+	ID                     string   `json:"id" jsonschema:"agent ID (required)"`
+	Name                   *string  `json:"name,omitempty" jsonschema:"new agent name"`
+	ProviderID             *string  `json:"provider_id,omitempty" jsonschema:"new provider ID"`
+	ModelID                *string  `json:"model_id,omitempty" jsonschema:"new model ID"`
+	SystemPromptID         *string  `json:"system_prompt_id,omitempty" jsonschema:"new system prompt ID (empty string to clear)"`
+	TemperatureEnabled     *bool    `json:"temperature_enabled,omitempty" jsonschema:"enable temperature sampling"`
+	Temperature            *float64 `json:"temperature,omitempty" jsonschema:"temperature value"`
+	TopPEnabled            *bool    `json:"top_p_enabled,omitempty" jsonschema:"enable top-p sampling"`
+	TopP                   *float64 `json:"top_p,omitempty" jsonschema:"top-p value"`
+	TopKEnabled            *bool    `json:"top_k_enabled,omitempty" jsonschema:"enable top-k sampling"`
+	TopK                   *int     `json:"top_k,omitempty" jsonschema:"top-k value"`
+	ReasoningEffortEnabled *bool    `json:"reasoning_effort_enabled,omitempty" jsonschema:"enable or disable reasoning effort (thinking)"`
+	ReasoningEffort        *string  `json:"reasoning_effort,omitempty" jsonschema:"new provider-specific reasoning effort value (see agents_create for the values per provider)"`
+	MaxToolCalls           *int     `json:"max_tool_calls,omitempty" jsonschema:"maximum tool call iterations per request"`
+	GapReportingEnabled    *bool    `json:"gap_reporting_enabled,omitempty" jsonschema:"enable or disable the report_gap tool for this agent"`
 }
 
 type DeleteAgentInput struct {
@@ -140,18 +146,20 @@ func (h *Handler) getAgent(ctx context.Context, _ *mcp.CallToolRequest, input Ge
 
 func (h *Handler) createAgent(ctx context.Context, _ *mcp.CallToolRequest, input CreateAgentInput) (*mcp.CallToolResult, AgentOutput, error) {
 	result, err := h.agentApp.Commands.CreateAgent.Execute(ctx, commands.CreateAgentParams{
-		Name:                input.Name,
-		ProviderID:          input.ProviderID,
-		ModelID:             input.ModelID,
-		SystemPromptID:      input.SystemPromptID,
-		TemperatureEnabled:  input.TemperatureEnabled,
-		Temperature:         input.Temperature,
-		TopPEnabled:         input.TopPEnabled,
-		TopP:                input.TopP,
-		TopKEnabled:         input.TopKEnabled,
-		TopK:                input.TopK,
-		MaxToolCalls:        input.MaxToolCalls,
-		GapReportingEnabled: input.GapReportingEnabled,
+		Name:                   input.Name,
+		ProviderID:             input.ProviderID,
+		ModelID:                input.ModelID,
+		SystemPromptID:         input.SystemPromptID,
+		TemperatureEnabled:     input.TemperatureEnabled,
+		Temperature:            input.Temperature,
+		TopPEnabled:            input.TopPEnabled,
+		TopP:                   input.TopP,
+		TopKEnabled:            input.TopKEnabled,
+		TopK:                   input.TopK,
+		ReasoningEffortEnabled: input.ReasoningEffortEnabled,
+		ReasoningEffort:        input.ReasoningEffort,
+		MaxToolCalls:           input.MaxToolCalls,
+		GapReportingEnabled:    input.GapReportingEnabled,
 	})
 	if err != nil {
 		return nil, AgentOutput{}, fmt.Errorf("create agent failed: %w", err)
@@ -161,19 +169,21 @@ func (h *Handler) createAgent(ctx context.Context, _ *mcp.CallToolRequest, input
 
 func (h *Handler) updateAgent(ctx context.Context, _ *mcp.CallToolRequest, input UpdateAgentInput) (*mcp.CallToolResult, AgentOutput, error) {
 	result, err := h.agentApp.Commands.UpdateAgent.Execute(ctx, commands.UpdateAgentParams{
-		ID:                  input.ID,
-		Name:                input.Name,
-		ProviderID:          input.ProviderID,
-		ModelID:             input.ModelID,
-		SystemPromptID:      input.SystemPromptID,
-		TemperatureEnabled:  input.TemperatureEnabled,
-		Temperature:         input.Temperature,
-		TopPEnabled:         input.TopPEnabled,
-		TopP:                input.TopP,
-		TopKEnabled:         input.TopKEnabled,
-		TopK:                input.TopK,
-		MaxToolCalls:        input.MaxToolCalls,
-		GapReportingEnabled: input.GapReportingEnabled,
+		ID:                     input.ID,
+		Name:                   input.Name,
+		ProviderID:             input.ProviderID,
+		ModelID:                input.ModelID,
+		SystemPromptID:         input.SystemPromptID,
+		TemperatureEnabled:     input.TemperatureEnabled,
+		Temperature:            input.Temperature,
+		TopPEnabled:            input.TopPEnabled,
+		TopP:                   input.TopP,
+		TopKEnabled:            input.TopKEnabled,
+		TopK:                   input.TopK,
+		ReasoningEffortEnabled: input.ReasoningEffortEnabled,
+		ReasoningEffort:        input.ReasoningEffort,
+		MaxToolCalls:           input.MaxToolCalls,
+		GapReportingEnabled:    input.GapReportingEnabled,
 	})
 	if err != nil {
 		return nil, AgentOutput{}, fmt.Errorf("update agent failed: %w", err)
@@ -193,23 +203,25 @@ func (h *Handler) deleteAgent(ctx context.Context, _ *mcp.CallToolRequest, input
 
 func toAgentOutput(a *agent.Agent) AgentOutput {
 	return AgentOutput{
-		ID:                  a.ID,
-		Name:                a.Name,
-		ProviderID:          a.ProviderID,
-		ModelID:             a.ModelID,
-		SystemPromptID:      a.SystemPromptID,
-		TemperatureEnabled:  a.TemperatureEnabled,
-		Temperature:         a.Temperature,
-		TopPEnabled:         a.TopPEnabled,
-		TopP:                a.TopP,
-		TopKEnabled:         a.TopKEnabled,
-		TopK:                a.TopK,
-		MaxToolCalls:        a.MaxToolCalls,
-		GapReportingEnabled: a.GapReportingEnabled,
-		ProviderName:        a.ProviderName,
-		ProviderType:        a.ProviderType,
-		SystemPromptName:    a.SystemPromptName,
-		CreatedAt:           a.CreatedAt,
-		UpdatedAt:           a.UpdatedAt,
+		ID:                     a.ID,
+		Name:                   a.Name,
+		ProviderID:             a.ProviderID,
+		ModelID:                a.ModelID,
+		SystemPromptID:         a.SystemPromptID,
+		TemperatureEnabled:     a.TemperatureEnabled,
+		Temperature:            a.Temperature,
+		TopPEnabled:            a.TopPEnabled,
+		TopP:                   a.TopP,
+		TopKEnabled:            a.TopKEnabled,
+		TopK:                   a.TopK,
+		ReasoningEffortEnabled: a.ReasoningEffortEnabled,
+		ReasoningEffort:        a.ReasoningEffort,
+		MaxToolCalls:           a.MaxToolCalls,
+		GapReportingEnabled:    a.GapReportingEnabled,
+		ProviderName:           a.ProviderName,
+		ProviderType:           a.ProviderType,
+		SystemPromptName:       a.SystemPromptName,
+		CreatedAt:              a.CreatedAt,
+		UpdatedAt:              a.UpdatedAt,
 	}
 }

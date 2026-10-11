@@ -513,6 +513,8 @@ func (h *Handler) PlaygroundChat(w http.ResponseWriter, r *http.Request, agentId
 	if req.TopKEnabled != nil {
 		configParams.TopKEnabled = req.TopKEnabled
 	}
+	configParams.ReasoningEffortEnabled = req.ReasoningEffortEnabled
+	configParams.ReasoningEffort = req.ReasoningEffort
 	if req.MaxToolCalls != nil {
 		t := int(*req.MaxToolCalls)
 		configParams.MaxToolCalls = &t

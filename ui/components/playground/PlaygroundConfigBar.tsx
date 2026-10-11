@@ -19,6 +19,8 @@ import { IconAdjustments, IconDeviceFloppy } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchClient } from '../../lib/api/client'
 import { MODEL_OPTIONS } from '../../lib/model-options'
+import { defaultReasoningEffort } from '../../lib/reasoning-options'
+import { ReasoningEffortField } from '../ReasoningEffortField'
 import type { components } from '../../lib/api/schema'
 
 type AgentResponse = components['schemas']['Models.AgentResponse']
@@ -39,6 +41,8 @@ export interface PlaygroundConfig {
   topP: number
   topKEnabled: boolean
   topK: number
+  reasoningEffortEnabled: boolean
+  reasoningEffort: string
   maxToolCalls: number
   streaming: boolean
 }
@@ -109,12 +113,21 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent, ha
     config.topP !== agent.topP ||
     config.topKEnabled !== agent.topKEnabled ||
     config.topK !== agent.topK ||
+    config.reasoningEffortEnabled !== agent.reasoningEffortEnabled ||
+    config.reasoningEffort !== agent.reasoningEffort ||
     !config.streaming ||
     hasToolOverrides
 
   function handleProviderChange(val: string | null) {
     setModelSearch('')
-    onChange({ ...config, providerId: val ?? '', modelId: '' })
+    const nextProvider = enabledProviders.find((p: ProviderResponse) => p.id === val)
+    onChange({
+      ...config,
+      providerId: val ?? '',
+      modelId: '',
+      // Reasoning effort values differ per provider, so start from the new default.
+      reasoningEffort: defaultReasoningEffort(nextProvider?.providerType ?? ''),
+    })
   }
 
   return (
@@ -334,6 +347,17 @@ export function PlaygroundConfigBar({ agent, config, onChange, onSaveToAgent, ha
                 size="xs"
               />
             </div>
+          </Group>
+          <Group grow gap="md" mt="sm" align="flex-start">
+            <ReasoningEffortField
+              size="xs"
+              providerType={selectedProviderType}
+              enabled={config.reasoningEffortEnabled}
+              value={config.reasoningEffort}
+              onChange={(enabled, value) =>
+                onChange({ ...config, reasoningEffortEnabled: enabled, reasoningEffort: value })
+              }
+            />
           </Group>
           <Group grow gap="md" mt="sm" align="flex-start">
             <div>

@@ -151,7 +151,7 @@ For each MCP server in the backup:
 For each agent in the backup:
 - Look up the **provider ID** using the provider name mapping from step 5.1.
 - Look up the **system prompt ID** using the prompt name mapping from step 5.2.
-- Call `agents_create` with: name, provider_id (remapped), model_id, system_prompt_id (remapped), generation parameters (temperature, top_p, top_k with their enabled flags), `max_tool_calls`, and `gap_reporting_enabled`.
+- Call `agents_create` with: name, provider_id (remapped), model_id, system_prompt_id (remapped), generation parameters (temperature, top_p, top_k with their enabled flags), `reasoning_effort_enabled` and `reasoning_effort` (send the stored value as is; if the backup says "none", leave `reasoning_effort` out), `max_tool_calls`, and `gap_reporting_enabled`.
 - Record the mapping: `backup_agent_name → new_agent_id`
 
 ### 5.6 Agent Tool Configurations (last)

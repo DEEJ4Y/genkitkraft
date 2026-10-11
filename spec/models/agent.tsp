@@ -44,6 +44,12 @@ model AgentResponse {
   /** Top-k sampling. */
   topK: int32;
 
+  /** Whether reasoning effort (thinking) is enabled. */
+  reasoningEffortEnabled: boolean;
+
+  /** Provider-specific reasoning effort value (for example low, medium, high, or a token budget). */
+  reasoningEffort: string;
+
   /** Maximum number of tool call iterations per request. */
   maxToolCalls: int32;
 
@@ -89,6 +95,12 @@ model CreateAgentRequest {
   /** Top-k sampling (default 40). */
   topK?: int32;
 
+  /** Whether reasoning effort (thinking) is enabled (default false). */
+  reasoningEffortEnabled?: boolean;
+
+  /** Provider-specific reasoning effort value (default empty). Required when reasoning effort is enabled. */
+  reasoningEffort?: string;
+
   /** Maximum number of tool call iterations per request (default 10). */
   maxToolCalls?: int32;
 
@@ -127,6 +139,12 @@ model UpdateAgentRequest {
 
   /** Updated top-k sampling. */
   topK?: int32;
+
+  /** Updated reasoning effort enabled flag. */
+  reasoningEffortEnabled?: boolean;
+
+  /** Updated provider-specific reasoning effort value. */
+  reasoningEffort?: string;
 
   /** Updated maximum tool call iterations. */
   maxToolCalls?: int32;

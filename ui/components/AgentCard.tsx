@@ -56,6 +56,11 @@ export function AgentCard({ agent, onEdit, onDelete }: AgentCardProps) {
             <Text size="xs" c="dimmed">
               topK: {agent.topKEnabled ? agent.topK : 'off'}
             </Text>
+            {agent.reasoningEffortEnabled && (
+              <Text size="xs" c="dimmed">
+                reasoning: {agent.reasoningEffort}
+              </Text>
+            )}
           </Group>
 
           <Text size="xs" c="dimmed" mt={4}>

@@ -70,16 +70,18 @@ type PlaygroundChatInput struct {
 	Content           string `json:"content" jsonschema:"user message content (required)"`
 
 	// Optional per-request overrides. Omitted fields use the agent's saved configuration.
-	ProviderID         *string  `json:"provider_id,omitempty" jsonschema:"override the agent's provider ID"`
-	ModelID            *string  `json:"model_id,omitempty" jsonschema:"override the agent's model ID"`
-	SystemPromptID     *string  `json:"system_prompt_id,omitempty" jsonschema:"override the system prompt ID (empty string to clear the prompt)"`
-	TemperatureEnabled *bool    `json:"temperature_enabled,omitempty" jsonschema:"override whether temperature sampling is enabled"`
-	Temperature        *float64 `json:"temperature,omitempty" jsonschema:"override temperature value"`
-	TopPEnabled        *bool    `json:"top_p_enabled,omitempty" jsonschema:"override whether top-p sampling is enabled"`
-	TopP               *float64 `json:"top_p,omitempty" jsonschema:"override top-p value"`
-	TopKEnabled        *bool    `json:"top_k_enabled,omitempty" jsonschema:"override whether top-k sampling is enabled"`
-	TopK               *int     `json:"top_k,omitempty" jsonschema:"override top-k value"`
-	MaxToolCalls       *int     `json:"max_tool_calls,omitempty" jsonschema:"override maximum tool call iterations"`
+	ProviderID             *string  `json:"provider_id,omitempty" jsonschema:"override the agent's provider ID"`
+	ModelID                *string  `json:"model_id,omitempty" jsonschema:"override the agent's model ID"`
+	SystemPromptID         *string  `json:"system_prompt_id,omitempty" jsonschema:"override the system prompt ID (empty string to clear the prompt)"`
+	TemperatureEnabled     *bool    `json:"temperature_enabled,omitempty" jsonschema:"override whether temperature sampling is enabled"`
+	Temperature            *float64 `json:"temperature,omitempty" jsonschema:"override temperature value"`
+	TopPEnabled            *bool    `json:"top_p_enabled,omitempty" jsonschema:"override whether top-p sampling is enabled"`
+	TopP                   *float64 `json:"top_p,omitempty" jsonschema:"override top-p value"`
+	TopKEnabled            *bool    `json:"top_k_enabled,omitempty" jsonschema:"override whether top-k sampling is enabled"`
+	TopK                   *int     `json:"top_k,omitempty" jsonschema:"override top-k value"`
+	ReasoningEffortEnabled *bool    `json:"reasoning_effort_enabled,omitempty" jsonschema:"override whether reasoning effort (thinking) is enabled"`
+	ReasoningEffort        *string  `json:"reasoning_effort,omitempty" jsonschema:"override the provider-specific reasoning effort value"`
+	MaxToolCalls           *int     `json:"max_tool_calls,omitempty" jsonschema:"override maximum tool call iterations"`
 
 	// Optional tool overrides. If any is provided, the tool selection comes from
 	// these fields instead of the agent's saved tool configuration.
@@ -276,16 +278,18 @@ func (h *Handler) playgroundChat(ctx context.Context, _ *mcp.CallToolRequest, in
 // overrides, to the app-layer params. Mirrors the HTTP PlaygroundChat handler.
 func toResolvePlaygroundConfigParams(input PlaygroundChatInput) queries.ResolvePlaygroundConfigParams {
 	params := queries.ResolvePlaygroundConfigParams{
-		AgentID:            input.AgentID,
-		SystemPromptID:     input.SystemPromptID,
-		TemperatureEnabled: input.TemperatureEnabled,
-		Temperature:        input.Temperature,
-		TopPEnabled:        input.TopPEnabled,
-		TopP:               input.TopP,
-		TopKEnabled:        input.TopKEnabled,
-		TopK:               input.TopK,
-		MaxToolCalls:       input.MaxToolCalls,
-		IncludeTools:       true,
+		AgentID:                input.AgentID,
+		SystemPromptID:         input.SystemPromptID,
+		TemperatureEnabled:     input.TemperatureEnabled,
+		Temperature:            input.Temperature,
+		TopPEnabled:            input.TopPEnabled,
+		TopP:                   input.TopP,
+		TopKEnabled:            input.TopKEnabled,
+		TopK:                   input.TopK,
+		ReasoningEffortEnabled: input.ReasoningEffortEnabled,
+		ReasoningEffort:        input.ReasoningEffort,
+		MaxToolCalls:           input.MaxToolCalls,
+		IncludeTools:           true,
 	}
 	if input.ProviderID != nil {
 		params.ProviderID = *input.ProviderID

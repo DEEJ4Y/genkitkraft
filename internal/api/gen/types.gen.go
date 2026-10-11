@@ -143,6 +143,12 @@ type ModelsAgentResponse struct {
 	// ProviderType Resolved type of the provider.
 	ProviderType ModelsProviderType `json:"providerType"`
 
+	// ReasoningEffort Provider-specific reasoning effort value (for example low, medium, high, or a token budget).
+	ReasoningEffort string `json:"reasoningEffort"`
+
+	// ReasoningEffortEnabled Whether reasoning effort (thinking) is enabled.
+	ReasoningEffortEnabled bool `json:"reasoningEffortEnabled"`
+
 	// SystemPromptId ID of the system prompt, if any.
 	SystemPromptId *string `json:"systemPromptId,omitempty"`
 
@@ -241,6 +247,12 @@ type ModelsCreateAgentRequest struct {
 
 	// ProviderId ID of the provider to use.
 	ProviderId string `json:"providerId"`
+
+	// ReasoningEffort Provider-specific reasoning effort value (default empty). Required when reasoning effort is enabled.
+	ReasoningEffort *string `json:"reasoningEffort,omitempty"`
+
+	// ReasoningEffortEnabled Whether reasoning effort (thinking) is enabled (default false).
+	ReasoningEffortEnabled *bool `json:"reasoningEffortEnabled,omitempty"`
 
 	// SystemPromptId ID of an existing system prompt (optional).
 	SystemPromptId *string `json:"systemPromptId,omitempty"`
@@ -752,6 +764,12 @@ type ModelsPlaygroundChatRequest struct {
 	// ProviderId Optional provider override for testing.
 	ProviderId *string `json:"providerId,omitempty"`
 
+	// ReasoningEffort Optional reasoning effort override for testing.
+	ReasoningEffort *string `json:"reasoningEffort,omitempty"`
+
+	// ReasoningEffortEnabled Optional reasoning effort enabled override for testing.
+	ReasoningEffortEnabled *bool `json:"reasoningEffortEnabled,omitempty"`
+
 	// SessionId The session to send the message in.
 	SessionId string `json:"sessionId"`
 
@@ -976,6 +994,12 @@ type ModelsUpdateAgentRequest struct {
 
 	// ProviderId Updated provider ID.
 	ProviderId *string `json:"providerId,omitempty"`
+
+	// ReasoningEffort Updated provider-specific reasoning effort value.
+	ReasoningEffort *string `json:"reasoningEffort,omitempty"`
+
+	// ReasoningEffortEnabled Updated reasoning effort enabled flag.
+	ReasoningEffortEnabled *bool `json:"reasoningEffortEnabled,omitempty"`
 
 	// SystemPromptId Updated system prompt ID (empty string to clear).
 	SystemPromptId *string `json:"systemPromptId,omitempty"`

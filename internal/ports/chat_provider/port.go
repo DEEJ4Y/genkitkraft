@@ -35,23 +35,27 @@ type McpServerConfig struct {
 
 // ChatRequest contains all information needed to make a chat completion request.
 type ChatRequest struct {
-	ProviderType       string
-	APIKey             string
-	BaseURL            string
-	Config             json.RawMessage // Provider-specific config
-	ModelID            string
-	SystemPrompt       string
-	Messages           []ChatMessage
-	TemperatureEnabled bool
-	Temperature        float64
-	TopPEnabled        bool
-	TopP               float64
-	TopKEnabled        bool
-	TopK               int
-	MaxToolCalls       int
-	HttpTools          []HttpToolDefinition
-	McpServers         []McpServerConfig
-	BuiltInToolIDs     []string
+	ProviderType           string
+	APIKey                 string
+	BaseURL                string
+	Config                 json.RawMessage // Provider-specific config
+	ModelID                string
+	SystemPrompt           string
+	Messages               []ChatMessage
+	TemperatureEnabled     bool
+	Temperature            float64
+	TopPEnabled            bool
+	TopP                   float64
+	TopKEnabled            bool
+	TopK                   int
+	ReasoningEffortEnabled bool
+	// ReasoningEffort is the provider-specific reasoning value. It is used
+	// only when ReasoningEffortEnabled is true.
+	ReasoningEffort string
+	MaxToolCalls    int
+	HttpTools       []HttpToolDefinition
+	McpServers      []McpServerConfig
+	BuiltInToolIDs  []string
 	// AgentID identifies the agent this request is being made on behalf of.
 	// Always set — used to scope the report_gap tool and its resulting
 	// dedup pipeline to the right agent, independent of whether a session
