@@ -20,6 +20,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .features {
@@ -60,7 +62,6 @@
 
 /* MCP hero button */
 .mcpHeroButton {
-  margin-left: 0.75rem;
   background: transparent;
   border: 2px solid rgba(255, 255, 255, 0.6);
   color: #fff;
@@ -73,7 +74,6 @@
 }
 
 .deployHeroButton {
-  margin-left: 0.75rem;
   display: inline-flex;
 }
 
